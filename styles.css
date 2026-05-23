@@ -426,7 +426,7 @@ body {
     color: #333;
     overflow: hidden;
     text-overflow: ellipsis;
-    white-space: nowrap;
+    min-width: 0;
 }
 .queue-item-remove {
     background: transparent;
