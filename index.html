@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fimall Chat</title>
+    <link rel="icon" href="favicon.ico">
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/atom-one-dark.min.css">
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.6/dist/purify.min.js"></script>
+
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <div class="toast-container" id="toastContainer"></div>
+    
+    <div class="context-menu" id="contextMenu">
+        <div class="context-menu-item" onclick="renameChat()">
+            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            <span>重命名</span>
+        </div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item" onclick="exportChatMarkdown()">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+            <span>导出 Markdown</span>
+        </div>
+        <div class="context-menu-item" onclick="exportChatHTML()">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+            <span>导出 HTML</span>
+        </div>
+    </div>
+
+    <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <h2 class="desktop-title"><img src="favicon.ico" alt="Logo" style="height: 24px; vertical-align: middle;"> Fimall Chat</h2>
+            <div class="mobile-header">
+                <span style="display: flex; align-items: center; gap: 4px;"><img src="favicon.ico" alt="Logo" style="height: 24px; vertical-align: middle;"> Fimall Chat</span>
+                <button class="menu-btn" onclick="toggleSidebar()" title="关闭">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button class="icon-btn" onclick="toggleSettings()" title="设置">
+                    <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
+                </button>
+            </div>
+        </div>
+        <button class="new-chat-btn" onclick="createNewChat()">+ 新建对话</button>
+        <div class="chat-list" id="chatList"></div>
+        
+        <div class="settings-container" id="settingsContainer">
+            <div class="settings-group"><label>API Key</label><input type="password" id="apiKeyInput" placeholder="sk-..." onchange="saveSettings()" autocomplete="off"></div>
+            <button class="btn-outline" onclick="fetchModels()">获取 / 刷新模型列表</button>
+            <div class="settings-group"><label>对话模型</label><select id="modelSelect" onchange="saveSettings()"><option value="">请先获取模型</option></select></div>
+            <div class="settings-group"><label>标题生成模型</label><select id="titleModelSelect" onchange="saveSettings()"><option value="">跟随对话模型</option></select></div>
+            
+            <div class="settings-group">
+                <label>提示词预设</label>
+                <select id="presetSelect" onchange="handlePresetChange()">
+                    <option value="custom">自定义</option>
+                </select>
+            </div>
+            <div class="settings-group"><label>系统提示词 (System)</label><textarea id="systemPromptInput" placeholder="定义 AI 的人设..." onchange="saveSettings()"></textarea></div>
+            <div class="settings-group"><label>用户提示词前缀 (User Prefix)</label><textarea id="userPrefixInput" placeholder="前缀将静默附加到发给AI的User消息前" onchange="saveSettings()" style="min-height: 40px;"></textarea></div>
+            
+            <div class="settings-group">
+                <label>导出 HTML 风格</label>
+                <select id="htmlStyleSelect" onchange="saveSettings()">
+                    <option value="autumn">落叶知秋</option>
+                    <option value="github">清风明月</option>
+                </select>
+            </div>
+
+            <div class="settings-group">
+                <label>导出选项</label>
+                <div class="toggle-container">
+                    <input type="checkbox" id="filterThinkToggle" onclick="saveSettings()" checked>
+                    <label class="toggle-label" for="filterThinkToggle">
+                        <span class="toggle-text">导出时过滤思考内容</span>
+                        <span class="toggle-switch"></span>
+                    </label>
+                </div>
+                <div class="export-role-select">
+                    <label>导出角色</label>
+                    <select id="exportRoleSelect" onchange="saveSettings()">
+                        <option value="both">全部对话</option>
+                        <option value="user">仅用户消息</option>
+                        <option value="assistant">仅助手消息</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="data-actions"><button onclick="exportJSON()">导出历史</button><button onclick="importJSON()">导入历史</button></div>
+        </div>
+    </div>
+
+    <div class="main-chat">
+        <div class="chat-header">
+            <button class="menu-btn" onclick="toggleSidebar()" title="菜单" style="display: none;">
+                <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+            </button>
+            <h3 id="chatHeaderTitle" oncontextmenu="showContextMenu(event)">新对话</h3>
+            <button class="clear-chat-btn" onclick="clearCurrentChat()">
+                <svg viewBox="0 0 24 24"><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
+                <span>清空对话</span>
+            </button>
+        </div>
+        
+        <div class="chat-messages" id="chatMessages"></div>
+        <button class="scroll-bottom-btn" id="scrollBottomBtn" onclick="scrollToBottomClick()">
+            <svg viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+        </button>
+        <div class="loading" id="loadingIndicator">AI 正在思考<span></span></div>
+        
+        <div class="input-wrapper">
+            <div id="attachmentPreview" class="attachment-preview"></div>
+            <div class="queue-panel" id="queuePanel">
+                <div class="queue-header" onclick="toggleQueue()">
+                    <span>消息队列 (<span id="queueCount">0</span>)</span>
+                    <svg class="queue-arrow" viewBox="0 0 24 24"><path d="M7.41 8.59L12 13.17l4.59-4.58L18 10l-6 6-6-6 1.41-1.41z"/></svg>
+                </div>
+                <div class="queue-list" id="queueList"></div>
+            </div>
+            <div class="input-area">
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()" title="上传文件"><svg viewBox="0 0 24 24"><path d="M16.5,6v11.5c0,2.21-1.79,4-4,4s-4-1.79-4-4V5c0-1.38,1.12-2.5,2.5-2.5s2.5,1.12,2.5,2.5v10.5c0,0.55-0.45,1-1,1 s-1-0.45-1-1V6H10v9.5c0,1.38,1.12,2.5,2.5,2.5s2.5-1.12,2.5-2.5V5c0-2.21-1.79-4-4-4S7,2.79,7,5v12.5c0,3.04,2.46,5.5,5.5,5.5 s5.5-2.46,5.5-5.5V6H16.5z"/></svg></button>
+                <input type="file" id="fileInput" style="display: none;" onchange="handleFileUpload(event)">
+                <div class="textarea-container">
+                    <div id="inputPrefixBadge" class="input-prefix-badge"></div>
+                    <textarea id="userInput" placeholder="输入消息..." onkeydown="handleKeydown(event)"></textarea>
+                </div>
+                <button class="queue-btn" id="queueBtn" onclick="addToQueue()" title="加入队列">
+                    <svg viewBox="0 0 24 24"><path d="M15 6H3v2h12V6zm0 4H3v2h12v-2zM3 16h8v-2H3v2zM17 6v8.18c-.31-.11-.65-.18-1-.18-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3V8h3V6h-5z"/></svg>
+                </button>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg></button>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="importInput" accept=".json" style="display: none;" onchange="handleFileImport(event)">
+
+    <script src="presets.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

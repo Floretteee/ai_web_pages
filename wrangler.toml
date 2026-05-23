@@ -1,0 +1,3 @@
+name = "fimall-ai-web"
+pages_build_output_dir = "."
+compatibility_date = "2025-05-23"
