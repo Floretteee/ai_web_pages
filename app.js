@@ -783,31 +783,19 @@ function exportChatHTML() {
     if (style === 'autumn') {
         bodyClass = 'autumn';
         css = `
+            @import url('https://fonts.googleapis.cn/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap');
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { background: #f5f0e8; color: #5c4b37; font-family: "Songti SC", STSong, "华文宋体", "Noto Serif CJK SC", "Source Han Serif SC", serif; font-weight: 500; padding: 40px 15px; max-width: 1000px; margin: 0 auto; text-rendering: optimizeLegibility; }
-            h1 { text-align: center; color: #8b6914; border-bottom: 2px solid #d4a843; padding-bottom: 16px; margin-bottom: 32px; font-size: 24px; font-weight: 700; }
-            .msg { margin: 24px 0; }
+            body { background: #f5f0e8; color: #5c4b37; font-family: 'Noto Serif SC', 'Source Han Serif SC', "Songti SC", STSong, "华文宋体", SimSun, serif; font-weight: 500; padding: 40px 15px; max-width: 1000px; margin: 0 auto; text-rendering: optimizeLegibility; font-size: clamp(15px, 2vw, 18px); }
+            h1 { text-align: center; color: #8b6914; border-bottom: 2px solid #d4a843; padding-bottom: 16px; margin-bottom: 32px; font-size: clamp(20px, 3.2vw, 28px); font-weight: 700; }
+            .msg { margin: clamp(16px, 2.4vw, 28px) 0; }
             .user { text-align: right; }
             .assistant { text-align: left; }
-            .role { font-weight: 700; margin-bottom: 8px; font-size: 14px; color: #8b6914; }
+            .role { font-weight: 700; margin-bottom: 8px; font-size: clamp(12px, 1.4vw, 14px); color: #8b6914; }
             .assistant .role { color: #6b8e23; }
             .content { line-height: 1.8; font-weight: 500; }
             pre { background: #e8e0d0; padding: 12px; border-radius: 4px; overflow-x: auto; margin: 8px 0; }
-            code { font-family: 'Consolas', monospace; font-size: 14px; }
+            code { font-family: 'Consolas', monospace; font-size: clamp(13px, 1.4vw, 15px); }
             blockquote { border-left: 3px solid #d4a843; padding-left: 12px; color: #8b7355; margin: 12px 0; }
-            @media screen and (max-width: 768px) {
-                body { padding: 24px 15px; }
-                h1 { font-size: 20px; margin-bottom: 24px; }
-                .msg { margin: 20px 0; }
-                .content { font-size: 15px; }
-            }
-            @media screen and (max-width: 480px) {
-                body { padding: 16px 15px; }
-                h1 { font-size: 18px; margin-bottom: 20px; }
-                .msg { margin: 16px 0; }
-                .content { font-size: 14px; }
-                pre { padding: 8px; font-size: 13px; }
-            }
             @media print {
                 body { padding: 20px; }
             }
