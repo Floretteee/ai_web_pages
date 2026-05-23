@@ -783,16 +783,15 @@ function exportChatHTML() {
     if (style === 'autumn') {
         bodyClass = 'autumn';
         css = `
-            @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { background: #f5f0e8; color: #5c4b37; font-family: 'Noto Serif SC', 'Source Han Serif SC', serif; padding: 40px 15px; max-width: 1000px; margin: 0 auto; }
-            h1 { text-align: center; color: #8b6914; border-bottom: 2px solid #d4a843; padding-bottom: 16px; margin-bottom: 32px; font-size: 24px; }
+            body { background: #f5f0e8; color: #5c4b37; font-family: "Songti SC", STSong, "华文宋体", "Noto Serif CJK SC", "Source Han Serif SC", serif; font-weight: 500; padding: 40px 15px; max-width: 1000px; margin: 0 auto; text-rendering: optimizeLegibility; }
+            h1 { text-align: center; color: #8b6914; border-bottom: 2px solid #d4a843; padding-bottom: 16px; margin-bottom: 32px; font-size: 24px; font-weight: 700; }
             .msg { margin: 24px 0; }
             .user { text-align: right; }
             .assistant { text-align: left; }
             .role { font-weight: 700; margin-bottom: 8px; font-size: 14px; color: #8b6914; }
             .assistant .role { color: #6b8e23; }
-            .content { line-height: 1.8; }
+            .content { line-height: 1.8; font-weight: 500; }
             pre { background: #e8e0d0; padding: 12px; border-radius: 4px; overflow-x: auto; margin: 8px 0; }
             code { font-family: 'Consolas', monospace; font-size: 14px; }
             blockquote { border-left: 3px solid #d4a843; padding-left: 12px; color: #8b7355; margin: 12px 0; }
@@ -809,21 +808,27 @@ function exportChatHTML() {
                 .content { font-size: 14px; }
                 pre { padding: 8px; font-size: 13px; }
             }
+            @media print {
+                body { padding: 20px; }
+            }
         `;
     } else {
         bodyClass = 'github';
         css = `
-            body { background: #fff; color: #24292e; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif; padding: 40px 20px; max-width: 800px; margin: 0 auto; }
-            h1 { border-bottom: 1px solid #eaecef; padding-bottom: 16px; }
+            body { background: #fff; color: #24292e; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; font-weight: 500; padding: 40px 20px; max-width: 800px; margin: 0 auto; text-rendering: optimizeLegibility; }
+            h1 { border-bottom: 1px solid #eaecef; padding-bottom: 16px; font-weight: 700; }
             .msg { margin: 12px 0; padding: 16px; border-radius: 8px; }
             .user { background: #f6f8fa; text-align: right; }
             .user .role { text-align: left; }
             .assistant { background: #fff; }
             .role { font-weight: 600; margin-bottom: 8px; color: #0366d6; }
-            .content { line-height: 1.6; text-align: left; display: inline-block; max-width: 85%; text-align: left; }
+            .content { line-height: 1.6; text-align: left; max-width: 85%; }
             pre { background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto; text-align: left; }
             code { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 14px; }
             blockquote { border-left: 4px solid #dfe2e5; padding-left: 16px; color: #6a737d; margin: 16px 0; text-align: left; }
+            @media print {
+                body { padding: 20px; }
+            }
         `;
     }
     
@@ -854,7 +859,7 @@ function exportChatHTML() {
     });
     
     const title = (chat.title || '新对话').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
-    const html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <title>' + title + '</title>\n    <style>' + css + '</style>\n</head>\n<body class="' + bodyClass + '">\n    <h1>' + title + '</h1>\n    ' + messagesHtml + '\n</body>\n</html>';
+    const html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <meta name="description" content="AI 对话记录：' + title + '">\n    <meta name="generator" content="Fimall Chat">\n    <title>' + title + '</title>\n    <style>' + css + '</style>\n</head>\n<body class="' + bodyClass + '">\n    <article role="main">\n        <header>\n            <h1>' + title + '</h1>\n        </header>\n        <section>\n            ' + messagesHtml + '\n        </section>\n    </article>\n</body>\n</html>';
     
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
