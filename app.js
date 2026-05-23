@@ -785,11 +785,11 @@ function exportChatHTML() {
         css = `
             @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
             * { box-sizing: border-box; margin: 0; padding: 0; }
-            body { background: #f5f0e8; color: #5c4b37; font-family: 'Noto Serif SC', 'Source Han Serif SC', serif; padding: 40px 30px; max-width: 1000px; margin: 0 auto; }
+            body { background: #f5f0e8; color: #5c4b37; font-family: 'Noto Serif SC', 'Source Han Serif SC', serif; padding: 40px 15px; max-width: 1000px; margin: 0 auto; }
             h1 { text-align: center; color: #8b6914; border-bottom: 2px solid #d4a843; padding-bottom: 16px; margin-bottom: 32px; font-size: 24px; }
-            .msg { margin: 20px 0; padding: 8px 0; }
-            .user { border-left: 3px solid #d4a843; padding-left: 16px; }
-            .assistant { border-left: 3px solid #6b8e23; padding-left: 16px; }
+            .msg { margin: 24px 0; }
+            .user { text-align: right; }
+            .assistant { text-align: left; }
             .role { font-weight: 700; margin-bottom: 8px; font-size: 14px; color: #8b6914; }
             .assistant .role { color: #6b8e23; }
             .content { line-height: 1.8; }
@@ -797,14 +797,15 @@ function exportChatHTML() {
             code { font-family: 'Consolas', monospace; font-size: 14px; }
             blockquote { border-left: 3px solid #d4a843; padding-left: 12px; color: #8b7355; margin: 12px 0; }
             @media screen and (max-width: 768px) {
-                body { padding: 24px 30px; }
+                body { padding: 24px 15px; }
                 h1 { font-size: 20px; margin-bottom: 24px; }
-                .msg { margin: 16px 0; }
+                .msg { margin: 20px 0; }
                 .content { font-size: 15px; }
             }
             @media screen and (max-width: 480px) {
-                body { padding: 16px 30px; }
+                body { padding: 16px 15px; }
                 h1 { font-size: 18px; margin-bottom: 20px; }
+                .msg { margin: 16px 0; }
                 .content { font-size: 14px; }
                 pre { padding: 8px; font-size: 13px; }
             }
