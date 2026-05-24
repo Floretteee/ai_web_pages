@@ -328,7 +328,8 @@ body {
 
 .stop-btn { background-color: #fff !important; color: #111; border: 1px solid #111; box-shadow: inset 0 0 0 1px #fff; }
 .stop-btn:hover { background-color: #111 !important; border-color: #111; transform: translateY(-2px) scale(1.02); }
-.stop-btn svg { margin-left: 0; width: 18px; height: 18px; }
+.stop-btn svg { margin-left: 0; width: 20px; height: 20px; fill: currentColor; }
+.stop-spinner { animation: rotate 1s linear infinite; }
 .generating-text {
     background: linear-gradient(90deg, #111 0%, #777 35%, #fff 50%, #777 65%, #111 100%);
     background-size: 220% 100%;
@@ -354,6 +355,10 @@ body {
 @keyframes textSweep {
     from { background-position: 220% 0; }
     to { background-position: -220% 0; }
+}
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 /* 消息队列样式 */

@@ -481,7 +481,11 @@ async function executeChatRequest(currentChat) {
     DOM.chatMessages.appendChild(botDomObj.wrapper);
 
     function renderBotContent(fullContent) {
+        const previousThinkBlock = botDomObj.contentNode.querySelector('.think-block');
+        const keepThinkOpen = previousThinkBlock?.open || false;
         botDomObj.contentNode.innerHTML = renderContentWithThink(fullContent, true);
+        const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
+        if (nextThinkBlock) nextThinkBlock.open = keepThinkOpen;
     }
     
     let botReply = '';
@@ -584,7 +588,7 @@ function stopGeneration() {
 
 function updateSendButton(isGenerating) {
     if (isGenerating) {
-        DOM.sendBtn.innerHTML = '<span class="generating-text">停止</span>';
+        DOM.sendBtn.innerHTML = '<svg class="stop-spinner" viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 7.45 5.08l-1.86.74A6 6 0 1 1 12 6V3l5 4-5 4V8a4 4 0 1 0 3.72 2.53l1.86-.74A6 6 0 1 1 12 6V4z"/></svg>';
         DOM.sendBtn.onclick = stopGeneration;
         DOM.sendBtn.classList.add('stop-btn');
         DOM.queueBtn.classList.add('generating');
@@ -604,11 +608,13 @@ function renderContentWithThink(content, isStreaming) {
     
     const thinkMatch = content && content.match(/<think>([\s\S]*?)<\/think>/);
     if (thinkMatch) {
+        const remainingContent = content.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+        const thinkingNow = isStreaming && !remainingContent;
         thinkHtml = `<details class="think-block">
-            <summary class="think-summary">${thinkSvg} 思考过程</summary>
+            <summary class="think-summary">${thinkingNow ? thinkAnimSvg : thinkSvg} ${thinkingNow ? '思考中...' : '思考过程'}</summary>
             <div class="think-content markdown-body">${DOMPurify.sanitize(marked.parse(thinkMatch[1]))}</div>
         </details>`;
-        mainContent = content.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+        mainContent = remainingContent;
     } else if (isStreaming) {
         const thinkStart = content && content.indexOf('<think>');
         if (thinkStart !== -1) {
