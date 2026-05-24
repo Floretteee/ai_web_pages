@@ -600,7 +600,7 @@ function stopGeneration() {
 
 function updateSendButton(isGenerating) {
     if (isGenerating) {
-        DOM.sendBtn.innerHTML = '<svg class="stop-spinner" viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 0 7.45 5.08l-1.86.74A6 6 0 1 1 12 6V3l5 4-5 4V8a4 4 0 1 0 3.72 2.53l1.86-.74A6 6 0 1 1 12 6V4z"/></svg>';
+        DOM.sendBtn.innerHTML = '<svg class="stop-spinner" viewBox="0 0 24 24"><path d="M19.2 12a7.2 7.2 0 1 1-2.1-5.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M17.1 3.8v3.1h3.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
         DOM.sendBtn.onclick = stopGeneration;
         DOM.sendBtn.classList.add('stop-btn');
         DOM.queueBtn.classList.add('generating');
