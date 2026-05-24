@@ -479,13 +479,20 @@ async function executeChatRequest(currentChat) {
     const botDomObj = createMessageDOM({ role: 'assistant', content: '' }, targetIndex);
     botDomObj.wrapper.querySelector('.message-actions').style.display = 'none';
     DOM.chatMessages.appendChild(botDomObj.wrapper);
+    let streamThinkOpen = false;
 
     function renderBotContent(fullContent) {
-        const previousThinkBlock = botDomObj.contentNode.querySelector('.think-block');
-        const keepThinkOpen = previousThinkBlock?.open || false;
         botDomObj.contentNode.innerHTML = renderContentWithThink(fullContent, true);
         const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
-        if (nextThinkBlock) nextThinkBlock.open = keepThinkOpen;
+        if (nextThinkBlock) {
+            nextThinkBlock.open = streamThinkOpen;
+            nextThinkBlock.querySelector('.think-summary')?.addEventListener('click', () => {
+                streamThinkOpen = !nextThinkBlock.open;
+            });
+            nextThinkBlock.addEventListener('toggle', () => {
+                streamThinkOpen = nextThinkBlock.open;
+            });
+        }
     }
     
     let botReply = '';
@@ -604,7 +611,7 @@ function renderContentWithThink(content, isStreaming) {
     let mainContent = content || '';
     let thinkHtml = '';
     const thinkSvg = `<svg class="think-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M9.55 17.05 4.9 12.4l1.42-1.42 3.23 3.23 8.13-8.13 1.42 1.42-9.55 9.55Z"/></svg>`;
-    const thinkAnimSvg = `<svg class="think-icon thinking" viewBox="0 0 24 24" width="16" height="16"><path d="M9 3.8C7.35 3.8 6 5.15 6 6.8v.46A3.2 3.2 0 0 0 4 10.2c0 1.02.48 1.93 1.22 2.52A3.35 3.35 0 0 0 8.55 17H9v1.35a1.85 1.85 0 0 0 3.7 0V5.8A2 2 0 0 0 10.7 3.8H9Zm6 0h-1.7v14.55a1.85 1.85 0 0 0 3.7 0V17h.45a3.35 3.35 0 0 0 3.33-4.28A3.2 3.2 0 0 0 22 10.2a3.2 3.2 0 0 0-2-2.94V6.8c0-1.65-1.35-3-3-3h-2Z"/></svg>`;
+    const thinkAnimSvg = `<svg class="think-icon thinking" viewBox="0 0 24 24" width="16" height="16"><path d="M11.7 6.1c-.45-1.25-1.55-2.1-2.85-2.1A3.05 3.05 0 0 0 5.8 7.05v.18A3.15 3.15 0 0 0 4 10.05c0 1.02.48 1.92 1.23 2.5A3.28 3.28 0 0 0 8.45 16.5h.85v1.2a1.7 1.7 0 0 0 3.4 0V5.95c0-1.08-.88-1.95-1.95-1.95h-.4m1.35 6.05H9.4m3.3 3.15H9.05m3.25-6.1H9.9m2.4 8.75H9.3m3-9.75c.45-1.25 1.55-2.1 2.85-2.1a3.05 3.05 0 0 1 3.05 3.05v.18A3.15 3.15 0 0 1 20 10.05c0 1.02-.48 1.92-1.23 2.5a3.28 3.28 0 0 1-3.22 3.95h-.85v1.2a1.7 1.7 0 0 1-3.4 0V5.95c0-1.08.88-1.95 1.95-1.95h.4m-1.35 6.05h2.3m-3.3 3.15h3.65m-3.25-6.1h2.4m-2.4 8.75h3" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     
     const thinkMatch = content && content.match(/<think>([\s\S]*?)<\/think>/);
     if (thinkMatch) {

@@ -819,8 +819,8 @@ body {
     animation: brainBlink 1.05s steps(2, end) infinite;
 }
 @keyframes brainBlink {
-    0%, 100% { color: #111; fill: #111; opacity: 1; }
-    50% { color: #8a8a8a; fill: #8a8a8a; opacity: 0.45; }
+    0%, 100% { color: #111; fill: #111; stroke: #111; opacity: 1; }
+    50% { color: #8a8a8a; fill: #8a8a8a; stroke: #8a8a8a; opacity: 0.45; }
 }
 .think-content {
     padding: 0 16px 12px;
