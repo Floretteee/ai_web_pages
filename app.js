@@ -77,6 +77,7 @@ const DOM = {
     presetSelect: document.getElementById('presetSelect'), systemPromptInput: document.getElementById('systemPromptInput'), 
     userPrefixInput: document.getElementById('userPrefixInput'), sendBtn: document.getElementById('sendBtn'),
     loadingIndicator: document.getElementById('loadingIndicator'), settingsContainer: document.getElementById('settingsContainer'),
+    queueBtn: document.getElementById('queueBtn'),
     attachmentPreview: document.getElementById('attachmentPreview'), chatHeaderTitle: document.getElementById('chatHeaderTitle'),
     inputPrefixBadge: document.getElementById('inputPrefixBadge'), sidebar: document.getElementById('sidebar'),
     sidebarBackdrop: document.getElementById('sidebarBackdrop'), htmlStyleSelect: document.getElementById('htmlStyleSelect'),
@@ -583,25 +584,27 @@ function stopGeneration() {
 
 function updateSendButton(isGenerating) {
     if (isGenerating) {
-        DOM.sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>';
+        DOM.sendBtn.innerHTML = '<span class="generating-text">停止</span>';
         DOM.sendBtn.onclick = stopGeneration;
         DOM.sendBtn.classList.add('stop-btn');
+        DOM.queueBtn.classList.add('generating');
     } else {
         DOM.sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>';
         DOM.sendBtn.onclick = sendMessage;
         DOM.sendBtn.classList.remove('stop-btn');
+        DOM.queueBtn.classList.remove('generating');
     }
 }
 
 function renderContentWithThink(content, isStreaming) {
     let mainContent = content || '';
     let thinkHtml = '';
-    const thinkSvg = `<svg class="think-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>`;
-    const thinkAnimSvg = `<svg class="think-icon thinking" viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8z"/><path d="M12 6v6l4 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
+    const thinkSvg = `<svg class="think-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M9.55 17.05 4.9 12.4l1.42-1.42 3.23 3.23 8.13-8.13 1.42 1.42-9.55 9.55Z"/></svg>`;
+    const thinkAnimSvg = `<svg class="think-icon thinking" viewBox="0 0 24 24" width="16" height="16"><path d="M9 3.8C7.35 3.8 6 5.15 6 6.8v.46A3.2 3.2 0 0 0 4 10.2c0 1.02.48 1.93 1.22 2.52A3.35 3.35 0 0 0 8.55 17H9v1.35a1.85 1.85 0 0 0 3.7 0V5.8A2 2 0 0 0 10.7 3.8H9Zm6 0h-1.7v14.55a1.85 1.85 0 0 0 3.7 0V17h.45a3.35 3.35 0 0 0 3.33-4.28A3.2 3.2 0 0 0 22 10.2a3.2 3.2 0 0 0-2-2.94V6.8c0-1.65-1.35-3-3-3h-2Z"/></svg>`;
     
     const thinkMatch = content && content.match(/<think>([\s\S]*?)<\/think>/);
     if (thinkMatch) {
-        thinkHtml = `<details class="think-block" open>
+        thinkHtml = `<details class="think-block">
             <summary class="think-summary">${thinkSvg} 思考过程</summary>
             <div class="think-content markdown-body">${DOMPurify.sanitize(marked.parse(thinkMatch[1]))}</div>
         </details>`;
@@ -612,7 +615,7 @@ function renderContentWithThink(content, isStreaming) {
             const before = content.slice(0, thinkStart).trim();
             const inThink = content.slice(thinkStart + 7);
             if (inThink) {
-                thinkHtml = `<details class="think-block" open>
+                thinkHtml = `<details class="think-block">
                     <summary class="think-summary">${thinkAnimSvg} 思考中...</summary>
                     <div class="think-content markdown-body">${DOMPurify.sanitize(marked.parse(inThink))}</div>
                 </details>`;
