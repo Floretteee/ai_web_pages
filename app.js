@@ -486,8 +486,11 @@ async function executeChatRequest(currentChat) {
         const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
         if (nextThinkBlock) {
             nextThinkBlock.open = streamThinkOpen;
-            nextThinkBlock.querySelector('.think-summary')?.addEventListener('click', () => {
-                streamThinkOpen = !nextThinkBlock.open;
+            const nextThinkSummary = nextThinkBlock.querySelector('.think-summary');
+            nextThinkSummary?.addEventListener('click', (event) => {
+                event.preventDefault();
+                streamThinkOpen = !streamThinkOpen;
+                nextThinkBlock.open = streamThinkOpen;
             });
             nextThinkBlock.addEventListener('toggle', () => {
                 streamThinkOpen = nextThinkBlock.open;
