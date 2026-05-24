@@ -480,20 +480,22 @@ async function executeChatRequest(currentChat) {
     botDomObj.wrapper.querySelector('.message-actions').style.display = 'none';
     DOM.chatMessages.appendChild(botDomObj.wrapper);
     let streamThinkOpen = false;
+    botDomObj.contentNode.addEventListener('pointerdown', (event) => {
+        const summary = event.target.closest('.think-summary');
+        if (!summary || !botDomObj.contentNode.contains(summary)) return;
+        event.preventDefault();
+        streamThinkOpen = !streamThinkOpen;
+        const thinkBlock = summary.closest('.think-block');
+        if (thinkBlock) thinkBlock.open = streamThinkOpen;
+    });
 
     function renderBotContent(fullContent) {
         botDomObj.contentNode.innerHTML = renderContentWithThink(fullContent, true);
         const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
         if (nextThinkBlock) {
             nextThinkBlock.open = streamThinkOpen;
-            const nextThinkSummary = nextThinkBlock.querySelector('.think-summary');
-            nextThinkSummary?.addEventListener('click', (event) => {
+            nextThinkBlock.querySelector('.think-summary')?.addEventListener('click', (event) => {
                 event.preventDefault();
-                streamThinkOpen = !streamThinkOpen;
-                nextThinkBlock.open = streamThinkOpen;
-            });
-            nextThinkBlock.addEventListener('toggle', () => {
-                streamThinkOpen = nextThinkBlock.open;
             });
         }
     }
