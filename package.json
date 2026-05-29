@@ -1,0 +1,21 @@
+{
+  "name": "ai_web",
+  "version": "1.0.0",
+  "description": "一个简洁优雅的 AI 聊天 Web 应用，支持多对话管理、Markdown 渲染、代码高亮、LaTeX 公式、HTML/Markdown/JSON 导出等功能。",
+  "main": "app.js",
+  "scripts": {
+    "build": "node scripts/build-domd.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "esbuild": "^0.28.0"
+  },
+  "dependencies": {
+    "immer": "^11.1.4",
+    "nanoid": "^5.1.7",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  }
+}

@@ -1,5 +1,45 @@
 const API_BASE = "https://api.fimall.cfd/v1";
-marked.setOptions({ highlight: function(c, l) { return hljs.highlight(c, { language: hljs.getLanguage(l) ? l : 'plaintext' }).value; }, breaks: true, gfm: true });
+
+function renderMath(container) {
+    try {
+        renderMathInElement(container, { delimiters: [ {left:'$$', right:'$$', display:true}, {left:'$', right:'$', display:false}, {left:'\\[', right:'\\]', display:true} ], throwOnError: false });
+    } catch(e) {}
+}
+
+function renderMarkdownToHtml(markdown) {
+    const source = markdown || '';
+    const mathBlocks = [];
+    let protectedContent = source.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
+        const idx = mathBlocks.length;
+        mathBlocks.push({ display: true, math });
+        return `DOMD_MATH_BLOCK_${idx}_END`;
+    });
+    protectedContent = protectedContent.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
+        const idx = mathBlocks.length;
+        mathBlocks.push({ display: false, math });
+        return `DOMD_MATH_INLINE_${idx}_END`;
+    });
+
+    let html = '';
+    if (window.DOMDMarkdown && typeof window.DOMDMarkdown.renderToHtml === 'function') {
+        html = window.DOMDMarkdown.renderToHtml(protectedContent);
+    } else {
+        const container = document.createElement('div');
+        container.textContent = protectedContent;
+        html = container.innerHTML;
+    }
+    mathBlocks.forEach((item, idx) => {
+        const token = item.display ? `DOMD_MATH_BLOCK_${idx}_END` : `DOMD_MATH_INLINE_${idx}_END`;
+        const mathText = item.display ? `$$${item.math}$$` : `$${item.math}$`;
+        html = html.replaceAll(token, escapeHtml(mathText));
+    });
+    return DOMPurify.sanitize(html);
+}
+
+function renderMarkdownIntoElement(element, markdown) {
+    element.innerHTML = renderMarkdownToHtml(markdown);
+    renderMath(element);
+}
 
 let abortController = null;
 let messageQueue = [];
@@ -317,28 +357,9 @@ function createMessageDOM(msg, index) {
 
     if (displayContent && displayContent.includes('<think>')) {
         contentNode.innerHTML = renderContentWithThink(displayContent, false);
+        renderMath(contentNode);
     } else {
-        const mathBlocks = [];
-        let protectedContent = displayContent.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
-            const idx = mathBlocks.length;
-            mathBlocks.push(math);
-            return `<span class="math-placeholder" data-math-idx="${idx}"></span>`;
-        });
-        protectedContent = protectedContent.replace(/\$([^\$\n]+?)\$/g, (_, math) => {
-            const idx = mathBlocks.length;
-            mathBlocks.push(math);
-            return `<span class="math-inline-placeholder" data-math-idx="${idx}"></span>`;
-        });
-        contentNode.innerHTML = DOMPurify.sanitize(marked.parse(protectedContent));
-        contentNode.querySelectorAll('.math-placeholder').forEach(el => {
-            const idx = parseInt(el.dataset.mathIdx);
-            el.outerHTML = `$$${mathBlocks[idx]}$$`;
-        });
-        contentNode.querySelectorAll('.math-inline-placeholder').forEach(el => {
-            const idx = parseInt(el.dataset.mathIdx);
-            el.outerHTML = `$${mathBlocks[idx]}$`;
-        });
-        try { renderMathInElement(contentNode, { delimiters: [ {left:'$$', right:'$$', display:true}, {left:'$', right:'$', display:false}, {left:'\\[', right:'\\]', display:true} ], throwOnError: false }); } catch(e){}
+        renderMarkdownIntoElement(contentNode, displayContent);
     }
     wrapper.appendChild(contentNode);
 
@@ -491,6 +512,7 @@ async function executeChatRequest(currentChat) {
 
     function renderBotContent(fullContent) {
         botDomObj.contentNode.innerHTML = renderContentWithThink(fullContent, true);
+        renderMath(botDomObj.contentNode);
         const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
         if (nextThinkBlock) {
             nextThinkBlock.open = streamThinkOpen;
@@ -568,7 +590,7 @@ async function executeChatRequest(currentChat) {
             if (retry < maxRetries) {
                 await new Promise(r => setTimeout(r, 2000));
             } else {
-                botDomObj.contentNode.innerHTML = DOMPurify.sanitize(marked.parse(botReply + `\n\n请求失败，已重试 ${maxRetries} 次。错误: ` + error.message));
+                renderMarkdownIntoElement(botDomObj.contentNode, botReply + `\n\n请求失败，已重试 ${maxRetries} 次。错误: ` + error.message);
                 showToast("消息请求失败，请重试");
             }
         }
@@ -624,7 +646,7 @@ function renderContentWithThink(content, isStreaming) {
         const thinkingNow = isStreaming && !remainingContent;
         thinkHtml = `<details class="think-block">
             <summary class="think-summary">${thinkingNow ? thinkAnimSvg : thinkSvg} ${thinkingNow ? '思考中...' : '思考过程'}</summary>
-            <div class="think-content markdown-body">${DOMPurify.sanitize(marked.parse(thinkMatch[1]))}</div>
+            <div class="think-content markdown-body">${renderMarkdownToHtml(thinkMatch[1])}</div>
         </details>`;
         mainContent = remainingContent;
     } else if (isStreaming) {
@@ -635,13 +657,13 @@ function renderContentWithThink(content, isStreaming) {
             if (inThink) {
                 thinkHtml = `<details class="think-block">
                     <summary class="think-summary">${thinkAnimSvg} 思考中...</summary>
-                    <div class="think-content markdown-body">${DOMPurify.sanitize(marked.parse(inThink))}</div>
+                    <div class="think-content markdown-body">${renderMarkdownToHtml(inThink)}</div>
                 </details>`;
             }
             mainContent = before;
         }
     }
-    const mainHtml = mainContent ? DOMPurify.sanitize(marked.parse(mainContent)) : '';
+    const mainHtml = mainContent ? renderMarkdownToHtml(mainContent) : '';
     return thinkHtml + mainHtml;
 }
 
@@ -863,7 +885,7 @@ function exportChatHTML() {
         if (msg.role === 'user') {
             messagesHtml += '<div class="msg user"><div class="role">用户</div><div class="content">' + escapeHtml(displayContent) + '</div></div>';
         } else if (msg.role === 'assistant') {
-            messagesHtml += '<div class="msg assistant"><div class="role">助手</div><div class="content">' + marked.parse(displayContent) + '</div></div>';
+            messagesHtml += '<div class="msg assistant"><div class="role">助手</div><div class="content">' + renderMarkdownToHtml(displayContent) + '</div></div>';
         }
     });
     

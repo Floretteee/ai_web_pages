@@ -268,6 +268,9 @@ body {
 
 /* Markdown */
 .markdown-body { font-family: inherit; }
+.markdown-body .DOMD-Root { --domd-base-100: transparent; --domd-base-200: rgba(0,0,0,0.04); --domd-base-300: rgba(0,0,0,0.08); --domd-base-content: currentColor; --domd-font-size-base: 1em; color: inherit; }
+.markdown-body .DOMD-Root > :first-child { padding-top: 0; margin-top: 0; }
+.markdown-body .DOMD-Root > :last-child { margin-bottom: 0; padding-bottom: 0; }
 .markdown-body p { margin-bottom: 1em; } .markdown-body p:last-child { margin-bottom: 0; }
 .markdown-body code { background-color: rgba(128,128,128,0.15); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
 .message.user .markdown-body code { background-color: rgba(255,255,255,0.2); }
