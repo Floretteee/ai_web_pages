@@ -163,10 +163,19 @@ function init() {
         DOM.titleModelSelect.innerHTML = `<option value="">跟随对话模型</option><option value="${state.titleModel}" selected>${state.titleModel}</option>`;
     }
     
-    // 添加滚动监听
     DOM.chatMessages.addEventListener('scroll', checkAutoScroll);
+    DOM.chatMessages.addEventListener('pointerdown', keepMobileComposerVisible);
+    window.visualViewport?.addEventListener('resize', keepMobileComposerVisible);
+    window.visualViewport?.addEventListener('scroll', keepMobileComposerVisible);
     
     updatePrefixBadge();
+}
+
+function keepMobileComposerVisible() {
+    if (window.innerWidth > 768) return;
+    requestAnimationFrame(() => {
+        document.querySelector('.input-wrapper')?.scrollIntoView({ block: 'end', inline: 'nearest' });
+    });
 }
 
 function toggleSettings() { DOM.settingsContainer.classList.toggle('show'); }
