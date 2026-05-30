@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fimall-chat-sw-v1';
+const CACHE_VERSION = 'fimall-chat-sw-v2';
 
 const CORE_ASSETS = [
   './',
@@ -9,6 +9,10 @@ const CORE_ASSETS = [
   './manifest.webmanifest',
   './favicon.ico',
   './FCLOGO.png',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-maskable-512.png',
+  './icons/apple-touch-icon.png',
   './vendor/domd/domd-renderer.js',
   './vendor/domd/domd-renderer.css',
   './vendor/katex/katex.min.css',
