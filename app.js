@@ -983,5 +983,15 @@ async function processQueue() {
     isProcessingQueue = false;
 }
 
+function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch((error) => {
+            console.warn('Service worker registration failed:', error);
+        });
+    });
+}
+
 DOM.userInput.addEventListener('input', function() { this.style.height = '52px'; this.style.height = (this.scrollHeight) + 'px'; if (this.value === '') this.style.height = '52px'; });
+registerServiceWorker();
 init();
