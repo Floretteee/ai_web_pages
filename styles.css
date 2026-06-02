@@ -92,6 +92,7 @@ body {
     width: min(920px, calc(100% - 72px)); margin: 32px auto; padding: 0;
     background: #fff; border: 1px solid var(--glass-border); border-radius: 22px; box-shadow: 0 10px 34px rgba(0,0,0,0.06);
     overflow-y: auto; opacity: 0; transform: translateY(12px); transition: opacity 0.24s ease, transform 0.24s ease;
+    box-sizing: border-box;
 }
 .settings-panel.show { display: flex; opacity: 1; transform: translateY(0); }
 .settings-panel-header {
