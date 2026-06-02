@@ -139,7 +139,7 @@ const DOM = {
     attachmentPreview: document.getElementById('attachmentPreview'), chatHeaderTitle: document.getElementById('chatHeaderTitle'),
     inputPrefixBadge: document.getElementById('inputPrefixBadge'), sidebar: document.getElementById('sidebar'),
     sidebarBackdrop: document.getElementById('sidebarBackdrop'), htmlStyleSelect: document.getElementById('htmlStyleSelect'),
-    settingsBackdrop: document.getElementById('settingsBackdrop'),
+    mainChat: document.querySelector('.main-chat'),
     contextMenu: document.getElementById('contextMenu'), filterThinkToggle: document.getElementById('filterThinkToggle'),
     exportRoleSelect: document.getElementById('exportRoleSelect')
 };
@@ -262,8 +262,8 @@ function keepMobileComposerVisible() {
     });
 }
 
-function openSettings() { DOM.settingsContainer.classList.add('show'); DOM.settingsBackdrop.classList.add('show'); DOM.settingsContainer.setAttribute('aria-hidden', 'false'); closeSidebar(); }
-function closeSettings() { DOM.settingsContainer.classList.remove('show'); DOM.settingsBackdrop.classList.remove('show'); DOM.settingsContainer.setAttribute('aria-hidden', 'true'); closeCustomSelects(); }
+function openSettings() { DOM.mainChat.classList.add('settings-mode'); DOM.settingsContainer.classList.add('show'); DOM.settingsContainer.setAttribute('aria-hidden', 'false'); closeSidebar(); }
+function closeSettings() { DOM.mainChat.classList.remove('settings-mode'); DOM.settingsContainer.classList.remove('show'); DOM.settingsContainer.setAttribute('aria-hidden', 'true'); closeCustomSelects(); }
 function toggleSettings() { DOM.settingsContainer.classList.contains('show') ? closeSettings() : openSettings(); }
 function toggleSidebar() { DOM.sidebar.classList.toggle('open'); DOM.sidebarBackdrop.classList.toggle('show'); }
 function closeSidebar() { DOM.sidebar.classList.remove('open'); DOM.sidebarBackdrop.classList.remove('show'); }
@@ -341,12 +341,13 @@ function handleFileUpload(event) {
 function clearAttachment() { state.attachment = null; DOM.attachmentPreview.innerHTML = ''; DOM.attachmentPreview.style.display = 'none'; }
 
 function createNewChat(render = true) {
+    if (render) closeSettings();
     const newChat = { id: Date.now().toString(), title: "新对话", messages: [] };
     state.chats.unshift(newChat); state.currentChatId = newChat.id; state.editingIndex = -1; saveState();
     if (render) { renderChatList(); renderMessages(); DOM.userInput.focus(); }
 }
 
-function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; saveState(); renderChatList(); renderMessages(); closeSidebar(); }
+function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; saveState(); renderChatList(); renderMessages(); closeSettings(); closeSidebar(); }
 
 async function deleteChat(id, event) {
     event.stopPropagation();

@@ -63,71 +63,70 @@
         <div class="chat-list" id="chatList"></div>
     </div>
 
-    <div class="settings-backdrop" id="settingsBackdrop" onclick="closeSettings()"></div>
-    <aside class="settings-panel" id="settingsContainer" aria-label="设置面板" aria-hidden="true">
-        <div class="settings-panel-header">
-            <div>
-                <span class="settings-eyebrow">Workspace</span>
-                <h2>设置</h2>
-            </div>
-            <button class="settings-close-btn" onclick="closeSettings()" title="关闭设置">
-                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-            </button>
-        </div>
-
-        <div class="settings-section">
-            <div class="settings-section-title">连接</div>
-            <div class="settings-group"><label>API Key</label><input type="password" id="apiKeyInput" placeholder="sk-..." onchange="saveSettings()" autocomplete="off"></div>
-            <button class="btn-outline" onclick="fetchModels()">获取 / 刷新模型列表</button>
-            <div class="settings-grid">
-                <div class="settings-group"><label>对话模型</label><select id="modelSelect" onchange="saveSettings()"><option value="">请先获取模型</option></select></div>
-                <div class="settings-group"><label>标题生成模型</label><select id="titleModelSelect" onchange="saveSettings()"><option value="">跟随对话模型</option></select></div>
-            </div>
-        </div>
-
-        <div class="settings-section">
-            <div class="settings-section-title">提示词</div>
-            <div class="settings-group">
-                <label>提示词预设</label>
-                <select id="presetSelect" onchange="handlePresetChange()">
-                    <option value="custom">自定义</option>
-                </select>
-            </div>
-            <div class="settings-group"><label>系统提示词 (System)</label><textarea id="systemPromptInput" placeholder="定义 AI 的人设..." onchange="saveSettings()"></textarea></div>
-            <div class="settings-group"><label>用户提示词前缀 (User Prefix)</label><textarea id="userPrefixInput" placeholder="前缀将静默附加到发给AI的User消息前" onchange="saveSettings()" style="min-height: 72px;"></textarea></div>
-        </div>
-
-        <div class="settings-section">
-            <div class="settings-section-title">导出</div>
-            <div class="settings-grid">
-                <div class="settings-group">
-                    <label>导出 HTML 风格</label>
-                    <select id="htmlStyleSelect" onchange="saveSettings()">
-                        <option value="autumn">落叶知秋</option>
-                        <option value="github">清风明月</option>
-                    </select>
-                </div>
-                <div class="settings-group">
-                    <label>导出角色</label>
-                    <select id="exportRoleSelect" onchange="saveSettings()">
-                        <option value="both">全部对话</option>
-                        <option value="user">仅用户消息</option>
-                        <option value="assistant">仅助手消息</option>
-                    </select>
-                </div>
-            </div>
-            <div class="toggle-container">
-                <input type="checkbox" id="filterThinkToggle" onclick="saveSettings()" checked>
-                <label class="toggle-label" for="filterThinkToggle">
-                    <span class="toggle-text">导出时过滤思考内容</span>
-                    <span class="toggle-switch"></span>
-                </label>
-            </div>
-            <div class="data-actions"><button onclick="exportJSON()">导出历史</button><button onclick="importJSON()">导入历史</button></div>
-        </div>
-    </aside>
-
     <div class="main-chat">
+        <aside class="settings-panel" id="settingsContainer" aria-label="设置面板" aria-hidden="true">
+            <div class="settings-panel-header">
+                <div>
+                    <span class="settings-eyebrow">Workspace</span>
+                    <h2>设置</h2>
+                </div>
+                <button class="settings-close-btn" onclick="closeSettings()" title="返回对话">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+                </button>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-title">连接</div>
+                <div class="settings-group"><label>API Key</label><input type="password" id="apiKeyInput" placeholder="sk-..." onchange="saveSettings()" autocomplete="off"></div>
+                <button class="btn-outline" onclick="fetchModels()">获取 / 刷新模型列表</button>
+                <div class="settings-grid">
+                    <div class="settings-group"><label>对话模型</label><select id="modelSelect" onchange="saveSettings()"><option value="">请先获取模型</option></select></div>
+                    <div class="settings-group"><label>标题生成模型</label><select id="titleModelSelect" onchange="saveSettings()"><option value="">跟随对话模型</option></select></div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-title">提示词</div>
+                <div class="settings-group">
+                    <label>提示词预设</label>
+                    <select id="presetSelect" onchange="handlePresetChange()">
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                <div class="settings-group"><label>系统提示词 (System)</label><textarea id="systemPromptInput" placeholder="定义 AI 的人设..." onchange="saveSettings()"></textarea></div>
+                <div class="settings-group"><label>用户提示词前缀 (User Prefix)</label><textarea id="userPrefixInput" placeholder="前缀将静默附加到发给AI的User消息前" onchange="saveSettings()" style="min-height: 72px;"></textarea></div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-title">导出</div>
+                <div class="settings-grid">
+                    <div class="settings-group">
+                        <label>导出 HTML 风格</label>
+                        <select id="htmlStyleSelect" onchange="saveSettings()">
+                            <option value="autumn">落叶知秋</option>
+                            <option value="github">清风明月</option>
+                        </select>
+                    </div>
+                    <div class="settings-group">
+                        <label>导出角色</label>
+                        <select id="exportRoleSelect" onchange="saveSettings()">
+                            <option value="both">全部对话</option>
+                            <option value="user">仅用户消息</option>
+                            <option value="assistant">仅助手消息</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="toggle-container">
+                    <input type="checkbox" id="filterThinkToggle" onclick="saveSettings()" checked>
+                    <label class="toggle-label" for="filterThinkToggle">
+                        <span class="toggle-text">导出时过滤思考内容</span>
+                        <span class="toggle-switch"></span>
+                    </label>
+                </div>
+                <div class="data-actions"><button onclick="exportJSON()">导出历史</button><button onclick="importJSON()">导入历史</button></div>
+            </div>
+        </aside>
+
         <div class="chat-header">
             <button class="menu-btn" onclick="toggleSidebar()" title="菜单" style="display: none;">
                 <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
