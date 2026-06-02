@@ -54,20 +54,39 @@
                 </button>
             </div>
             <div style="display: flex; align-items: center; gap: 8px;">
-                <button class="icon-btn" onclick="toggleSettings()" title="设置">
+                <button class="icon-btn" onclick="openSettings()" title="设置">
                     <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
                 </button>
             </div>
         </div>
         <button class="new-chat-btn" onclick="createNewChat()">+ 新建对话</button>
         <div class="chat-list" id="chatList"></div>
-        
-        <div class="settings-container" id="settingsContainer">
+    </div>
+
+    <div class="settings-backdrop" id="settingsBackdrop" onclick="closeSettings()"></div>
+    <aside class="settings-panel" id="settingsContainer" aria-label="设置面板" aria-hidden="true">
+        <div class="settings-panel-header">
+            <div>
+                <span class="settings-eyebrow">Workspace</span>
+                <h2>设置</h2>
+            </div>
+            <button class="settings-close-btn" onclick="closeSettings()" title="关闭设置">
+                <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            </button>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-title">连接</div>
             <div class="settings-group"><label>API Key</label><input type="password" id="apiKeyInput" placeholder="sk-..." onchange="saveSettings()" autocomplete="off"></div>
             <button class="btn-outline" onclick="fetchModels()">获取 / 刷新模型列表</button>
-            <div class="settings-group"><label>对话模型</label><select id="modelSelect" onchange="saveSettings()"><option value="">请先获取模型</option></select></div>
-            <div class="settings-group"><label>标题生成模型</label><select id="titleModelSelect" onchange="saveSettings()"><option value="">跟随对话模型</option></select></div>
-            
+            <div class="settings-grid">
+                <div class="settings-group"><label>对话模型</label><select id="modelSelect" onchange="saveSettings()"><option value="">请先获取模型</option></select></div>
+                <div class="settings-group"><label>标题生成模型</label><select id="titleModelSelect" onchange="saveSettings()"><option value="">跟随对话模型</option></select></div>
+            </div>
+        </div>
+
+        <div class="settings-section">
+            <div class="settings-section-title">提示词</div>
             <div class="settings-group">
                 <label>提示词预设</label>
                 <select id="presetSelect" onchange="handlePresetChange()">
@@ -75,26 +94,20 @@
                 </select>
             </div>
             <div class="settings-group"><label>系统提示词 (System)</label><textarea id="systemPromptInput" placeholder="定义 AI 的人设..." onchange="saveSettings()"></textarea></div>
-            <div class="settings-group"><label>用户提示词前缀 (User Prefix)</label><textarea id="userPrefixInput" placeholder="前缀将静默附加到发给AI的User消息前" onchange="saveSettings()" style="min-height: 40px;"></textarea></div>
-            
-            <div class="settings-group">
-                <label>导出 HTML 风格</label>
-                <select id="htmlStyleSelect" onchange="saveSettings()">
-                    <option value="autumn">落叶知秋</option>
-                    <option value="github">清风明月</option>
-                </select>
-            </div>
+            <div class="settings-group"><label>用户提示词前缀 (User Prefix)</label><textarea id="userPrefixInput" placeholder="前缀将静默附加到发给AI的User消息前" onchange="saveSettings()" style="min-height: 72px;"></textarea></div>
+        </div>
 
-            <div class="settings-group">
-                <label>导出选项</label>
-                <div class="toggle-container">
-                    <input type="checkbox" id="filterThinkToggle" onclick="saveSettings()" checked>
-                    <label class="toggle-label" for="filterThinkToggle">
-                        <span class="toggle-text">导出时过滤思考内容</span>
-                        <span class="toggle-switch"></span>
-                    </label>
+        <div class="settings-section">
+            <div class="settings-section-title">导出</div>
+            <div class="settings-grid">
+                <div class="settings-group">
+                    <label>导出 HTML 风格</label>
+                    <select id="htmlStyleSelect" onchange="saveSettings()">
+                        <option value="autumn">落叶知秋</option>
+                        <option value="github">清风明月</option>
+                    </select>
                 </div>
-                <div class="export-role-select">
+                <div class="settings-group">
                     <label>导出角色</label>
                     <select id="exportRoleSelect" onchange="saveSettings()">
                         <option value="both">全部对话</option>
@@ -103,10 +116,16 @@
                     </select>
                 </div>
             </div>
-
+            <div class="toggle-container">
+                <input type="checkbox" id="filterThinkToggle" onclick="saveSettings()" checked>
+                <label class="toggle-label" for="filterThinkToggle">
+                    <span class="toggle-text">导出时过滤思考内容</span>
+                    <span class="toggle-switch"></span>
+                </label>
+            </div>
             <div class="data-actions"><button onclick="exportJSON()">导出历史</button><button onclick="importJSON()">导入历史</button></div>
         </div>
-    </div>
+    </aside>
 
     <div class="main-chat">
         <div class="chat-header">

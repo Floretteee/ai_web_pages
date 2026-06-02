@@ -1,4 +1,21 @@
 const API_BASE = "https://api.fimall.cfd/v1";
+const THINK_TAG_PATTERN = /<\/?\s*think(?:ing)?\b[^>]*>/i;
+const CLOSED_THINK_BLOCK_PATTERN = /<\s*think(?:ing)?\b[^>]*>([\s\S]*?)<\/\s*think(?:ing)?\s*>/i;
+const CLOSED_THINK_BLOCK_PATTERN_GLOBAL = /<\s*think(?:ing)?\b[^>]*>[\s\S]*?<\/\s*think(?:ing)?\s*>/gi;
+const STANDARD_HTML_TAGS = new Set('a abbr address area article aside audio b bdi bdo blockquote br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 header hgroup hr i iframe img input ins kbd label legend li main map mark menu meter nav object ol optgroup option output p picture pre progress q rp rt ruby s samp script search section select slot small source span strong style sub summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr'.split(' '));
+
+function escapeNonStandardHtmlTags(text) {
+    return String(text || '').replace(/<\/?\s*([a-zA-Z][\w:-]*)\b[^>]*>/g, (tag, name) => {
+        return STANDARD_HTML_TAGS.has(name.toLowerCase()) ? tag : escapeHtml(tag);
+    });
+}
+
+function highlightCodeBlocks(container) {
+    if (!window.hljs || !container) return;
+    container.querySelectorAll('pre code').forEach((block) => {
+        try { window.hljs.highlightElement(block); } catch (e) {}
+    });
+}
 
 function renderMath(container) {
     try {
@@ -7,7 +24,7 @@ function renderMath(container) {
 }
 
 function renderMarkdownToHtml(markdown) {
-    const source = markdown || '';
+    const source = escapeNonStandardHtmlTags(markdown || '');
     const mathBlocks = [];
     let protectedContent = source.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
         const idx = mathBlocks.length;
@@ -39,6 +56,7 @@ function renderMarkdownToHtml(markdown) {
 function renderMarkdownIntoElement(element, markdown) {
     element.innerHTML = renderMarkdownToHtml(markdown);
     renderMath(element);
+    highlightCodeBlocks(element);
 }
 
 let abortController = null;
@@ -121,9 +139,73 @@ const DOM = {
     attachmentPreview: document.getElementById('attachmentPreview'), chatHeaderTitle: document.getElementById('chatHeaderTitle'),
     inputPrefixBadge: document.getElementById('inputPrefixBadge'), sidebar: document.getElementById('sidebar'),
     sidebarBackdrop: document.getElementById('sidebarBackdrop'), htmlStyleSelect: document.getElementById('htmlStyleSelect'),
+    settingsBackdrop: document.getElementById('settingsBackdrop'),
     contextMenu: document.getElementById('contextMenu'), filterThinkToggle: document.getElementById('filterThinkToggle'),
     exportRoleSelect: document.getElementById('exportRoleSelect')
 };
+
+const customSelects = new Map();
+
+function escapeAttr(value) {
+    return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+}
+
+function buildCustomSelect(select) {
+    if (!select || customSelects.has(select)) return;
+    const custom = document.createElement('div');
+    custom.className = 'custom-select';
+    custom.innerHTML = '<button type="button" class="custom-select-trigger" aria-haspopup="listbox" aria-expanded="false"><span></span><svg viewBox="0 0 24 24"><path d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"/></svg></button><div class="custom-select-menu" role="listbox"></div>';
+    select.classList.add('native-select');
+    select.insertAdjacentElement('afterend', custom);
+    customSelects.set(select, custom);
+
+    custom.querySelector('.custom-select-trigger').addEventListener('click', (event) => {
+        event.stopPropagation();
+        const isOpen = custom.classList.contains('open');
+        closeCustomSelects();
+        if (!isOpen) {
+            custom.classList.add('open');
+            custom.querySelector('.custom-select-trigger').setAttribute('aria-expanded', 'true');
+        }
+    });
+
+    refreshCustomSelect(select);
+}
+
+function refreshCustomSelect(select) {
+    const custom = customSelects.get(select);
+    if (!custom) return;
+    const selected = select.options[select.selectedIndex] || select.options[0];
+    custom.querySelector('.custom-select-trigger span').textContent = selected ? selected.textContent : '请选择';
+    custom.querySelector('.custom-select-menu').innerHTML = Array.from(select.options).map(option => {
+        const active = option.value === select.value ? ' active' : '';
+        return `<button type="button" class="custom-select-option${active}" role="option" aria-selected="${active ? 'true' : 'false'}" data-value="${escapeAttr(option.value)}">${escapeAttr(option.textContent)}</button>`;
+    }).join('');
+    custom.querySelectorAll('.custom-select-option').forEach(optionBtn => {
+        optionBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            select.value = optionBtn.dataset.value;
+            select.dispatchEvent(new Event('change', { bubbles: true }));
+            refreshCustomSelect(select);
+            closeCustomSelects();
+        });
+    });
+}
+
+function refreshAllCustomSelects() {
+    customSelects.forEach((_, select) => refreshCustomSelect(select));
+}
+
+function closeCustomSelects() {
+    customSelects.forEach(custom => {
+        custom.classList.remove('open');
+        custom.querySelector('.custom-select-trigger').setAttribute('aria-expanded', 'false');
+    });
+}
+
+function initCustomSelects() {
+    document.querySelectorAll('.settings-panel select').forEach(buildCustomSelect);
+}
 
 function updatePrefixBadge() {
     if (state.selectedPreset !== 'custom' && PROMPT_PRESETS[state.selectedPreset]) {
@@ -152,6 +234,7 @@ function init() {
         DOM.presetSelect.appendChild(opt);
     }
     DOM.presetSelect.value = state.selectedPreset;
+    initCustomSelects();
 
     if (state.chats.length === 0) createNewChat(false);
     else {
@@ -161,6 +244,7 @@ function init() {
     if (state.apiKey && state.selectedModel) {
         DOM.modelSelect.innerHTML = `<option value="${state.selectedModel}">${state.selectedModel}</option>`;
         DOM.titleModelSelect.innerHTML = `<option value="">跟随对话模型</option><option value="${state.titleModel}" selected>${state.titleModel}</option>`;
+        refreshAllCustomSelects();
     }
     
     DOM.chatMessages.addEventListener('scroll', checkAutoScroll);
@@ -178,7 +262,9 @@ function keepMobileComposerVisible() {
     });
 }
 
-function toggleSettings() { DOM.settingsContainer.classList.toggle('show'); }
+function openSettings() { DOM.settingsContainer.classList.add('show'); DOM.settingsBackdrop.classList.add('show'); DOM.settingsContainer.setAttribute('aria-hidden', 'false'); closeSidebar(); }
+function closeSettings() { DOM.settingsContainer.classList.remove('show'); DOM.settingsBackdrop.classList.remove('show'); DOM.settingsContainer.setAttribute('aria-hidden', 'true'); closeCustomSelects(); }
+function toggleSettings() { DOM.settingsContainer.classList.contains('show') ? closeSettings() : openSettings(); }
 function toggleSidebar() { DOM.sidebar.classList.toggle('open'); DOM.sidebarBackdrop.classList.toggle('show'); }
 function closeSidebar() { DOM.sidebar.classList.remove('open'); DOM.sidebarBackdrop.classList.remove('show'); }
 function saveState() { localStorage.setItem('ai_chats', JSON.stringify(state.chats)); localStorage.setItem('ai_current_chat_id', state.currentChatId); }
@@ -198,6 +284,7 @@ function saveSettings() {
     localStorage.setItem('ai_user_prefix', state.userPrefix); localStorage.setItem('ai_selected_preset', state.selectedPreset);
     localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_think', state.filterThink);
     localStorage.setItem('ai_export_role', state.exportRole);
+    refreshAllCustomSelects();
     updatePrefixBadge();
 }
 
@@ -217,6 +304,7 @@ async function fetchModels() {
     if (!DOM.apiKeyInput.value.trim()) return showToast("请先填写 API Key");
     try {
         DOM.modelSelect.innerHTML = '<option value="">加载中...</option>';
+        refreshCustomSelect(DOM.modelSelect);
         const res = await fetch(`${API_BASE}/models`, { headers: { 'Authorization': `Bearer ${DOM.apiKeyInput.value.trim()}` } });
         const data = await res.json();
         if (data && data.data) {
@@ -225,10 +313,12 @@ async function fetchModels() {
             if (state.selectedModel && data.data.find(m => m.id === state.selectedModel)) DOM.modelSelect.value = state.selectedModel;
             else { state.selectedModel = data.data[0].id; saveSettings(); }
             if (state.titleModel && data.data.find(m => m.id === state.titleModel)) DOM.titleModelSelect.value = state.titleModel;
+            refreshAllCustomSelects();
             showToast("模型列表获取成功！");
         }
     } catch (error) { 
         DOM.modelSelect.innerHTML = '<option value="">获取失败</option>'; 
+        refreshCustomSelect(DOM.modelSelect);
         showToast("获取模型失败，请检查网络或 Key");
     }
 }
@@ -364,9 +454,10 @@ function createMessageDOM(msg, index) {
         displayContent = imgPart ? `![上传图片](${imgPart})\n\n${textPart}` : textPart;
     }
 
-    if (displayContent && displayContent.includes('<think>')) {
+    if (displayContent && THINK_TAG_PATTERN.test(displayContent)) {
         contentNode.innerHTML = renderContentWithThink(displayContent, false);
         renderMath(contentNode);
+        highlightCodeBlocks(contentNode);
     } else {
         renderMarkdownIntoElement(contentNode, displayContent);
     }
@@ -522,6 +613,7 @@ async function executeChatRequest(currentChat) {
     function renderBotContent(fullContent) {
         botDomObj.contentNode.innerHTML = renderContentWithThink(fullContent, true);
         renderMath(botDomObj.contentNode);
+        highlightCodeBlocks(botDomObj.contentNode);
         const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
         if (nextThinkBlock) {
             nextThinkBlock.open = streamThinkOpen;
@@ -649,9 +741,9 @@ function renderContentWithThink(content, isStreaming) {
     const thinkSvg = `<svg class="think-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M9.55 17.05 4.9 12.4l1.42-1.42 3.23 3.23 8.13-8.13 1.42 1.42-9.55 9.55Z"/></svg>`;
     const thinkAnimSvg = `<svg class="think-icon thinking" viewBox="0 0 24 24" width="16" height="16"><path d="M11.7 6.1c-.45-1.25-1.55-2.1-2.85-2.1A3.05 3.05 0 0 0 5.8 7.05v.18A3.15 3.15 0 0 0 4 10.05c0 1.02.48 1.92 1.23 2.5A3.28 3.28 0 0 0 8.45 16.5h.85v1.2a1.7 1.7 0 0 0 3.4 0V5.95c0-1.08-.88-1.95-1.95-1.95h-.4m1.35 6.05H9.4m3.3 3.15H9.05m3.25-6.1H9.9m2.4 8.75H9.3m3-9.75c.45-1.25 1.55-2.1 2.85-2.1a3.05 3.05 0 0 1 3.05 3.05v.18A3.15 3.15 0 0 1 20 10.05c0 1.02-.48 1.92-1.23 2.5a3.28 3.28 0 0 1-3.22 3.95h-.85v1.2a1.7 1.7 0 0 1-3.4 0V5.95c0-1.08.88-1.95 1.95-1.95h.4m-1.35 6.05h2.3m-3.3 3.15h3.65m-3.25-6.1h2.4m-2.4 8.75h3" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     
-    const thinkMatch = content && content.match(/<think>([\s\S]*?)<\/think>/);
+    const thinkMatch = content && content.match(CLOSED_THINK_BLOCK_PATTERN);
     if (thinkMatch) {
-        const remainingContent = content.replace(/<think>[\s\S]*?<\/think>/, '').trim();
+        const remainingContent = content.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
         const thinkingNow = isStreaming && !remainingContent;
         thinkHtml = `<details class="think-block">
             <summary class="think-summary">${thinkingNow ? thinkAnimSvg : thinkSvg} ${thinkingNow ? '思考中...' : '思考过程'}</summary>
@@ -659,10 +751,11 @@ function renderContentWithThink(content, isStreaming) {
         </details>`;
         mainContent = remainingContent;
     } else if (isStreaming) {
-        const thinkStart = content && content.indexOf('<think>');
-        if (thinkStart !== -1) {
+        const openThinkMatch = content && content.match(/<\s*thinking?\b[^>]*>/i);
+        if (openThinkMatch) {
+            const thinkStart = openThinkMatch.index;
             const before = content.slice(0, thinkStart).trim();
-            const inThink = content.slice(thinkStart + 7);
+            const inThink = content.slice(thinkStart + openThinkMatch[0].length);
             if (inThink) {
                 thinkHtml = `<details class="think-block">
                     <summary class="think-summary">${thinkAnimSvg} 思考中...</summary>
@@ -806,7 +899,7 @@ function exportChatMarkdown() {
         
         let displayContent = content;
         if (filterThink) {
-            displayContent = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            displayContent = content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
         }
         
         if (msg.role === 'user') {
@@ -886,7 +979,7 @@ function exportChatHTML() {
         
         let displayContent = content;
         if (filterThink && typeof displayContent === 'string') {
-            displayContent = displayContent.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+            displayContent = displayContent.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
         }
         
         if (!displayContent) return;
@@ -917,6 +1010,7 @@ function escapeHtml(text) {
 // 点击其他地方关闭右键菜单
 document.addEventListener('click', () => {
     if (DOM.contextMenu) DOM.contextMenu.style.display = 'none';
+    closeCustomSelects();
 });
 
 // 消息队列功能
