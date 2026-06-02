@@ -43,9 +43,22 @@ body {
 .desktop-title { display: block; }
 .mobile-header { display: none; }
 
+.settings-backdrop { display: none; }
 @media screen and (max-width: 768px) {
-    .desktop-title { display: none; }
-    .mobile-header { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+    .settings-backdrop {
+        display: block; position: fixed; inset: 0; z-index: 49;
+        background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+        opacity: 0; visibility: hidden; transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+    .settings-backdrop.show { opacity: 1; visibility: visible; }
+
+    .settings-panel.show {
+        position: fixed; top: 24px; left: 24px; right: 24px; bottom: 24px;
+        width: auto; height: auto; margin: 0; border-radius: 20px;
+        z-index: 50; display: flex; opacity: 1; transform: translateY(0);
+        box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+    }
+    .settings-grid { grid-template-columns: 1fr; }
 }
 
 .icon-btn {
@@ -203,11 +216,13 @@ body {
 
 /* 主聊天区域 */
 .main-chat { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-.main-chat.settings-mode .chat-header,
-.main-chat.settings-mode .chat-messages,
-.main-chat.settings-mode .scroll-bottom-btn,
-.main-chat.settings-mode .loading,
-.main-chat.settings-mode .input-wrapper { display: none !important; }
+@media screen and (min-width: 769px) {
+    .main-chat.settings-mode .chat-header,
+    .main-chat.settings-mode .chat-messages,
+    .main-chat.settings-mode .scroll-bottom-btn,
+    .main-chat.settings-mode .loading,
+    .main-chat.settings-mode .input-wrapper { display: none !important; }
+}
 
 .chat-header {
     display: flex; justify-content: space-between; align-items: center; padding: 16px 40px;
@@ -544,11 +559,9 @@ body {
     .new-chat-btn { margin-bottom: 12px; }
     .chat-list { margin-bottom: 8px; }
 
-    .settings-panel { width: calc(100% - 24px); margin: 12px auto; border-radius: 20px; }
     .settings-panel-header { padding: 20px 20px 10px; margin-bottom: 16px; }
     .settings-section { margin: 0 20px 14px; }
     .settings-section:last-child { margin-bottom: 20px; }
-    .settings-grid { grid-template-columns: 1fr; }
 
     .mobile-header {
         display: flex;
@@ -637,7 +650,7 @@ body {
     .new-chat-btn { padding: 10px; font-size: 14px; }
     .chat-item { padding: 8px 28px 8px 10px; font-size: 13px; }
 
-    .settings-panel { width: 100%; margin: 0; border-radius: 0; border-left: none; border-right: none; }
+    .settings-panel.show { top: 12px; left: 12px; right: 12px; bottom: 12px; border-radius: 16px; }
     .settings-panel-header { padding: 18px 16px 10px; margin-bottom: 14px; }
     .settings-panel-header h2 { font-size: 24px; }
     .settings-section { margin: 0 16px 12px; padding: 12px; border-radius: 14px; gap: 10px; }
@@ -732,7 +745,7 @@ body {
     .input-area { padding: 10px 20px; }
     .input-area textarea { height: 40px; }
     .upload-btn, .queue-btn, .send-btn { width: 40px; height: 40px; }
-    .settings-panel { width: calc(100% - 12px); margin: 6px auto; border-radius: 18px; }
+    .settings-panel.show { top: 8px; left: 8px; right: 8px; bottom: 8px; border-radius: 16px; }
     .settings-panel-header { padding: 16px 20px 8px; margin-bottom: 12px; }
     .settings-section { margin: 0 20px 10px; }
     .settings-section:last-child { margin-bottom: 16px; }

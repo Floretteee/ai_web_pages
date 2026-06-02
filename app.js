@@ -140,6 +140,7 @@ const DOM = {
     inputPrefixBadge: document.getElementById('inputPrefixBadge'), sidebar: document.getElementById('sidebar'),
     sidebarBackdrop: document.getElementById('sidebarBackdrop'), htmlStyleSelect: document.getElementById('htmlStyleSelect'),
     mainChat: document.querySelector('.main-chat'),
+    settingsBackdrop: document.getElementById('settingsBackdrop'),
     contextMenu: document.getElementById('contextMenu'), filterThinkToggle: document.getElementById('filterThinkToggle'),
     exportRoleSelect: document.getElementById('exportRoleSelect')
 };
@@ -269,8 +270,23 @@ function keepMobileComposerVisible() {
     });
 }
 
-function openSettings() { DOM.mainChat.classList.add('settings-mode'); DOM.settingsContainer.classList.add('show'); DOM.settingsContainer.setAttribute('aria-hidden', 'false'); closeSidebar(); }
-function closeSettings() { DOM.mainChat.classList.remove('settings-mode'); DOM.settingsContainer.classList.remove('show'); DOM.settingsContainer.setAttribute('aria-hidden', 'true'); closeCustomSelects(); }
+function openSettings() {
+    closeSidebar();
+    DOM.settingsContainer.classList.add('show');
+    DOM.settingsContainer.setAttribute('aria-hidden', 'false');
+    if (window.innerWidth <= 768) {
+        DOM.settingsBackdrop.classList.add('show');
+    } else {
+        DOM.mainChat.classList.add('settings-mode');
+    }
+}
+function closeSettings() {
+    DOM.mainChat.classList.remove('settings-mode');
+    DOM.settingsContainer.classList.remove('show');
+    DOM.settingsContainer.setAttribute('aria-hidden', 'true');
+    DOM.settingsBackdrop.classList.remove('show');
+    closeCustomSelects();
+}
 function toggleSettings() { DOM.settingsContainer.classList.contains('show') ? closeSettings() : openSettings(); }
 function toggleSidebar() { DOM.sidebar.classList.toggle('open'); DOM.sidebarBackdrop.classList.toggle('show'); }
 function closeSidebar() { DOM.sidebar.classList.remove('open'); DOM.sidebarBackdrop.classList.remove('show'); }
