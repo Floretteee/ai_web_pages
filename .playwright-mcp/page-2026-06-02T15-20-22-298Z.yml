@@ -1,0 +1,66 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Logo Fimall Chat" [level=2] [ref=e4]:
+        - img "Logo" [ref=e5]
+        - text: Fimall Chat
+      - button "设置" [active] [ref=e7] [cursor=pointer]:
+        - img [ref=e8]
+    - button "+ 新建对话" [ref=e10] [cursor=pointer]
+    - generic "新对话" [ref=e12] [cursor=pointer]
+  - generic [ref=e13]:
+    - complementary "设置面板" [ref=e31]:
+      - generic [ref=e32]:
+        - generic [ref=e33]:
+          - generic [ref=e34]: SETTINGS
+          - heading "设置" [level=2] [ref=e35]
+        - button "返回对话" [ref=e36] [cursor=pointer]:
+          - img [ref=e37]
+      - generic [ref=e39]:
+        - generic [ref=e40]: 连接
+        - generic [ref=e41]:
+          - generic [ref=e42]: API Key
+          - textbox "sk-..." [ref=e43]
+        - button "获取 / 刷新模型列表" [ref=e44] [cursor=pointer]
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - generic [ref=e47]: 对话模型
+            - button "请先获取模型" [ref=e49] [cursor=pointer]:
+              - generic [ref=e50]: 请先获取模型
+              - img [ref=e51]
+          - generic [ref=e53]:
+            - generic [ref=e54]: 标题生成模型
+            - button "跟随对话模型" [ref=e56] [cursor=pointer]:
+              - generic [ref=e57]: 跟随对话模型
+              - img [ref=e58]
+      - generic [ref=e60]:
+        - generic [ref=e61]: 提示词
+        - generic [ref=e62]:
+          - generic [ref=e63]: 提示词预设
+          - button "自定义" [ref=e65] [cursor=pointer]:
+            - generic [ref=e66]: 自定义
+            - img [ref=e67]
+        - generic [ref=e69]:
+          - generic [ref=e70]: 系统提示词 (System)
+          - textbox "定义 AI 的人设..." [ref=e71]
+        - generic [ref=e72]:
+          - generic [ref=e73]: 用户提示词前缀 (User Prefix)
+          - textbox "前缀将静默附加到发给AI的User消息前" [ref=e74]
+      - generic [ref=e75]:
+        - generic [ref=e76]: 导出
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]: 导出 HTML 风格
+            - button "落叶知秋" [ref=e81] [cursor=pointer]:
+              - generic [ref=e82]: 落叶知秋
+              - img [ref=e83]
+          - generic [ref=e85]:
+            - generic [ref=e86]: 导出角色
+            - button "全部对话" [ref=e88] [cursor=pointer]:
+              - generic [ref=e89]: 全部对话
+              - img [ref=e90]
+        - generic [ref=e94] [cursor=pointer]: 导出时过滤思考内容
+        - generic [ref=e96]:
+          - button "导出历史" [ref=e97] [cursor=pointer]
+          - button "导入历史" [ref=e98] [cursor=pointer]
+    - text: .

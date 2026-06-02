@@ -88,21 +88,26 @@ body {
 .delete-chat-btn svg { width: 14px; height: 14px; fill: currentColor; }
 
 .settings-panel {
-    flex: 1; min-height: 0; display: none; flex-direction: column; gap: 18px;
-    width: min(920px, calc(100% - 72px)); margin: 32px auto; padding: 28px;
+    flex: 1; min-height: 0; display: none; flex-direction: column; gap: 0;
+    width: min(920px, calc(100% - 72px)); margin: 32px auto; padding: 0;
     background: #fff; border: 1px solid var(--glass-border); border-radius: 22px; box-shadow: 0 10px 34px rgba(0,0,0,0.06);
     overflow-y: auto; opacity: 0; transform: translateY(12px); transition: opacity 0.24s ease, transform 0.24s ease;
 }
 .settings-panel.show { display: flex; opacity: 1; transform: translateY(0); }
-.settings-panel-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding-bottom: 8px; }
+.settings-panel-header {
+    position: sticky; top: 0; z-index: 2;
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+    padding: 24px 28px 12px; background: #fff; border-bottom: 1px solid #eee; margin-bottom: 20px;
+}
 .settings-eyebrow { display: block; color: var(--text-secondary); font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; margin-bottom: 5px; }
 .settings-panel-header h2 { font-size: 32px; line-height: 1; letter-spacing: -1px; }
-.settings-close-btn { width: 38px; height: 38px; border: 1px solid #d8d8d8; border-radius: 50%; background: #fff; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; }
+.settings-close-btn { width: 38px; height: 38px; border: 1px solid #d8d8d8; border-radius: 50%; background: #fff; cursor: pointer; transition: var(--transition); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .settings-close-btn:hover { background: #000; border-color: #000; transform: rotate(90deg); }
 .settings-close-btn svg { width: 17px; height: 17px; fill: #000; transition: var(--transition); }
 .settings-close-btn:hover svg { fill: #fff; }
 
-.settings-section { background: #fafafa; border: 1px solid #e2e2e2; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.settings-section { background: #fafafa; border: 1px solid #e2e2e2; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 14px; margin: 0 28px 18px; }
+.settings-section:last-child { margin-bottom: 28px; }
 .settings-section-title { font-size: 13px; font-weight: 800; letter-spacing: 0.6px; color: #111; }
 .settings-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .settings-group label { display: block; font-size: 12px; color: var(--text-secondary); font-weight: 700; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -538,7 +543,10 @@ body {
     .new-chat-btn { margin-bottom: 12px; }
     .chat-list { margin-bottom: 8px; }
 
-    .settings-panel { width: calc(100% - 32px); margin: 16px auto; padding: 20px; border-radius: 20px; }
+    .settings-panel { width: calc(100% - 24px); margin: 12px auto; border-radius: 20px; }
+    .settings-panel-header { padding: 20px 20px 10px; margin-bottom: 16px; }
+    .settings-section { margin: 0 20px 14px; }
+    .settings-section:last-child { margin-bottom: 20px; }
     .settings-grid { grid-template-columns: 1fr; }
 
     .mobile-header {
@@ -628,9 +636,11 @@ body {
     .new-chat-btn { padding: 10px; font-size: 14px; }
     .chat-item { padding: 8px 28px 8px 10px; font-size: 13px; }
 
-    .settings-panel { width: calc(100% - 16px); margin: 8px auto; padding: 14px; border-radius: 18px; gap: 10px; }
+    .settings-panel { width: 100%; margin: 0; border-radius: 0; border-left: none; border-right: none; }
+    .settings-panel-header { padding: 18px 16px 10px; margin-bottom: 14px; }
     .settings-panel-header h2 { font-size: 24px; }
-    .settings-section { padding: 12px; border-radius: 14px; gap: 10px; }
+    .settings-section { margin: 0 16px 12px; padding: 12px; border-radius: 14px; gap: 10px; }
+    .settings-section:last-child { margin-bottom: 18px; }
     .settings-group { gap: 8px; }
     .settings-group label { font-size: 11px; }
     .settings-group input, .settings-group textarea, .custom-select-trigger, .custom-select-option { font-size: 12px; }
@@ -721,7 +731,10 @@ body {
     .input-area { padding: 10px 20px; }
     .input-area textarea { height: 40px; }
     .upload-btn, .queue-btn, .send-btn { width: 40px; height: 40px; }
-    .settings-panel { width: calc(100% - 12px); margin: 6px auto; }
+    .settings-panel { width: calc(100% - 12px); margin: 6px auto; border-radius: 18px; }
+    .settings-panel-header { padding: 16px 20px 8px; margin-bottom: 12px; }
+    .settings-section { margin: 0 20px 10px; }
+    .settings-section:last-child { margin-bottom: 16px; }
 }
 
 /* ========== 超小屏幕 ========== */

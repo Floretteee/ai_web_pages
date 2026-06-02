@@ -1,0 +1,23 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - heading "Logo Fimall Chat" [level=2] [ref=e4]:
+        - img "Logo" [ref=e5]
+        - text: Fimall Chat
+      - button "设置" [ref=e7] [cursor=pointer]:
+        - img [ref=e8]
+    - button "+ 新建对话" [ref=e10] [cursor=pointer]
+    - generic "新对话" [ref=e12] [cursor=pointer]
+  - generic [ref=e13]:
+    - generic [ref=e14]:
+      - heading "新对话" [level=3] [ref=e15]
+      - button "清空对话" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+        - generic [ref=e19]: 清空对话
+    - text: .
+    - generic [ref=e22]:
+      - button "上传文件" [ref=e23] [cursor=pointer]:
+        - img [ref=e24]
+      - textbox "输入消息..." [ref=e27]
+      - button [ref=e28] [cursor=pointer]:
+        - img [ref=e29]
