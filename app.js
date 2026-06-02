@@ -249,14 +249,21 @@ function init() {
     
     DOM.chatMessages.addEventListener('scroll', checkAutoScroll);
     DOM.chatMessages.addEventListener('pointerdown', keepMobileComposerVisible);
-    window.visualViewport?.addEventListener('resize', keepMobileComposerVisible);
-    window.visualViewport?.addEventListener('scroll', keepMobileComposerVisible);
+    if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', keepMobileComposerVisible);
+        window.visualViewport.addEventListener('scroll', keepMobileComposerVisible);
+        keepMobileComposerVisible();
+    }
     
     updatePrefixBadge();
 }
 
 function keepMobileComposerVisible() {
     if (window.innerWidth > 768) return;
+    const vv = window.visualViewport;
+    if (vv) {
+        document.documentElement.style.height = vv.height + 'px';
+    }
     requestAnimationFrame(() => {
         document.querySelector('.input-wrapper')?.scrollIntoView({ block: 'end', inline: 'nearest' });
     });
