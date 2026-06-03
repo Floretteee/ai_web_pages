@@ -18,8 +18,6 @@ const CORE_ASSETS = [
   './vendor/katex/katex.min.css',
   './vendor/katex/katex.min.js',
   './vendor/katex/auto-render.min.js',
-  './vendor/highlightjs/atom-one-dark.min.css',
-  './vendor/highlightjs/highlight.min.js',
   './vendor/dompurify/purify.min.js',
   './vendor/katex/fonts/KaTeX_AMS-Regular.woff2',
   './vendor/katex/fonts/KaTeX_Caligraphic-Bold.woff2',
