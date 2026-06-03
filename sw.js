@@ -1,9 +1,9 @@
-const CACHE_VERSION = 'fimall-chat-sw-v2';
+const CACHE_VERSION = 'fimall-chat-sw-v3';
 
 const CORE_ASSETS = [
   './',
   './index.html',
-  './styles.css',
+  './styles.css?v=2',
   './app.js',
   './presets.js',
   './manifest.webmanifest',
