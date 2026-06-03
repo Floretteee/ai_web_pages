@@ -632,8 +632,8 @@ async function sendMessage() {
         return;
     }
 
-    // 如果AI正在回复，将消息加入队列
-    if (abortController) {
+    // 如果AI正在回复或队列正在处理，将消息加入队列
+    if (abortController || isProcessingQueue || messageQueue.length > 0) {
         messageQueue.push(text);
         DOM.userInput.value = '';
         DOM.userInput.style.height = '52px';
