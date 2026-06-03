@@ -307,10 +307,10 @@ body {
 .markdown-body .DOMD-Root > :first-child { padding-top: 0; margin-top: 0; }
 .markdown-body .DOMD-Root > :last-child { margin-bottom: 0; padding-bottom: 0; }
 .markdown-body p { margin-bottom: 1em; } .markdown-body p:last-child { margin-bottom: 0; }
-.markdown-body code { background-color: rgba(128,128,128,0.15); padding: 2px 4px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+.markdown-body code { background-color: rgba(128,128,128,0.15); padding: 2px 4px; border-radius: 4px; font-family: "Sarasa Gothic Fixed", "Sarasa Fixed SC", "Sarasa Fixed TC", monospace; font-size: 0.9em; }
 .message.user .markdown-body code { background-color: rgba(255,255,255,0.2); }
 .markdown-body pre { background-color: #282c34; padding: 12px; border-radius: 8px; overflow-x: auto; overflow-wrap: break-word; word-break: break-all; margin: 1em 0; border: 1px solid #333; max-width: 100%; }
-.markdown-body pre code { background-color: transparent; padding: 0; color: #abb2bf; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; }
+.markdown-body pre code { background-color: transparent; padding: 0; color: #abb2bf; white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word; font-family: "Sarasa Gothic Fixed", "Sarasa Fixed SC", "Sarasa Fixed TC", monospace; }
 /* 列表样式 */
 .markdown-body ul, .markdown-body ol { padding-left: 1.5em; margin: 0.5em 0; }
 .markdown-body ul { list-style-type: disc; }

@@ -248,15 +248,23 @@ function init() {
         refreshAllCustomSelects();
     }
     
-    DOM.chatMessages.addEventListener('scroll', checkAutoScroll);
+    DOM.chatMessages.addEventListener('scroll', checkAutoScroll, { passive: true });
     DOM.chatMessages.addEventListener('pointerdown', keepMobileComposerVisible);
     if (window.visualViewport) {
-        window.visualViewport.addEventListener('resize', keepMobileComposerVisible);
-        window.visualViewport.addEventListener('scroll', keepMobileComposerVisible);
+        window.visualViewport.addEventListener('resize', throttledKeepMobileVisible, { passive: true });
+        window.visualViewport.addEventListener('scroll', throttledKeepMobileVisible, { passive: true });
         keepMobileComposerVisible();
     }
     
     updatePrefixBadge();
+}
+
+function throttle(fn, delay) {
+    let timer = null;
+    return (...args) => {
+        if (timer) return;
+        timer = setTimeout(() => { timer = null; fn(...args); }, delay);
+    };
 }
 
 function keepMobileComposerVisible() {
@@ -269,6 +277,7 @@ function keepMobileComposerVisible() {
         document.querySelector('.input-wrapper')?.scrollIntoView({ block: 'end', inline: 'nearest' });
     });
 }
+const throttledKeepMobileVisible = throttle(keepMobileComposerVisible, 100);
 
 function openSettings() {
     closeSidebar();
@@ -285,8 +294,24 @@ function closeSettings() {
 function toggleSettings() { DOM.settingsContainer.classList.contains('show') ? closeSettings() : openSettings(); }
 function toggleSidebar() { DOM.sidebar.classList.toggle('open'); DOM.sidebarBackdrop.classList.toggle('show'); }
 function closeSidebar() { DOM.sidebar.classList.remove('open'); DOM.sidebarBackdrop.classList.remove('show'); }
-function saveState() { localStorage.setItem('ai_chats', JSON.stringify(state.chats)); localStorage.setItem('ai_current_chat_id', state.currentChatId); }
+let _saveTimer = null;
+function _saveStateSync() {
+    const clean = state.chats.map(c => ({ ...c, messages: c.messages.map(m => {
+        const { _lastRenderedContent, ...rest } = m;
+        return rest;
+    }) }));
+    localStorage.setItem('ai_chats', JSON.stringify(clean));
+    localStorage.setItem('ai_current_chat_id', state.currentChatId);
+}
+function saveState() {
+    if (_saveTimer) clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => {
+        _saveTimer = null;
+        _saveStateSync();
+    }, 50);
+}
 
+let _saveSettingsTimer = null;
 function saveSettings() {
     state.apiKey = DOM.apiKeyInput.value.trim(); state.selectedModel = DOM.modelSelect.value;
     state.titleModel = DOM.titleModelSelect.value; 
@@ -297,13 +322,17 @@ function saveSettings() {
     state.filterThink = DOM.filterThinkToggle.checked;
     state.exportRole = DOM.exportRoleSelect.value;
 
-    localStorage.setItem('ai_api_key', state.apiKey); localStorage.setItem('ai_selected_model', state.selectedModel);
-    localStorage.setItem('ai_title_model', state.titleModel); localStorage.setItem('ai_system_prompt', state.systemPrompt);
-    localStorage.setItem('ai_user_prefix', state.userPrefix); localStorage.setItem('ai_selected_preset', state.selectedPreset);
-    localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_think', state.filterThink);
-    localStorage.setItem('ai_export_role', state.exportRole);
-    refreshAllCustomSelects();
-    updatePrefixBadge();
+    if (_saveSettingsTimer) clearTimeout(_saveSettingsTimer);
+    _saveSettingsTimer = setTimeout(() => {
+        _saveSettingsTimer = null;
+        localStorage.setItem('ai_api_key', state.apiKey); localStorage.setItem('ai_selected_model', state.selectedModel);
+        localStorage.setItem('ai_title_model', state.titleModel); localStorage.setItem('ai_system_prompt', state.systemPrompt);
+        localStorage.setItem('ai_user_prefix', state.userPrefix); localStorage.setItem('ai_selected_preset', state.selectedPreset);
+        localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_think', state.filterThink);
+        localStorage.setItem('ai_export_role', state.exportRole);
+        refreshAllCustomSelects();
+        updatePrefixBadge();
+    }, 100);
 }
 
 function handlePresetChange() {
@@ -500,18 +529,47 @@ function createMessageDOM(msg, index) {
     return { wrapper, contentNode };
 }
 
+let _lastRenderMsgCount = 0;
+let _lastRenderEditIdx = -1;
+
 function renderMessages() {
-    DOM.chatMessages.innerHTML = '';
     const currentChat = state.chats.find(c => c.id === state.currentChatId);
     if (!currentChat) return;
     DOM.chatHeaderTitle.textContent = currentChat.title || "新对话";
 
-    currentChat.messages.forEach((msg, index) => {
-        if (msg.role !== 'system') {
+    const msgs = currentChat.messages.filter(m => m.role !== 'system');
+    const existingWrappers = DOM.chatMessages.querySelectorAll(':scope > .message-wrapper');
+    
+    // 增量更新：如果只是末尾追加消息且没有编辑状态，只追加新DOM
+    const isAppendOnly = state.editingIndex === -1
+        && _lastRenderEditIdx === -1
+        && existingWrappers.length > 0
+        && msgs.length > existingWrappers.length
+        && msgs.slice(0, existingWrappers.length).every((msg, i) => {
+            const oldText = msg._lastRenderedContent;
+            const newText = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+            return oldText === newText;
+        });
+
+    if (isAppendOnly) {
+        for (let i = existingWrappers.length; i < msgs.length; i++) {
+            const domObj = createMessageDOM(msgs[i], i);
+            DOM.chatMessages.appendChild(domObj.wrapper);
+            // 新消息标记为已渲染
+            msgs[i]._lastRenderedContent = typeof msgs[i].content === 'string' ? msgs[i].content : JSON.stringify(msgs[i].content);
+        }
+    } else {
+        DOM.chatMessages.innerHTML = '';
+        msgs.forEach((msg, index) => {
             const domObj = createMessageDOM(msg, index);
             DOM.chatMessages.appendChild(domObj.wrapper);
-        }
-    });
+            msg._lastRenderedContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+        });
+    }
+    
+    _lastRenderMsgCount = msgs.length;
+    _lastRenderEditIdx = state.editingIndex;
+
     setTimeout(() => { if (autoScroll) scrollToBottom(); }, 50);
 }
 
@@ -635,17 +693,25 @@ async function executeChatRequest(currentChat) {
         if (thinkBlock) thinkBlock.open = streamThinkOpen;
     });
 
-    function renderBotContent(fullContent) {
-        botDomObj.contentNode.innerHTML = renderContentWithThink(fullContent, true);
-        renderMath(botDomObj.contentNode);
-        highlightCodeBlocks(botDomObj.contentNode);
-        const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
-        if (nextThinkBlock) {
-            nextThinkBlock.open = streamThinkOpen;
-            nextThinkBlock.querySelector('.think-summary')?.addEventListener('click', (event) => {
-                event.preventDefault();
-            });
-        }
+    let _streamTimer = null;
+    let _pendingStreamContent = '';
+    function scheduleStreamRender(content) {
+        if (content === _pendingStreamContent) return;
+        _pendingStreamContent = content;
+        if (_streamTimer) return;
+        _streamTimer = setTimeout(() => {
+            _streamTimer = null;
+            const c = _pendingStreamContent;
+            _pendingStreamContent = '';
+            botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
+            renderMath(botDomObj.contentNode);
+            highlightCodeBlocks(botDomObj.contentNode);
+            const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
+            if (nextThinkBlock) {
+                nextThinkBlock.open = streamThinkOpen;
+            }
+            if (autoScroll) scrollToBottom();
+        }, 30);
     }
     
     let botReply = '';
@@ -698,15 +764,28 @@ async function executeChatRequest(currentChat) {
                             }
 
                             if (delta?.reasoning_content || delta?.content) {
-                                const fullContent = reasoningBuffer
+                                scheduleStreamRender(reasoningBuffer
                                     ? `<think>${reasoningBuffer}</think>\n\n${botReply}`
-                                    : botReply;
-                                renderBotContent(fullContent);
-                                if (autoScroll) scrollToBottom();
+                                    : botReply);
                             }
                         } catch (e) {}
                     }
                 }
+            }
+            // 流式渲染结束，清空定时器并进行最终渲染
+            if (_streamTimer) {
+                clearTimeout(_streamTimer);
+                _streamTimer = null;
+            }
+            if (_pendingStreamContent) {
+                const c = _pendingStreamContent;
+                _pendingStreamContent = '';
+                botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
+                renderMath(botDomObj.contentNode);
+                highlightCodeBlocks(botDomObj.contentNode);
+                const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
+                if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
+                if (autoScroll) scrollToBottom();
             }
             break; 
         } catch (error) {
@@ -1122,4 +1201,11 @@ function registerServiceWorker() {
 
 DOM.userInput.addEventListener('input', function() { this.style.height = '52px'; this.style.height = (this.scrollHeight) + 'px'; if (this.value === '') this.style.height = '52px'; });
 registerServiceWorker();
+
+// 页面关闭前刷新待处理的存储
+window.addEventListener('beforeunload', () => {
+    if (_saveTimer) { clearTimeout(_saveTimer); _saveStateSync(); }
+    if (_saveSettingsTimer) { clearTimeout(_saveSettingsTimer); localStorage.setItem('ai_api_key', state.apiKey); localStorage.setItem('ai_selected_model', state.selectedModel); localStorage.setItem('ai_title_model', state.titleModel); localStorage.setItem('ai_system_prompt', state.systemPrompt); localStorage.setItem('ai_user_prefix', state.userPrefix); localStorage.setItem('ai_selected_preset', state.selectedPreset); localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_think', state.filterThink); localStorage.setItem('ai_export_role', state.exportRole); }
+});
+
 init();
