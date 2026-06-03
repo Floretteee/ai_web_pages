@@ -43,22 +43,32 @@ body {
 .desktop-title { display: block; }
 .mobile-header { display: none; }
 
-.settings-backdrop { display: none; }
-@media screen and (max-width: 768px) {
-    .settings-backdrop {
-        display: block; position: fixed; inset: 0; z-index: 49;
-        background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-        opacity: 0; visibility: hidden; transition: opacity 0.25s ease, visibility 0.25s ease;
-    }
-    .settings-backdrop.show { opacity: 1; visibility: visible; }
+.settings-backdrop {
+    display: none; position: fixed; inset: 0; z-index: 49;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    opacity: 0; visibility: hidden; transition: opacity 0.25s ease, visibility 0.25s ease;
+}
+.settings-backdrop.show { display: block; opacity: 1; visibility: visible; }
 
-    .settings-panel.show {
-        position: fixed; top: 24px; left: 24px; right: 24px; bottom: 24px;
-        width: auto; height: auto; margin: 0; border-radius: 20px;
-        z-index: 50; display: flex; opacity: 1; transform: translateY(0);
-        box-shadow: 0 25px 80px rgba(0,0,0,0.3);
-    }
+.settings-panel.show {
+    position: fixed; top: 24px; left: 24px; right: 24px; bottom: 24px;
+    width: auto; height: auto; margin: 0; border-radius: 20px;
+    z-index: 50; display: flex; opacity: 1; transform: translateY(0);
+    box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+}
+
+@media screen and (max-width: 768px) {
     .settings-grid { grid-template-columns: 1fr; }
+}
+
+@media screen and (min-width: 769px) {
+    .settings-panel.show {
+        top: 48px; bottom: 48px;
+        left: 0; right: 0;
+        width: 90%; max-width: 920px;
+        margin: 0 auto;
+        border-radius: 22px;
+    }
 }
 
 .icon-btn {
@@ -101,11 +111,9 @@ body {
 .delete-chat-btn svg { width: 14px; height: 14px; fill: currentColor; }
 
 .settings-panel {
-    flex: 1; min-height: 0; display: none; flex-direction: column; gap: 0;
-    width: min(920px, calc(100% - 72px)); margin: 32px auto; padding: 0;
-    background: #fff; border: 1px solid var(--glass-border); border-radius: 22px; box-shadow: 0 10px 34px rgba(0,0,0,0.06);
-    overflow-y: auto; opacity: 0; transform: translateY(12px); transition: opacity 0.24s ease, transform 0.24s ease;
-    box-sizing: border-box;
+    display: none; flex-direction: column; gap: 0; padding: 0;
+    background: #fff; border-radius: 22px; overflow-y: auto;
+    opacity: 0; transform: translateY(12px); transition: opacity 0.24s ease, transform 0.24s ease;
 }
 .settings-panel.show { display: flex; opacity: 1; transform: translateY(0); }
 .settings-panel-header {
@@ -216,14 +224,6 @@ body {
 
 /* 主聊天区域 */
 .main-chat { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; overflow: hidden; }
-@media screen and (min-width: 769px) {
-    .main-chat.settings-mode .chat-header,
-    .main-chat.settings-mode .chat-messages,
-    .main-chat.settings-mode .scroll-bottom-btn,
-    .main-chat.settings-mode .loading,
-    .main-chat.settings-mode .input-wrapper { display: none !important; }
-}
-
 .chat-header {
     display: flex; justify-content: space-between; align-items: center; padding: 16px 40px;
     background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);

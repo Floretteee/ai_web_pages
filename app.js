@@ -272,16 +272,11 @@ function keepMobileComposerVisible() {
 
 function openSettings() {
     closeSidebar();
+    DOM.settingsBackdrop.classList.add('show');
     DOM.settingsContainer.classList.add('show');
     DOM.settingsContainer.setAttribute('aria-hidden', 'false');
-    if (window.innerWidth <= 768) {
-        DOM.settingsBackdrop.classList.add('show');
-    } else {
-        DOM.mainChat.classList.add('settings-mode');
-    }
 }
 function closeSettings() {
-    DOM.mainChat.classList.remove('settings-mode');
     DOM.settingsContainer.classList.remove('show');
     DOM.settingsContainer.setAttribute('aria-hidden', 'true');
     DOM.settingsBackdrop.classList.remove('show');
@@ -325,6 +320,10 @@ function handlePresetChange() {
 
 async function fetchModels() {
     if (!DOM.apiKeyInput.value.trim()) return showToast("请先填写 API Key");
+    const fetchBtn = DOM.settingsContainer.querySelector('.btn-outline');
+    const origText = fetchBtn.textContent;
+    fetchBtn.textContent = '加载中...';
+    fetchBtn.style.opacity = '0.5';
     try {
         DOM.modelSelect.innerHTML = '<option value="">加载中...</option>';
         refreshCustomSelect(DOM.modelSelect);
@@ -340,9 +339,11 @@ async function fetchModels() {
             showToast("模型列表获取成功！");
         }
     } catch (error) { 
-        DOM.modelSelect.innerHTML = '<option value="">获取失败</option>'; 
+        DOM.modelSelect.innerHTML = '<option value="">获取失败，点击重试</option>';
         refreshCustomSelect(DOM.modelSelect);
-        showToast("获取模型失败，请检查网络或 Key");
+    } finally {
+        fetchBtn.textContent = origText;
+        fetchBtn.style.opacity = '1';
     }
 }
 
