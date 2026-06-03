@@ -704,7 +704,18 @@ async function executeChatRequest(currentChat) {
         if (content === _pendingStreamContent) return;
         _pendingStreamContent = content;
         if (_streamTimer) return;
+        if (document.visibilityState !== 'visible') {
+            window.__streamFlush = () => {
+                if (_pendingStreamContent && !_streamTimer) {
+                    const content = _pendingStreamContent;
+                    _pendingStreamContent = '';
+                    scheduleStreamRender(content);
+                }
+            };
+            return;
+        }
         _streamTimer = setTimeout(() => {
+            window.__streamFlush = null;
             _streamTimer = null;
             const c = _pendingStreamContent;
             _pendingStreamContent = '';
@@ -797,6 +808,7 @@ async function executeChatRequest(currentChat) {
                 clearTimeout(_streamTimer);
                 _streamTimer = null;
             }
+            window.__streamFlush = null;
             if (_pendingStreamContent) {
                 const c = _pendingStreamContent;
                 _pendingStreamContent = '';
@@ -1253,6 +1265,9 @@ document.addEventListener('visibilitychange', () => {
     if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
         autoScroll = true;
         scrollToBottom();
+    }
+    if (typeof window.__streamFlush === 'function') {
+        window.__streamFlush();
     }
 });
 
