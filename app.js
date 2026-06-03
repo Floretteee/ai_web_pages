@@ -12,9 +12,13 @@ function escapeNonStandardHtmlTags(text) {
 
 function highlightCodeBlocks(container) {
     if (!window.hljs || !container) return;
-    container.querySelectorAll('pre code').forEach((block) => {
+    container.querySelectorAll('pre code:not(.hljs)').forEach((block) => {
         try { window.hljs.highlightElement(block); } catch (e) {}
     });
+}
+
+function shouldProcessMath(text) {
+    return text && (text.includes('$') || text.includes('\\['));
 }
 
 function renderMath(container) {
@@ -55,8 +59,8 @@ function renderMarkdownToHtml(markdown) {
 
 function renderMarkdownIntoElement(element, markdown) {
     element.innerHTML = renderMarkdownToHtml(markdown);
-    renderMath(element);
-    highlightCodeBlocks(element);
+    if (shouldProcessMath(markdown)) renderMath(element);
+    if (markdown && (markdown.includes('<pre') || markdown.includes('```'))) highlightCodeBlocks(element);
 }
 
 let abortController = null;
@@ -695,6 +699,7 @@ async function executeChatRequest(currentChat) {
 
     let _streamTimer = null;
     let _pendingStreamContent = '';
+    let _thinkRenderedOnce = false;
     function scheduleStreamRender(content) {
         if (content === _pendingStreamContent) return;
         _pendingStreamContent = content;
@@ -703,12 +708,22 @@ async function executeChatRequest(currentChat) {
             _streamTimer = null;
             const c = _pendingStreamContent;
             _pendingStreamContent = '';
-            botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
-            renderMath(botDomObj.contentNode);
-            highlightCodeBlocks(botDomObj.contentNode);
-            const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
-            if (nextThinkBlock) {
-                nextThinkBlock.open = streamThinkOpen;
+            const existingReply = botDomObj.contentNode.querySelector('.reply-content');
+            const hasClosedThink = c && CLOSED_THINK_BLOCK_PATTERN.test(c);
+            if (hasClosedThink && existingReply && _thinkRenderedOnce) {
+                const replyContent = c.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
+                if (replyContent) {
+                    existingReply.innerHTML = renderMarkdownToHtml(replyContent);
+                    if (shouldProcessMath(replyContent)) renderMath(existingReply);
+                    if (replyContent.includes('<pre') || replyContent.includes('```')) highlightCodeBlocks(existingReply);
+                }
+            } else {
+                _thinkRenderedOnce = !!hasClosedThink;
+                botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
+                if (shouldProcessMath(c)) renderMath(botDomObj.contentNode);
+                if (c && (c.includes('<pre') || c.includes('```'))) highlightCodeBlocks(botDomObj.contentNode);
+                const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
+                if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
             }
             if (autoScroll) scrollToBottom();
         }, 30);
@@ -780,9 +795,20 @@ async function executeChatRequest(currentChat) {
             if (_pendingStreamContent) {
                 const c = _pendingStreamContent;
                 _pendingStreamContent = '';
-                botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
-                renderMath(botDomObj.contentNode);
-                highlightCodeBlocks(botDomObj.contentNode);
+                const existingReply = botDomObj.contentNode.querySelector('.reply-content');
+                const hasClosedThink = c && CLOSED_THINK_BLOCK_PATTERN.test(c);
+                if (hasClosedThink && existingReply) {
+                    const replyContent = c.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
+                    if (replyContent) {
+                        existingReply.innerHTML = renderMarkdownToHtml(replyContent);
+                        if (shouldProcessMath(replyContent)) renderMath(existingReply);
+                        if (replyContent.includes('<pre') || replyContent.includes('```')) highlightCodeBlocks(existingReply);
+                    }
+                } else {
+                    botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
+                    if (shouldProcessMath(c)) renderMath(botDomObj.contentNode);
+                    if (c && (c.includes('<pre') || c.includes('```'))) highlightCodeBlocks(botDomObj.contentNode);
+                }
                 const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
                 if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
                 if (autoScroll) scrollToBottom();
@@ -870,7 +896,8 @@ function renderContentWithThink(content, isStreaming) {
         }
     }
     const mainHtml = mainContent ? renderMarkdownToHtml(mainContent) : '';
-    return thinkHtml + mainHtml;
+    const replyWrap = thinkHtml && mainHtml ? `<div class="reply-content">${mainHtml}</div>` : mainHtml;
+    return thinkHtml + replyWrap;
 }
 
 async function generateTitle(chatId, text) {
@@ -1206,6 +1233,20 @@ registerServiceWorker();
 window.addEventListener('beforeunload', () => {
     if (_saveTimer) { clearTimeout(_saveTimer); _saveStateSync(); }
     if (_saveSettingsTimer) { clearTimeout(_saveSettingsTimer); localStorage.setItem('ai_api_key', state.apiKey); localStorage.setItem('ai_selected_model', state.selectedModel); localStorage.setItem('ai_title_model', state.titleModel); localStorage.setItem('ai_system_prompt', state.systemPrompt); localStorage.setItem('ai_user_prefix', state.userPrefix); localStorage.setItem('ai_selected_preset', state.selectedPreset); localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_think', state.filterThink); localStorage.setItem('ai_export_role', state.exportRole); }
+});
+
+// 标签页切换恢复
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') {
+        if (_saveTimer) { clearTimeout(_saveTimer); _saveStateSync(); }
+        return;
+    }
+    keepMobileComposerVisible();
+    const el = DOM.chatMessages;
+    if (el && el.scrollHeight - el.scrollTop - el.clientHeight < 150) {
+        autoScroll = true;
+        scrollToBottom();
+    }
 });
 
 init();
