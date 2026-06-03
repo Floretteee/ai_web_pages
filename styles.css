@@ -44,25 +44,19 @@ body {
 .mobile-header { display: none; }
 
 .settings-backdrop {
-    display: none; position: fixed; inset: 0; z-index: 49;
+    position: fixed; inset: 0; z-index: 49;
     background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-    opacity: 0; visibility: hidden; transition: opacity 0.25s ease, visibility 0.25s ease;
+    opacity: 0; visibility: hidden; pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
 }
-.settings-backdrop.show { display: block; opacity: 1; visibility: visible; }
-
-.settings-panel.show {
-    position: fixed; top: 24px; left: 24px; right: 24px; bottom: 24px;
-    width: auto; height: auto; margin: 0; border-radius: 20px;
-    z-index: 50; display: flex; opacity: 1; transform: translateY(0);
-    box-shadow: 0 25px 80px rgba(0,0,0,0.3);
-}
+.settings-backdrop.show { opacity: 1; visibility: visible; pointer-events: auto; }
 
 @media screen and (max-width: 768px) {
     .settings-grid { grid-template-columns: 1fr; }
 }
 
 @media screen and (min-width: 769px) {
-    .settings-panel.show {
+    .settings-panel {
         top: 48px; bottom: 48px;
         left: 0; right: 0;
         width: 90%; max-width: 920px;
@@ -111,11 +105,19 @@ body {
 .delete-chat-btn svg { width: 14px; height: 14px; fill: currentColor; }
 
 .settings-panel {
-    display: none; flex-direction: column; gap: 0; padding: 0;
-    background: #fff; border-radius: 22px; overflow-y: auto;
-    opacity: 0; transform: translateY(12px); transition: opacity 0.24s ease, transform 0.24s ease;
+    position: fixed; top: 24px; left: 24px; right: 24px; bottom: 24px;
+    display: flex; flex-direction: column; gap: 0; padding: 0;
+    background: #fff; border-radius: 20px; overflow-y: auto;
+    opacity: 0; transform: translateY(12px) scale(0.97);
+    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s ease;
+    visibility: hidden; pointer-events: none;
+    z-index: 50; box-shadow: 0 25px 80px rgba(0,0,0,0.3);
+    width: auto; height: auto; margin: 0;
 }
-.settings-panel.show { display: flex; opacity: 1; transform: translateY(0); }
+.settings-panel.show {
+    opacity: 1; transform: translateY(0) scale(1);
+    visibility: visible; pointer-events: auto;
+}
 .settings-panel-header {
     position: sticky; top: 0; z-index: 2;
     display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
@@ -403,6 +405,21 @@ body {
     to { transform: rotate(360deg); }
 }
 
+.stream-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.1em;
+    background: #000;
+    margin-left: 2px;
+    vertical-align: text-bottom;
+    animation: cursorBlink 0.8s step-end infinite;
+    border-radius: 1px;
+}
+@keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
 /* 消息队列样式 */
 .queue-btn {
     background: transparent;
@@ -650,7 +667,7 @@ body {
     .new-chat-btn { padding: 10px; font-size: 14px; }
     .chat-item { padding: 8px 28px 8px 10px; font-size: 13px; }
 
-    .settings-panel.show { top: 12px; left: 12px; right: 12px; bottom: 12px; border-radius: 16px; }
+    .settings-panel { top: 12px; left: 12px; right: 12px; bottom: 12px; border-radius: 16px; }
     .settings-panel-header { padding: 18px 16px 10px; margin-bottom: 14px; }
     .settings-panel-header h2 { font-size: 24px; }
     .settings-section { margin: 0 16px 12px; padding: 12px; border-radius: 14px; gap: 10px; }
@@ -745,7 +762,7 @@ body {
     .input-area { padding: 10px 20px; }
     .input-area textarea { height: 40px; }
     .upload-btn, .queue-btn, .send-btn { width: 40px; height: 40px; }
-    .settings-panel.show { top: 8px; left: 8px; right: 8px; bottom: 8px; border-radius: 16px; }
+    .settings-panel { top: 8px; left: 8px; right: 8px; bottom: 8px; border-radius: 16px; }
     .settings-panel-header { padding: 16px 20px 8px; margin-bottom: 12px; }
     .settings-section { margin: 0 20px 10px; }
     .settings-section:last-child { margin-bottom: 16px; }

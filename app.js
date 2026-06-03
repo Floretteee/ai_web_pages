@@ -710,21 +710,26 @@ async function executeChatRequest(currentChat) {
             _pendingStreamContent = '';
             const existingReply = botDomObj.contentNode.querySelector('.reply-content');
             const hasClosedThink = c && CLOSED_THINK_BLOCK_PATTERN.test(c);
-            if (hasClosedThink && existingReply && _thinkRenderedOnce) {
-                const replyContent = c.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
-                if (replyContent) {
-                    existingReply.innerHTML = renderMarkdownToHtml(replyContent);
-                    if (shouldProcessMath(replyContent)) renderMath(existingReply);
-                    if (replyContent.includes('<pre') || replyContent.includes('```')) highlightCodeBlocks(existingReply);
-                }
-            } else {
-                _thinkRenderedOnce = !!hasClosedThink;
-                botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
-                if (shouldProcessMath(c)) renderMath(botDomObj.contentNode);
-                if (c && (c.includes('<pre') || c.includes('```'))) highlightCodeBlocks(botDomObj.contentNode);
-                const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
-                if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
+        if (hasClosedThink && existingReply && _thinkRenderedOnce) {
+            const replyContent = c.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
+            existingReply.innerHTML = renderMarkdownToHtml(replyContent) + '<span class="stream-cursor"></span>';
+            if (replyContent) {
+                if (shouldProcessMath(replyContent)) renderMath(existingReply);
+                if (replyContent.includes('<pre') || replyContent.includes('```')) highlightCodeBlocks(existingReply);
             }
+        } else {
+            _thinkRenderedOnce = !!hasClosedThink;
+            botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
+            if (shouldProcessMath(c)) renderMath(botDomObj.contentNode);
+            if (c && (c.includes('<pre') || c.includes('```'))) highlightCodeBlocks(botDomObj.contentNode);
+            const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
+            if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
+        }
+        // 流式光标：追加到内容末尾
+        const cursorTarget = botDomObj.contentNode.querySelector('.reply-content') || botDomObj.contentNode;
+        if (!cursorTarget.querySelector('.stream-cursor')) {
+            cursorTarget.insertAdjacentHTML('beforeend', '<span class="stream-cursor"></span>');
+        }
             if (autoScroll) scrollToBottom();
         }, 30);
     }
@@ -813,6 +818,7 @@ async function executeChatRequest(currentChat) {
                 if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
                 if (autoScroll) scrollToBottom();
             }
+            botDomObj.contentNode.querySelectorAll('.stream-cursor').forEach(el => el.remove());
             break; 
         } catch (error) {
             if (error.name === 'AbortError') {
@@ -831,6 +837,7 @@ async function executeChatRequest(currentChat) {
         currentChat.messages.push({ role: 'assistant', content: reasoningBuffer ? `<think>${reasoningBuffer}</think>\n\n${botReply}` : botReply });
         saveState();
     }
+    botDomObj.contentNode.querySelectorAll('.stream-cursor').forEach(el => el.remove());
     renderMessages();
 
     abortController = null;
