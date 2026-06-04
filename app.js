@@ -4,6 +4,44 @@ const CLOSED_THINK_BLOCK_PATTERN = /<\s*think(?:ing)?\b[^>]*>([\s\S]*?)<\/\s*thi
 const CLOSED_THINK_BLOCK_PATTERN_GLOBAL = /<\s*think(?:ing)?\b[^>]*>[\s\S]*?<\/\s*think(?:ing)?\s*>/gi;
 const STANDARD_HTML_TAGS = new Set('a abbr address area article aside audio b bdi bdo blockquote br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 header hgroup hr i iframe img input ins kbd label legend li main map mark menu meter nav object ol optgroup option output p picture pre progress q rp rt ruby s samp script search section select slot small source span strong style sub summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr'.split(' '));
 
+const loadedAssets = new Map();
+
+function loadScriptOnce(src) {
+    if (loadedAssets.has(src)) return loadedAssets.get(src);
+    const promise = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.defer = true;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+    loadedAssets.set(src, promise);
+    return promise;
+}
+
+function loadStylesheetOnce(href) {
+    if (loadedAssets.has(href) || document.querySelector(`link[href="${href}"]`)) return loadedAssets.get(href) || Promise.resolve();
+    const promise = new Promise((resolve, reject) => {
+        const link = document.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = href;
+        link.onload = resolve;
+        link.onerror = reject;
+        document.head.appendChild(link);
+    });
+    loadedAssets.set(href, promise);
+    return promise;
+}
+
+function ensureKatexAssets() {
+    if (typeof window.renderMathInElement === 'function') return Promise.resolve();
+    return Promise.all([
+        loadStylesheetOnce('vendor/katex/katex.min.css'),
+        loadScriptOnce('vendor/katex/katex.min.js')
+    ]).then(() => loadScriptOnce('vendor/katex/auto-render.min.js'));
+}
+
 function escapeNonStandardHtmlTags(text) {
     return String(text || '').replace(/<\/?\s*([a-zA-Z][\w:-]*)\b[^>]*>/g, (tag, name) => {
         return STANDARD_HTML_TAGS.has(name.toLowerCase()) ? tag : escapeHtml(tag);
@@ -22,9 +60,13 @@ function shouldProcessMath(text) {
 }
 
 function renderMath(container) {
-    try {
-        renderMathInElement(container, { delimiters: [ {left:'$$', right:'$$', display:true}, {left:'$', right:'$', display:false}, {left:'\\[', right:'\\]', display:true} ], throwOnError: false });
-    } catch(e) {}
+    if (!container) return;
+    ensureKatexAssets().then(() => {
+        if (typeof window.renderMathInElement !== 'function') return;
+        try {
+            window.renderMathInElement(container, { delimiters: [ {left:'$$', right:'$$', display:true}, {left:'$', right:'$', display:false}, {left:'\\[', right:'\\]', display:true} ], throwOnError: false });
+        } catch(e) {}
+    }).catch(() => {});
 }
 
 function renderMarkdownToHtml(markdown) {
@@ -514,7 +556,7 @@ function createMessageDOM(msg, index) {
 
     if (displayContent && THINK_TAG_PATTERN.test(displayContent)) {
         contentNode.innerHTML = renderContentWithThink(displayContent, false);
-        renderMath(contentNode);
+        if (shouldProcessMath(displayContent)) renderMath(contentNode);
         highlightCodeBlocks(contentNode);
     } else {
         renderMarkdownIntoElement(contentNode, displayContent);
