@@ -574,6 +574,7 @@ body {
     .sidebar.open { transform: translateX(0); }
     .sidebar-header { margin-bottom: 16px; }
     .sidebar-header h2 { font-size: 16px; }
+    .desktop-title { display: none; }
     .new-chat-btn { margin-bottom: 12px; }
     .chat-list { margin-bottom: 8px; }
 
