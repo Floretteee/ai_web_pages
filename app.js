@@ -105,6 +105,189 @@ function renderMarkdownIntoElement(element, markdown) {
     if (markdown && (markdown.includes('<pre') || markdown.includes('```'))) highlightCodeBlocks(element);
 }
 
+function isSafeExportUrl(url) {
+    const value = String(url || '').trim().replace(/[\u0000-\u001F\u007F\s]+/g, '');
+    if (!value) return '';
+    if (/^(https?:|mailto:|tel:|#|\/|\.\/|\.\.\/)/i.test(value)) return value;
+    if (/^data:image\/(png|jpe?g|gif|webp);base64,/i.test(value)) return value;
+    if (/^[a-z][a-z0-9+.-]*:/i.test(value)) return '';
+    return value;
+}
+
+function renderMarkdownInlineNative(text) {
+    const tokens = [];
+    const pushToken = (html) => {
+        const token = `EXPORTHTMLTOKEN${tokens.length}END`;
+        tokens.push({ token, html });
+        return token;
+    };
+
+    let source = String(text || '');
+    source = source.replace(/`([^`]+)`/g, (_, code) => pushToken(`<code>${escapeHtml(code)}</code>`));
+    source = source.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (_, alt, url, titleAttr) => {
+        const safeUrl = isSafeExportUrl(url);
+        if (!safeUrl) return escapeHtml(alt || '');
+        const title = titleAttr ? ` title="${escapeHtml(titleAttr)}"` : '';
+        return pushToken(`<img src="${escapeHtml(safeUrl)}" alt="${escapeHtml(alt || '')}"${title} loading="lazy">`);
+    });
+    source = source.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)/g, (_, label, url, titleAttr) => {
+        const safeUrl = isSafeExportUrl(url);
+        const safeLabel = escapeHtml(label || '');
+        if (!safeUrl) return safeLabel;
+        const title = titleAttr ? ` title="${escapeHtml(titleAttr)}"` : '';
+        return pushToken(`<a href="${escapeHtml(safeUrl)}"${title}>${safeLabel}</a>`);
+    });
+
+    let html = escapeHtml(source);
+    html = html
+        .replace(/\*\*\*([^*]+)\*\*\*/g, '<strong><em>$1</em></strong>')
+        .replace(/___([^_]+)___/g, '<strong><em>$1</em></strong>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/__([^_]+)__/g, '<strong>$1</strong>')
+        .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+        .replace(/(^|[^*])\*([^*\n]+)\*/g, '$1<em>$2</em>')
+        .replace(/(^|[^_])_([^_\n]+)_/g, '$1<em>$2</em>')
+        .replace(/\n/g, '<br>');
+
+    tokens.forEach(({ token, html: tokenHtml }) => {
+        html = html.replaceAll(token, tokenHtml);
+    });
+    return html;
+}
+
+function isMarkdownBlockStart(line, nextLine = '') {
+    return /^\s*$/.test(line)
+        || /^#{1,6}\s+/.test(line)
+        || /^\s*(```|~~~)/.test(line)
+        || /^\s*>\s?/.test(line)
+        || /^\s*(?:[-+*]|\d+[.)])\s+/.test(line)
+        || /^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)
+        || (line.includes('|') && /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(nextLine));
+}
+
+function renderMarkdownTableNative(lines, startIndex) {
+    const headerLine = lines[startIndex];
+    const separatorLine = lines[startIndex + 1] || '';
+    if (!headerLine.includes('|') || !/^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(separatorLine)) return null;
+
+    const splitRow = (line) => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cell => cell.trim());
+    const headers = splitRow(headerLine);
+    const alignments = splitRow(separatorLine).map(cell => {
+        const left = cell.startsWith(':');
+        const right = cell.endsWith(':');
+        if (left && right) return 'center';
+        if (right) return 'right';
+        return 'left';
+    });
+    const rows = [];
+    let index = startIndex + 2;
+    while (index < lines.length && lines[index].includes('|') && !/^\s*$/.test(lines[index])) {
+        rows.push(splitRow(lines[index]));
+        index += 1;
+    }
+
+    const renderCells = (cells, tag) => cells.map((cell, cellIndex) => {
+        const align = alignments[cellIndex] || 'left';
+        return `<${tag} style="text-align:${align}">${renderMarkdownInlineNative(cell)}</${tag}>`;
+    }).join('');
+
+    const html = `<table><thead><tr>${renderCells(headers, 'th')}</tr></thead><tbody>${rows.map(row => `<tr>${renderCells(row, 'td')}</tr>`).join('')}</tbody></table>`;
+    return { html, nextIndex: index };
+}
+
+function renderMarkdownToNativeHtml(markdown) {
+    const lines = String(markdown || '').replace(/\r\n?/g, '\n').split('\n');
+    const blocks = [];
+    let index = 0;
+
+    while (index < lines.length) {
+        const line = lines[index];
+        if (/^\s*$/.test(line)) {
+            index += 1;
+            continue;
+        }
+
+        const fenceMatch = line.match(/^\s*(```|~~~)\s*([^`]*)\s*$/);
+        if (fenceMatch) {
+            const fence = fenceMatch[1];
+            const language = (fenceMatch[2] || '').trim().split(/\s+/)[0];
+            const codeLines = [];
+            index += 1;
+            while (index < lines.length && !lines[index].startsWith(fence)) {
+                codeLines.push(lines[index]);
+                index += 1;
+            }
+            if (index < lines.length) index += 1;
+            const className = language ? ` class="language-${escapeHtml(language)}"` : '';
+            blocks.push(`<pre><code${className}>${escapeHtml(codeLines.join('\n'))}</code></pre>`);
+            continue;
+        }
+
+        const table = renderMarkdownTableNative(lines, index);
+        if (table) {
+            blocks.push(table.html);
+            index = table.nextIndex;
+            continue;
+        }
+
+        const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+        if (headingMatch) {
+            const level = headingMatch[1].length;
+            blocks.push(`<h${level}>${renderMarkdownInlineNative(headingMatch[2].replace(/\s+#+\s*$/, ''))}</h${level}>`);
+            index += 1;
+            continue;
+        }
+
+        if (/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/.test(line)) {
+            blocks.push('<hr>');
+            index += 1;
+            continue;
+        }
+
+        if (/^\s*>\s?/.test(line)) {
+            const quoteLines = [];
+            while (index < lines.length && (/^\s*>\s?/.test(lines[index]) || /^\s*$/.test(lines[index]))) {
+                quoteLines.push(lines[index].replace(/^\s*>\s?/, ''));
+                index += 1;
+            }
+            blocks.push(`<blockquote>${renderMarkdownToNativeHtml(quoteLines.join('\n'))}</blockquote>`);
+            continue;
+        }
+
+        const listMatch = line.match(/^\s*((?:[-+*])|(?:\d+[.)]))\s+(.+)$/);
+        if (listMatch) {
+            const ordered = /\d/.test(listMatch[1]);
+            const tag = ordered ? 'ol' : 'ul';
+            const items = [];
+            while (index < lines.length) {
+                const itemMatch = lines[index].match(/^\s*((?:[-+*])|(?:\d+[.)]))\s+(.+)$/);
+                if (!itemMatch || /\d/.test(itemMatch[1]) !== ordered) break;
+                let itemText = itemMatch[2];
+                let checkbox = '';
+                const taskMatch = itemText.match(/^\[( |x|X)\]\s+(.+)$/);
+                if (taskMatch) {
+                    checkbox = `<input type="checkbox" disabled${taskMatch[1].toLowerCase() === 'x' ? ' checked' : ''}> `;
+                    itemText = taskMatch[2];
+                }
+                items.push(`<li>${checkbox}${renderMarkdownInlineNative(itemText)}</li>`);
+                index += 1;
+            }
+            blocks.push(`<${tag}>${items.join('')}</${tag}>`);
+            continue;
+        }
+
+        const paragraphLines = [line];
+        index += 1;
+        while (index < lines.length && !isMarkdownBlockStart(lines[index], lines[index + 1] || '')) {
+            paragraphLines.push(lines[index]);
+            index += 1;
+        }
+        blocks.push(`<p>${renderMarkdownInlineNative(paragraphLines.join('\n'))}</p>`);
+    }
+
+    return blocks.join('\n');
+}
+
 let abortController = null;
 let messageQueue = [];
 let isProcessingQueue = false;
@@ -1124,12 +1307,20 @@ function exportChatHTML() {
             * { box-sizing: border-box; margin: 0; padding: 0; }
             body { background: #f5f0e8; color: #5c4b37; font-family: 'Noto Serif SC', 'Source Han Serif SC', "Songti SC", STSong, "华文宋体", SimSun, serif; font-weight: 500; padding: 40px 15px; max-width: 1000px; margin: 0 auto; text-rendering: optimizeLegibility; font-size: clamp(15px, 2vw, 18px); }
             h1 { text-align: center; color: #8b6914; border-bottom: 2px solid #d4a843; padding-bottom: 16px; margin-bottom: 32px; font-size: clamp(20px, 3.2vw, 28px); font-weight: 700; }
-            .msg { margin: clamp(16px, 2.4vw, 28px) 0; }
+            .export-meta { text-align: center; color: #8b7355; margin: -18px 0 30px; font-size: 0.9em; }
+            .conversation { display: block; }
+            .msg { display: block; margin: clamp(16px, 2.4vw, 28px) 0; }
             .user { text-align: right; }
             .assistant { text-align: left; }
             .role { font-weight: 700; margin-bottom: 8px; font-size: clamp(12px, 1.4vw, 14px); color: #8b6914; }
             .assistant .role { color: #6b8e23; }
             .content { line-height: 1.8; font-weight: 500; }
+            .content p, .content ul, .content ol, .content blockquote, .content pre, .content table { margin: 0.75em 0; }
+            .content h1, .content h2, .content h3, .content h4, .content h5, .content h6 { margin: 1em 0 0.45em; color: #6f5515; line-height: 1.35; }
+            .content ul, .content ol { padding-left: 1.5em; }
+            .content img { max-width: 100%; height: auto; border-radius: 6px; }
+            table { width: 100%; border-collapse: collapse; overflow-wrap: anywhere; }
+            th, td { border: 1px solid #d8c8aa; padding: 8px 10px; }
             pre { background: #e8e0d0; padding: 12px; border-radius: 4px; overflow-x: auto; margin: 8px 0; }
             code { font-family: 'Consolas', monospace; font-size: clamp(13px, 1.4vw, 15px); }
             blockquote { border-left: 3px solid #d4a843; padding-left: 12px; color: #8b7355; margin: 12px 0; }
@@ -1142,12 +1333,20 @@ function exportChatHTML() {
         css = `
             body { background: #fff; color: #24292e; font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; font-weight: 500; padding: 40px 20px; max-width: 800px; margin: 0 auto; text-rendering: optimizeLegibility; }
             h1 { border-bottom: 1px solid #eaecef; padding-bottom: 16px; font-weight: 700; }
-            .msg { margin: 12px 0; padding: 16px; border-radius: 8px; }
+            .export-meta { color: #57606a; margin: -6px 0 24px; }
+            .conversation { display: block; }
+            .msg { display: block; margin: 12px 0; padding: 16px; border-radius: 8px; }
             .user { background: #f6f8fa; text-align: right; }
             .user .role { text-align: left; }
             .assistant { background: #fff; }
             .role { font-weight: 600; margin-bottom: 8px; color: #0366d6; }
             .content { line-height: 1.6; text-align: left; max-width: 85%; }
+            .content p, .content ul, .content ol, .content blockquote, .content pre, .content table { margin: 0.75em 0; }
+            .content h1, .content h2, .content h3, .content h4, .content h5, .content h6 { margin: 1em 0 0.45em; line-height: 1.35; }
+            .content ul, .content ol { padding-left: 1.5em; }
+            .content img { max-width: 100%; height: auto; border-radius: 6px; }
+            table { width: 100%; border-collapse: collapse; overflow-wrap: anywhere; }
+            th, td { border: 1px solid #d0d7de; padding: 8px 10px; }
             pre { background: #f6f8fa; padding: 16px; border-radius: 6px; overflow-x: auto; text-align: left; }
             code { font-family: 'SFMono-Regular', Consolas, monospace; font-size: 14px; }
             blockquote { border-left: 4px solid #dfe2e5; padding-left: 16px; color: #6a737d; margin: 16px 0; text-align: left; }
@@ -1176,15 +1375,20 @@ function exportChatHTML() {
         
         if (!displayContent) return;
         
+        const roleLabel = msg.role === 'user' ? '用户' : '助手';
+        const messageHtml = renderMarkdownToNativeHtml(displayContent);
+        const labelId = `message-${messagesHtml.length}-${msg.role}`;
+
         if (msg.role === 'user') {
-            messagesHtml += '<div class="msg user"><div class="role">用户</div><div class="content">' + escapeHtml(displayContent) + '</div></div>';
+            messagesHtml += '<section class="msg user" aria-labelledby="' + labelId + '"><h2 class="role" id="' + labelId + '">' + roleLabel + '</h2><div class="content">' + messageHtml + '</div></section>';
         } else if (msg.role === 'assistant') {
-            messagesHtml += '<div class="msg assistant"><div class="role">助手</div><div class="content">' + renderMarkdownToHtml(displayContent) + '</div></div>';
+            messagesHtml += '<section class="msg assistant" aria-labelledby="' + labelId + '"><h2 class="role" id="' + labelId + '">' + roleLabel + '</h2><div class="content">' + messageHtml + '</div></section>';
         }
     });
     
     const title = (chat.title || '新对话').replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&#39;'}[c]));
-    const html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <meta name="description" content="AI 对话记录：' + title + '">\n    <meta name="generator" content="Fimall Chat">\n    <title>' + title + '</title>\n    <style>' + css + '</style>\n</head>\n<body class="' + bodyClass + '">\n    <article role="main">\n        <header>\n            <h1>' + title + '</h1>\n        </header>\n        <section>\n            ' + messagesHtml + '\n        </section>\n    </article>\n</body>\n</html>';
+    const exportDate = new Date().toLocaleString('zh-CN');
+    const html = '<!DOCTYPE html>\n<html lang="zh-CN">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1.0">\n    <meta name="description" content="AI 对话记录：' + title + '">\n    <meta name="generator" content="Fimall Chat">\n    <title>' + title + '</title>\n    <style>' + css + '</style>\n</head>\n<body class="' + bodyClass + '">\n    <main>\n        <article class="reader-article">\n            <header>\n                <h1>' + title + '</h1>\n                <p class="export-meta">导出时间：<time datetime="' + new Date().toISOString() + '">' + escapeHtml(exportDate) + '</time></p>\n            </header>\n            <section class="conversation" aria-label="对话内容">\n                ' + messagesHtml + '\n            </section>\n        </article>\n    </main>\n</body>\n</html>';
     
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
