@@ -371,7 +371,13 @@ const DOM = {
     mainChat: document.querySelector('.main-chat'),
     settingsBackdrop: document.getElementById('settingsBackdrop'),
     contextMenu: document.getElementById('contextMenu'), filterThinkToggle: document.getElementById('filterThinkToggle'),
-    exportRoleSelect: document.getElementById('exportRoleSelect')
+    exportRoleSelect: document.getElementById('exportRoleSelect'),
+    chatSettingsBackdrop: document.getElementById('chatSettingsBackdrop'),
+    chatSettingsContainer: document.getElementById('chatSettingsContainer'),
+    chatMaxTokensInput: document.getElementById('chatMaxTokensInput'),
+    chatTemperatureRange: document.getElementById('chatTemperatureRange'),
+    chatTemperatureDisplay: document.getElementById('chatTemperatureDisplay'),
+    chatStreamToggle: document.getElementById('chatStreamToggle')
 };
 
 const customSelects = new Map();
@@ -624,7 +630,7 @@ function clearAttachment() { state.attachment = null; DOM.attachmentPreview.inne
 
 function createNewChat(render = true) {
     if (render) closeSettings();
-    const newChat = { id: Date.now().toString(), title: "新对话", messages: [] };
+    const newChat = { id: Date.now().toString(), title: "新对话", messages: [], maxTokens: 131072, temperature: 0.7, stream: true };
     state.chats.unshift(newChat); state.currentChatId = newChat.id; state.editingIndex = -1; saveState();
     if (render) { renderChatList(); renderMessages(); DOM.userInput.focus(); }
 }
@@ -980,7 +986,7 @@ async function executeChatRequest(currentChat) {
             reasoningBuffer = '';
             DOM.loadingIndicator.innerHTML = retry > 0 ? `AI 正在思考 (重试 ${retry}/${maxRetries})<span></span>` : `AI 正在思考<span></span>`;
 
-            const requestBody = { model: state.selectedModel, messages: apiMessages, stream: true };
+            const requestBody = { model: state.selectedModel, messages: apiMessages, stream: currentChat.stream !== false, max_tokens: currentChat.maxTokens || 131072, temperature: currentChat.temperature !== undefined ? currentChat.temperature : 0.7 };
             
             const response = await fetch(`${API_BASE}/chat/completions`, {
                 method: 'POST', 
@@ -1403,10 +1409,49 @@ function escapeHtml(text) {
     return div.innerHTML;
 }
 
+// 聊天设置功能
+function openChatSettings() {
+    DOM.contextMenu.style.display = 'none';
+    const chat = state.chats.find(c => c.id === contextMenuChatId);
+    if (!chat) return;
+
+    DOM.chatMaxTokensInput.value = chat.maxTokens || 131072;
+    DOM.chatTemperatureRange.value = chat.temperature !== undefined ? chat.temperature : 0.7;
+    DOM.chatTemperatureDisplay.textContent = DOM.chatTemperatureRange.value;
+    DOM.chatStreamToggle.checked = chat.stream !== false;
+
+    DOM.chatSettingsBackdrop.classList.add('show');
+    DOM.chatSettingsContainer.classList.add('show');
+    DOM.chatSettingsContainer.setAttribute('aria-hidden', 'false');
+}
+
+function closeChatSettings() {
+    DOM.chatSettingsContainer.classList.remove('show');
+    DOM.chatSettingsContainer.setAttribute('aria-hidden', 'true');
+    DOM.chatSettingsBackdrop.classList.remove('show');
+}
+
+function updateChatTemperatureDisplay() {
+    DOM.chatTemperatureDisplay.textContent = DOM.chatTemperatureRange.value;
+    saveChatSettings();
+}
+
+function saveChatSettings() {
+    const chat = state.chats.find(c => c.id === contextMenuChatId);
+    if (!chat) return;
+    chat.maxTokens = parseInt(DOM.chatMaxTokensInput.value) || 131072;
+    chat.temperature = parseFloat(DOM.chatTemperatureRange.value);
+    chat.stream = DOM.chatStreamToggle.checked;
+    saveState();
+}
+
 // 点击其他地方关闭右键菜单
-document.addEventListener('click', () => {
+document.addEventListener('click', (e) => {
     if (DOM.contextMenu) DOM.contextMenu.style.display = 'none';
     closeCustomSelects();
+    if (DOM.chatSettingsContainer && DOM.chatSettingsContainer.classList.contains('show') && !DOM.chatSettingsContainer.contains(e.target) && !e.target.closest('.context-menu-item')) {
+        closeChatSettings();
+    }
 });
 
 // 消息队列功能
