@@ -440,7 +440,7 @@ function closeCustomSelects() {
 }
 
 function initCustomSelects() {
-    document.querySelectorAll('.settings-panel select').forEach(buildCustomSelect);
+    document.querySelectorAll('.settings-panel select, .chat-settings-panel select').forEach(buildCustomSelect);
 }
 
 function updatePrefixBadge() {
@@ -1417,6 +1417,7 @@ function openChatSettings() {
     if (!chat) return;
 
     DOM.chatMaxTokensInput.value = chat.maxTokens || 0;
+    refreshCustomSelect(DOM.chatMaxTokensInput);
     DOM.chatTemperatureRange.value = chat.temperature !== undefined ? chat.temperature : 0.7;
     DOM.chatTemperatureDisplay.textContent = DOM.chatTemperatureRange.value;
     DOM.chatStreamToggle.checked = chat.stream !== false;
