@@ -630,7 +630,7 @@ function clearAttachment() { state.attachment = null; DOM.attachmentPreview.inne
 
 function createNewChat(render = true) {
     if (render) closeSettings();
-    const newChat = { id: Date.now().toString(), title: "新对话", messages: [], maxTokens: 131072, temperature: 0.7, stream: true };
+    const newChat = { id: Date.now().toString(), title: "新对话", messages: [], maxTokens: 0, temperature: 0.7, stream: true };
     state.chats.unshift(newChat); state.currentChatId = newChat.id; state.editingIndex = -1; saveState();
     if (render) { renderChatList(); renderMessages(); DOM.userInput.focus(); }
 }
@@ -986,7 +986,8 @@ async function executeChatRequest(currentChat) {
             reasoningBuffer = '';
             DOM.loadingIndicator.innerHTML = retry > 0 ? `AI 正在思考 (重试 ${retry}/${maxRetries})<span></span>` : `AI 正在思考<span></span>`;
 
-            const requestBody = { model: state.selectedModel, messages: apiMessages, stream: currentChat.stream !== false, max_tokens: currentChat.maxTokens || 131072, temperature: currentChat.temperature !== undefined ? currentChat.temperature : 0.7 };
+            const requestBody = { model: state.selectedModel, messages: apiMessages, stream: currentChat.stream !== false, temperature: currentChat.temperature !== undefined ? currentChat.temperature : 0.7 };
+            if (currentChat.maxTokens) requestBody.max_tokens = currentChat.maxTokens;
             
             const response = await fetch(`${API_BASE}/chat/completions`, {
                 method: 'POST', 
@@ -1415,7 +1416,7 @@ function openChatSettings() {
     const chat = state.chats.find(c => c.id === contextMenuChatId);
     if (!chat) return;
 
-    DOM.chatMaxTokensInput.value = chat.maxTokens || 131072;
+    DOM.chatMaxTokensInput.value = chat.maxTokens || 0;
     DOM.chatTemperatureRange.value = chat.temperature !== undefined ? chat.temperature : 0.7;
     DOM.chatTemperatureDisplay.textContent = DOM.chatTemperatureRange.value;
     DOM.chatStreamToggle.checked = chat.stream !== false;
@@ -1439,7 +1440,7 @@ function updateChatTemperatureDisplay() {
 function saveChatSettings() {
     const chat = state.chats.find(c => c.id === contextMenuChatId);
     if (!chat) return;
-    chat.maxTokens = parseInt(DOM.chatMaxTokensInput.value) || 131072;
+    chat.maxTokens = parseInt(DOM.chatMaxTokensInput.value) || 0;
     chat.temperature = parseFloat(DOM.chatTemperatureRange.value);
     chat.stream = DOM.chatStreamToggle.checked;
     saveState();
