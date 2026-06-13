@@ -950,6 +950,11 @@ async function executeChatRequest(currentChat) {
     if (autoScroll) scrollToBottom();
 
     let apiMessages = currentChat.messages.map(m => {
+        if (m.role === 'assistant') {
+            let content = typeof m.content === 'string' ? m.content : '';
+            content = content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
+            return { role: m.role, content };
+        }
         if (m.role === 'user' && state.userPrefix) {
             let contentCopy = JSON.parse(JSON.stringify(m.content));
             if (typeof contentCopy === 'string') {
