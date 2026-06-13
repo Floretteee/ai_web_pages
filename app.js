@@ -1127,7 +1127,7 @@ async function executeChatRequest(currentChat) {
                 break;
             }
             if (retry < maxRetries) {
-                await new Promise(r => setTimeout(r, 2000));
+                await new Promise(r => setTimeout(r, retry * 3000));
             } else {
                 renderMarkdownIntoElement(botDomObj.contentNode, botReply + `\n\n请求失败，已重试 ${maxRetries} 次。错误: ` + error.message);
                 showToast("消息请求失败，请重试");

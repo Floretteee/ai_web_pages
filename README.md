@@ -46,4 +46,4 @@ wrangler pages deploy . --project-name=fimall-ai-web
 
 ## 技术栈
 
-纯原生 HTML / CSS / JavaScript，无任何构建工具依赖。
+核心运行时为纯原生 HTML / CSS / JavaScript，构建阶段使用 esbuild 处理 DOMD 渲染器。
