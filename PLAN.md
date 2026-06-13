@@ -1,0 +1,157 @@
+# Fimall Chat 改进计划
+
+> 本计划排除安全/隐私相关项（API Key 存储、CSP、XSS 审计等）。以下聚焦代码结构、性能、工程化、可访问性与 UI 体验。
+
+## 一、代码结构重构
+
+### 1.1 拆分 app.js
+- **现状**：`app.js` 共 1619 行，状态、网络、渲染、导出、队列、UI 全部耦合。
+- **目标**：拆分为多个职责单一的模块。
+  - `state.js`：全局状态初始化、读取、持久化。
+  - `api.js`：`fetchModels`、`executeChatRequest`、`generateTitle`、重试、超时控制。
+  - `renderer.js`：Markdown/Math/代码高亮、消息 DOM 创建、增量渲染。
+  - `export.js`：HTML/Markdown/JSON 导入导出。
+  - `queue.js`：消息队列逻辑。
+  - `ui.js`：侧边栏、设置面板、右键菜单、自定义 select、toast/confirm。
+- **验证标准**：每个模块行数控制在 400 行以内，模块间通过明确 import/export 依赖。
+
+### 1.2 统一状态管理
+- **现状**：`state` 为全局可变对象，多处直接修改字段。
+- **目标**：
+  - 所有写操作通过 `updateState(patch)` 或专用 action 函数完成。
+  - 已引入 `immer`，可借机使用不可更新模式减少深拷贝BUG。
+  - 将 `_lastRenderedContent` 等运行时临时字段从持久化对象中剥离。
+
+### 1.3 抽象 UI 组件
+- **现状**：toast、confirm、context menu、custom select 等均由原生 DOM API 拼写。
+- **目标**：
+  - 为重复 UI 模式建立轻量级工厂函数，例如 `createToast(message)`、`createConfirm(message)`。
+  - 自定义 select 补齐键盘导航与 ARIA 状态。
+
+## 二、性能与存储
+
+### 2.1 聊天记录持久化升级
+- **现状**：`localStorage` 序列化全部聊天记录，大 base64 图片极易撑爆 5-10MB 限制。
+- **目标**：
+  - 主数据迁移到 IndexedDB，使用 `idb` 或原生 IndexedDB 封装。
+  - `localStorage` 仅保留轻量配置（模型、主题、 preset 名等）。
+  - 图片不再以 base64 原样累加，可做以下任一：
+    - 压缩/缩略图后存储；
+    - 仅保留最新 N 张图片；
+    - 对话导出时再由 IndexedDB 还原。
+
+### 2.2 消息列表虚拟滚动或分页
+- **现状**：长对话所有消息一次性挂载在 DOM 中，滚动与重渲染都会越来越慢。
+- **目标**：
+  - 首屏只渲染最近 N 条（如 50 条），向上滚动时动态加载历史。
+  - 或引入虚拟滚动（自行实现或引入轻量库），仅渲染可视区域内的消息。
+
+### 2.3 渲染性能优化
+- **现状**：`renderMessages` 虽有增量追加逻辑，但 `msgs.slice(0, existingWrappers.length).every(...)` 每次遍历生成 JSON.stringify 比较，流量大时仍有开销。
+- **目标**：
+  - 给消息引入稳定版本戳/version，比较版本号而非字符串化内容。
+  - `executeChatRequest` 中 scheduler 刷新可降低频率（如 60ms → 120ms），减少大段 Markdown 重复渲染。
+
+### 2.4 节流/防抖优化
+- **现状**：`throttledKeepMobileVisible` 使用 setTimeout，节流精度一般。
+- **目标**：使用 `requestAnimationFrame` + 时间戳实现更平滑的 viewport 适配。
+
+## 三、工程化与构建
+
+### 3.1 自动化代码规范
+- **目标**：
+  - 引入 ESLint + Prettier，避免全局变量污染、未使用变量、隐式类型转换等问题。
+  - 添加 `lint`、`format` npm scripts。
+  - 推荐在 Git 仓库配置 pre-commit hook（如 `lint-staged`）。
+
+### 3.2 Service Worker 版本管理
+- **现状**：`sw.js` 中 `CACHE_VERSION` 硬编码为 `fimall-chat-sw-v6`，每次更新容易遗漏。
+- **目标**：
+  - 构建脚本读取 `package.json` 版本，写入 `CACHE_VERSION`（如 `fimall-chat-sw-v1.0.0`）。
+  - 页面监听 `controllerchange`，提示用户“新版本可用，点击刷新”。
+
+### 3.3 CSS 结构优化
+- **现状**：`styles.css` 997 行，混合通用、组件、响应式。
+- **目标**：
+  - 拆分为 `base.css`、`components.css`、`responsive.css`。
+  - 统一 magic number（如 768px、52px 等）为 CSS 变量。
+  - 减少重复动画定义，集中管理 keyframes。
+
+## 四、错误处理与可靠性
+
+### 4.1 请求超时控制
+- **现状**：API 调用没有 timeout，网络异常时仅有 fetch 原生失败。
+- **目标**：
+  - 所有 `fetch` 使用 `AbortSignal.timeout(ms)` 或手动包装 timeout。
+  - 模型列表、对话请求、标题生成分别设置合理超时。
+
+### 4.2 网络状态感知
+- **目标**：监听 `navigator.onLine`，离线时禁用发送按钮并提示；恢复后自动刷新模型列表。
+
+### 4.3 更友好的错误提示
+- **现状**：`showToast("消息请求失败，请重试")` 信息过于笼统。
+- **目标**：区分 HTTP 状态码（401/429/500/503）、网络断开、超时，给出不同提示。
+
+## 五、可访问性（a11y）
+
+### 5.1 自定义组件键盘支持
+- **自定义 select**：
+  - 打开后支持 ↑/↓ 选择、Enter 确认、Esc 关闭。
+  - 维护 `aria-expanded`、`aria-selected`。
+- **右键菜单**：支持 Esc 关闭、方向键聚焦。
+- **模态框（设置/聊天设置）**：
+  - 打开时焦点移入首个可聚焦元素。
+  - Tab 键限定在模态框内循环（focus trap）。
+  - 关闭后焦点回到触发元素。
+
+### 5.2 语义化增强
+- 消息列表使用 `role="log"`、`aria-live="polite"`，新增消息时屏幕阅读器可自动朗读。
+- 发送按钮增加 `aria-label`，生成中时改为“停止生成”。
+
+## 六、UI / 体验
+
+### 6.1 深色模式
+- **目标**：
+  - 添加 `dark` 类切换，所有 CSS 变量支持暗色值。
+  - 用户偏好持久化到 `localStorage`。
+  - 跟随系统 `prefers-color-scheme`。
+
+### 6.2 消息搜索
+- **目标**：在侧边栏或聊天顶部增加搜索框，按关键字过滤当前对话消息。
+
+### 6.3 代码块一键复制
+- **目标**：每个 `<pre>` 右上角增加复制按钮，复制代码原文到剪贴板。
+
+### 6.4 输入限制与提示
+- 增加 `maxlength`（如 8000）与字符计数。
+- 粘贴大段文本时给出提示。
+
+### 6.5 模型列表缓存
+- **目标**：获取成功后缓存模型列表与最后更新时间，24h 内不再重复请求；用户可手动刷新。
+
+### 6.6 导入合并而非覆盖
+- **现状**：导入 JSON 直接覆盖全部聊天记录。
+- **目标**：提供“合并导入”选项，按对话 ID 去重或新增；保留覆盖选项供高级用户选择。
+
+### 6.7 队列体验优化
+- 当前队列图标默认隐藏，仅在生成中显示，发现性较低。
+- 目标：队列按钮常驻，有队列项时显示 badge；支持拖拽排序。
+
+## 七、测试
+
+- **目标**：
+  - 单元测试：Markdown 解析/导出、过滤模式、状态序列化。
+  - 端到端测试：使用 Playwright 验证新建对话、发送消息、导出流程。
+  - 至少覆盖关键路径：发送→接收→保存→刷新不丢失。
+
+## 八、实施顺序建议
+
+1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、SW 版本管理、CSS 拆分。
+2. **再做结构**：拆分 `app.js`、抽象 UI 组件。
+3. **接着性能**：IndexedDB 迁移、消息列表分片渲染。
+4. **最后体验**：深色模式、搜索、复制代码块、测试。
+
+## 附录：暂不涉及
+
+- 安全/隐私相关改造（按项目方要求跳过）。
+- `presets.js`  prompt 内容本身（仅改进 preset 系统的技术架构可在后续单独进行）。
