@@ -114,13 +114,14 @@
                             <option value="assistant">仅助手消息</option>
                         </select>
                     </div>
-                </div>
-                <div class="toggle-container">
-                    <input type="checkbox" id="filterThinkToggle" onclick="saveSettings()" checked>
-                    <label class="toggle-label" for="filterThinkToggle">
-                        <span class="toggle-text">导出时过滤思考内容</span>
-                        <span class="toggle-switch"></span>
-                    </label>
+                    <div class="settings-group">
+                        <label>导出标签过滤</label>
+                        <select id="filterModeSelect" onchange="saveSettings()">
+                            <option value="none">不过滤</option>
+                            <option value="think">过滤思考</option>
+                            <option value="all">过滤所有包裹内容</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="data-actions"><button onclick="exportJSON()">导出历史</button><button onclick="importJSON()">导入历史</button></div>
             </div>

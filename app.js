@@ -2,6 +2,27 @@ const API_BASE = "https://api.fimall.cfd/v1";
 const THINK_TAG_PATTERN = /<\/?\s*think(?:ing)?\b[^>]*>/i;
 const CLOSED_THINK_BLOCK_PATTERN = /<\s*think(?:ing)?\b[^>]*>([\s\S]*?)<\/\s*think(?:ing)?\s*>/i;
 const CLOSED_THINK_BLOCK_PATTERN_GLOBAL = /<\s*think(?:ing)?\b[^>]*>[\s\S]*?<\/\s*think(?:ing)?\s*>/gi;
+const ALL_WRAPPER_TAG_PATTERN_GLOBAL = /<\s*([a-zA-Z][\w:-]*)(\s[^>]*)?>[\s\S]*?<\/\s*\1\s*>/gi;
+
+function filterExportContent(content, mode) {
+    if (!mode || mode === 'none' || typeof content !== 'string') return content;
+    let result = content;
+    if (mode === 'think') {
+        result = result.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
+    } else if (mode === 'all') {
+        let changed = true;
+        while (changed) {
+            changed = false;
+            result = result.replace(ALL_WRAPPER_TAG_PATTERN_GLOBAL, (match, tagName) => {
+                if (STANDARD_HTML_TAGS.has(tagName.toLowerCase())) return match;
+                changed = true;
+                return '';
+            });
+        }
+        result = result.trim();
+    }
+    return result;
+}
 const STANDARD_HTML_TAGS = new Set('a abbr address area article aside audio b bdi bdo blockquote br button canvas caption cite code col colgroup data datalist dd del details dfn dialog div dl dt em embed fieldset figcaption figure footer form h1 h2 h3 h4 h5 h6 header hgroup hr i iframe img input ins kbd label legend li main map mark menu meter nav object ol optgroup option output p picture pre progress q rp rt ruby s samp script search section select slot small source span strong style sub summary sup table tbody td template textarea tfoot th thead time title tr track u ul var video wbr'.split(' '));
 
 const loadedAssets = new Map();
@@ -383,7 +404,7 @@ let state = {
     userPrefix: localStorage.getItem('ai_user_prefix') || '',
     selectedPreset: localStorage.getItem('ai_selected_preset') || 'custom',
     htmlStyle: localStorage.getItem('ai_html_style') || 'autumn',
-    filterThink: localStorage.getItem('ai_filter_think') !== 'false',
+    filterMode: localStorage.getItem('ai_filter_mode') || (localStorage.getItem('ai_filter_think') !== 'false' ? 'think' : 'none'),
     exportRole: localStorage.getItem('ai_export_role') || 'both',
     chats: JSON.parse(localStorage.getItem('ai_chats')) || [], currentChatId: localStorage.getItem('ai_current_chat_id') || null,
     attachment: null, editingIndex: -1
@@ -402,7 +423,7 @@ const DOM = {
     sidebarBackdrop: document.getElementById('sidebarBackdrop'), htmlStyleSelect: document.getElementById('htmlStyleSelect'),
     mainChat: document.querySelector('.main-chat'),
     settingsBackdrop: document.getElementById('settingsBackdrop'),
-    contextMenu: document.getElementById('contextMenu'), filterThinkToggle: document.getElementById('filterThinkToggle'),
+    contextMenu: document.getElementById('contextMenu'), filterModeSelect: document.getElementById('filterModeSelect'),
     exportRoleSelect: document.getElementById('exportRoleSelect'),
     chatSettingsBackdrop: document.getElementById('chatSettingsBackdrop'),
     chatSettingsContainer: document.getElementById('chatSettingsContainer'),
@@ -491,7 +512,7 @@ function init() {
     DOM.systemPromptInput.value = state.systemPrompt;
     DOM.userPrefixInput.value = state.userPrefix;
     DOM.htmlStyleSelect.value = state.htmlStyle;
-    DOM.filterThinkToggle.checked = state.filterThink;
+    DOM.filterModeSelect.value = state.filterMode;
     DOM.exportRoleSelect.value = state.exportRole;
 
     DOM.presetSelect.innerHTML = '<option value="custom">自定义</option>';
@@ -586,7 +607,7 @@ function saveSettings() {
     state.userPrefix = DOM.userPrefixInput.value;
     state.selectedPreset = DOM.presetSelect.value;
     state.htmlStyle = DOM.htmlStyleSelect.value;
-    state.filterThink = DOM.filterThinkToggle.checked;
+    state.filterMode = DOM.filterModeSelect.value;
     state.exportRole = DOM.exportRoleSelect.value;
 
     if (_saveSettingsTimer) clearTimeout(_saveSettingsTimer);
@@ -595,7 +616,7 @@ function saveSettings() {
         localStorage.setItem('ai_api_key', state.apiKey); localStorage.setItem('ai_selected_model', state.selectedModel);
         localStorage.setItem('ai_title_model', state.titleModel); localStorage.setItem('ai_system_prompt', state.systemPrompt);
         localStorage.setItem('ai_user_prefix', state.userPrefix); localStorage.setItem('ai_selected_preset', state.selectedPreset);
-        localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_think', state.filterThink);
+        localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_mode', state.filterMode);
         localStorage.setItem('ai_export_role', state.exportRole);
         refreshAllCustomSelects();
         updatePrefixBadge();
@@ -1299,7 +1320,7 @@ function exportChatMarkdown() {
     const chat = state.chats.find(c => c.id === contextMenuChatId);
     if (!chat) return;
     
-    const filterThink = state.filterThink;
+    const filterMode = state.filterMode;
     const exportRole = state.exportRole;
     
     let md = `# ${chat.title || '新对话'}\n\n`;
@@ -1311,10 +1332,7 @@ function exportChatMarkdown() {
             ? msg.content.find(c => c.type === 'text')?.text || '' 
             : msg.content;
         
-        let displayContent = content;
-        if (filterThink) {
-            displayContent = content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
-        }
+        const displayContent = filterExportContent(content, filterMode);
         
         if (msg.role === 'user') {
             md += `## 用户\n\n${displayContent}\n\n`;
@@ -1396,7 +1414,7 @@ function exportChatHTML() {
     }
     
     let messagesHtml = '';
-    const filterThink = state.filterThink;
+    const filterMode = state.filterMode;
     const exportRole = state.exportRole;
     
     chat.messages.forEach(msg => {
@@ -1407,10 +1425,7 @@ function exportChatHTML() {
             ? msg.content.find(c => c.type === 'text')?.text || '' 
             : (msg.content || '');
         
-        let displayContent = content;
-        if (filterThink && typeof displayContent === 'string') {
-            displayContent = displayContent.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
-        }
+        const displayContent = filterExportContent(content, filterMode);
         
         if (!displayContent) return;
         
@@ -1576,7 +1591,7 @@ registerServiceWorker();
 // 页面关闭前刷新待处理的存储
 window.addEventListener('beforeunload', () => {
     if (_saveTimer) { clearTimeout(_saveTimer); _saveStateSync(); }
-    if (_saveSettingsTimer) { clearTimeout(_saveSettingsTimer); localStorage.setItem('ai_api_key', state.apiKey); localStorage.setItem('ai_selected_model', state.selectedModel); localStorage.setItem('ai_title_model', state.titleModel); localStorage.setItem('ai_system_prompt', state.systemPrompt); localStorage.setItem('ai_user_prefix', state.userPrefix); localStorage.setItem('ai_selected_preset', state.selectedPreset); localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_think', state.filterThink); localStorage.setItem('ai_export_role', state.exportRole); }
+    if (_saveSettingsTimer) { clearTimeout(_saveSettingsTimer); localStorage.setItem('ai_api_key', state.apiKey); localStorage.setItem('ai_selected_model', state.selectedModel); localStorage.setItem('ai_title_model', state.titleModel); localStorage.setItem('ai_system_prompt', state.systemPrompt); localStorage.setItem('ai_user_prefix', state.userPrefix); localStorage.setItem('ai_selected_preset', state.selectedPreset); localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_mode', state.filterMode); localStorage.setItem('ai_export_role', state.exportRole); }
 });
 
 // 标签页切换恢复
