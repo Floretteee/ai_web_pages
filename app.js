@@ -48,6 +48,35 @@ function escapeNonStandardHtmlTags(text) {
     });
 }
 
+const NONSTANDARD_TAG_PATTERN_GLOBAL = /<\s*([a-zA-Z][\w:-]*)(\s[^>]*)?>([\s\S]*?)<\/\s*\1\s*>/gi;
+
+function extractNonStandardCollapsibleTags(text, store) {
+    let result = String(text || '');
+    let changed = true;
+    while (changed) {
+        changed = false;
+        result = result.replace(NONSTANDARD_TAG_PATTERN_GLOBAL, (match, tagName, _attrs, inner) => {
+            if (STANDARD_HTML_TAGS.has(tagName.toLowerCase()) || tagName.toLowerCase() === 'think' || tagName.toLowerCase() === 'thinking') return match;
+            changed = true;
+            const idx = store.length;
+            store.push({ tagName, inner });
+            return `\x00NS_TAG_${idx}\x00`;
+        });
+    }
+    return result;
+}
+
+function restoreNonStandardCollapsibleTags(html, store) {
+    if (!store || !store.length) return html;
+    return html.replace(/\x00NS_TAG_(\d+)\x00/g, (_, idx) => {
+        const item = store[parseInt(idx, 10)];
+        if (!item) return '';
+        const label = escapeHtml(item.tagName);
+        const innerHtml = renderMarkdownToHtml(item.inner);
+        return `<details class="ns-tag-block think-block"><summary class="think-summary ns-tag-summary">${label}</summary><div class="think-content ns-tag-content markdown-body">${innerHtml}</div></details>`;
+    });
+}
+
 function highlightCodeBlocks(container) {
     if (!window.hljs || !container) return;
     container.querySelectorAll('pre code:not(.hljs)').forEach((block) => {
@@ -70,7 +99,9 @@ function renderMath(container) {
 }
 
 function renderMarkdownToHtml(markdown) {
-    const source = escapeNonStandardHtmlTags(markdown || '');
+    const nsTagStore = [];
+    const afterExtract = extractNonStandardCollapsibleTags(markdown || '', nsTagStore);
+    const source = escapeNonStandardHtmlTags(afterExtract);
     const mathBlocks = [];
     let protectedContent = source.replace(/\$\$([\s\S]*?)\$\$/g, (_, math) => {
         const idx = mathBlocks.length;
@@ -96,6 +127,7 @@ function renderMarkdownToHtml(markdown) {
         const mathText = item.display ? `$$${item.math}$$` : `$${item.math}$`;
         html = html.replaceAll(token, escapeHtml(mathText));
     });
+    html = restoreNonStandardCollapsibleTags(html, nsTagStore);
     return DOMPurify.sanitize(html);
 }
 

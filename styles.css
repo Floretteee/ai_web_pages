@@ -988,3 +988,10 @@ body {
 .think-content p:last-child {
     margin-bottom: 0;
 }
+
+.ns-tag-summary {
+    font-family: 'SF Mono', 'Consolas', 'Monaco', monospace;
+    font-size: 12px;
+    color: #888;
+    letter-spacing: 0.3px;
+}
