@@ -30,7 +30,18 @@
     height: 52px; max-height: 200px; line-height: 1.5;
 }
 
-.send-btn { background-color: var(--accent-color); color: white; border: none; width: 52px; height: 52px; border-radius: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); flex-shrink: 0; }
+.send-btn { background-color: var(--accent-color); color: white; border: none; width: 52px; height: 52px; border-radius: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); flex-shrink: 0; position: relative; }
+.send-btn-trim-badge {
+    position: absolute; right: -2px; bottom: -2px;
+    width: 22px; height: 22px; border-radius: 50%;
+    background: #e74c3c; color: #fff; border: 2px solid #fff;
+    display: none; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25); pointer-events: none;
+    animation: scaleIn 0.2s ease;
+}
+.send-btn-trim-badge.show { display: flex; }
+.send-btn-trim-badge svg { width: 12px; height: 12px; fill: currentColor; }
+@keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
 .send-btn:hover { background-color: #333; transform: translateY(-2px) scale(1.02); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
 .send-btn:disabled { background-color: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
 .send-btn svg { fill: white; width: 20px; height: 20px; margin-left: 2px; }

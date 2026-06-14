@@ -38,9 +38,11 @@ function initDOM() {
         chatSettingsBackdrop: document.getElementById('chatSettingsBackdrop'),
         chatSettingsContainer: document.getElementById('chatSettingsContainer'),
         chatMaxTokensInput: document.getElementById('chatMaxTokensInput'),
+        chatContextLimitInput: document.getElementById('chatContextLimitInput'),
         chatTemperatureRange: document.getElementById('chatTemperatureRange'),
         chatTemperatureDisplay: document.getElementById('chatTemperatureDisplay'),
-        chatStreamToggle: document.getElementById('chatStreamToggle')
+        chatStreamToggle: document.getElementById('chatStreamToggle'),
+        trimBadge: document.getElementById('trimBadge')
     });
 }
 
@@ -83,6 +85,7 @@ function saveSettings() {
         localStorage.setItem('ai_export_role', state.exportRole);
         refreshAllCustomSelects();
         updatePrefixBadge();
+        updateTrimIndicator();
     }, 100);
 }
 

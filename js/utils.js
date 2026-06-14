@@ -72,6 +72,25 @@ function isSafeExportUrl(url) {
     return value;
 }
 
+function estimateTokens(content) {
+    if (!content) return 0;
+    if (Array.isArray(content)) {
+        return content.reduce((sum, part) => {
+            if (part.type === 'text') return sum + estimateTokens(part.text);
+            if (part.type === 'image_url') return sum + 512;
+            return sum;
+        }, 0);
+    }
+    const str = String(content);
+    let weighted = 0;
+    for (const ch of str) weighted += ch.charCodeAt(0) > 127 ? 4 : 1;
+    return Math.max(1, Math.ceil(weighted / 16));
+}
+
+function estimateMessagesTokens(messages) {
+    return messages.reduce((sum, m) => sum + estimateTokens(m.content) + 4, 0);
+}
+
 function filterExportContent(content, mode) {
     if (!mode || mode === 'none' || typeof content !== 'string') return content;
     let result = content;

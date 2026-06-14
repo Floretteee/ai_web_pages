@@ -27,33 +27,52 @@ async function fetchModels() {
     }
 }
 
-async function executeChatRequest(currentChat) {
+async function executeChatRequest(currentChat, preparedMessages) {
     abortController = new AbortController();
     updateSendButton(true);
+    updateTrimIndicator();
     DOM.loadingIndicator.style.display = 'block';
     if (autoScroll) scrollToBottom();
 
-    let apiMessages = currentChat.messages.map(m => {
-        if (m.role === 'assistant') {
-            let content = typeof m.content === 'string' ? m.content : '';
-            content = content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
-            return { role: m.role, content };
-        }
-        if (m.role === 'user' && state.userPrefix) {
-            let contentCopy = JSON.parse(JSON.stringify(m.content));
-            if (typeof contentCopy === 'string') {
-                contentCopy = state.userPrefix + contentCopy;
-            } else if (Array.isArray(contentCopy)) {
-                let textPart = contentCopy.find(c => c.type === 'text');
-                if (textPart) textPart.text = state.userPrefix + textPart.text;
+    let apiMessages;
+    if (preparedMessages && preparedMessages.length > 0) {
+        apiMessages = preparedMessages.map(m => {
+            if (m.role === 'assistant') {
+                let content = typeof m.content === 'string' ? m.content : '';
+                content = content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
+                return { role: m.role, content };
             }
-            return { role: m.role, content: contentCopy };
-        }
-        return { role: m.role, content: m.content };
-    });
-
-    if (state.systemPrompt) {
-        apiMessages.unshift({ role: 'system', content: state.systemPrompt });
+            if (m.role === 'user' && state.userPrefix) {
+                let contentCopy = JSON.parse(JSON.stringify(m.content));
+                if (typeof contentCopy === 'string') {
+                    contentCopy = state.userPrefix + contentCopy;
+                } else if (Array.isArray(contentCopy)) {
+                    let textPart = contentCopy.find(c => c.type === 'text');
+                    if (textPart) textPart.text = state.userPrefix + textPart.text;
+                }
+                return { role: m.role, content: contentCopy };
+            }
+            return { role: m.role, content: m.content };
+        });
+    } else {
+        apiMessages = buildContextWithTrim(currentChat).messages.map(m => {
+            if (m.role === 'assistant') {
+                let content = typeof m.content === 'string' ? m.content : '';
+                content = content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
+                return { role: m.role, content };
+            }
+            if (m.role === 'user' && state.userPrefix) {
+                let contentCopy = JSON.parse(JSON.stringify(m.content));
+                if (typeof contentCopy === 'string') {
+                    contentCopy = state.userPrefix + contentCopy;
+                } else if (Array.isArray(contentCopy)) {
+                    let textPart = contentCopy.find(c => c.type === 'text');
+                    if (textPart) textPart.text = state.userPrefix + textPart.text;
+                }
+                return { role: m.role, content: contentCopy };
+            }
+            return { role: m.role, content: m.content };
+        });
     }
 
     const targetIndex = currentChat.messages.length;
@@ -228,6 +247,7 @@ async function executeChatRequest(currentChat) {
 
     abortController = null;
     updateSendButton(false);
+    updateTrimIndicator();
     DOM.loadingIndicator.style.display = 'none';
     DOM.userInput.focus();
 

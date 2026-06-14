@@ -13,13 +13,13 @@
     <script src="vendor/dompurify/purify.min.js" defer></script>
 
     <link rel="stylesheet" href="vendor/domd/domd-renderer.css">
-    <link rel="stylesheet" href="css/base.css?v=3">
-    <link rel="stylesheet" href="css/components/sidebar.css?v=3">
-    <link rel="stylesheet" href="css/components/settings.css?v=3">
-    <link rel="stylesheet" href="css/components/chat.css?v=3">
-    <link rel="stylesheet" href="css/components/input.css?v=3">
-    <link rel="stylesheet" href="css/components/overlays.css?v=3">
-    <link rel="stylesheet" href="css/responsive.css?v=3">
+    <link rel="stylesheet" href="css/base.css?v=4">
+    <link rel="stylesheet" href="css/components/sidebar.css?v=4">
+    <link rel="stylesheet" href="css/components/settings.css?v=4">
+    <link rel="stylesheet" href="css/components/chat.css?v=4">
+    <link rel="stylesheet" href="css/components/input.css?v=4">
+    <link rel="stylesheet" href="css/components/overlays.css?v=4">
+    <link rel="stylesheet" href="css/responsive.css?v=4">
 </head>
 <body>
 
@@ -147,16 +147,28 @@
 
             <div class="settings-section">
                 <div class="settings-section-title">生成参数</div>
-                <div class="settings-group">
-                    <label>Max Tokens</label>
-                    <select id="chatMaxTokensInput" onchange="saveChatSettings()">
-                        <option value="0">不限</option>
-                        <option value="2048">2048</option>
-                        <option value="4096">4096</option>
-                        <option value="8192">8192</option>
-                        <option value="16384">16384</option>
-                        <option value="65535">65535</option>
-                    </select>
+                <div class="settings-grid">
+                    <div class="settings-group">
+                        <label>Max Tokens</label>
+                        <select id="chatMaxTokensInput" onchange="saveChatSettings()">
+                            <option value="0">不限</option>
+                            <option value="2048">2048</option>
+                            <option value="4096">4096</option>
+                            <option value="8192">8192</option>
+                            <option value="16384">16384</option>
+                            <option value="65535">65535</option>
+                        </select>
+                    </div>
+                    <div class="settings-group">
+                        <label>上下文限制 (Total Tokens)</label>
+                        <select id="chatContextLimitInput" onchange="saveChatSettings()">
+                            <option value="65536">64K</option>
+                            <option value="131072">128K</option>
+                            <option value="262144">256K</option>
+                            <option value="524288">512K</option>
+                            <option value="1048576">1M</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="settings-group">
                     <label>Temperature — <span id="chatTemperatureDisplay">0.7</span></label>
@@ -214,7 +226,12 @@
                 <button class="queue-btn" id="queueBtn" onclick="addToQueue()" title="加入队列">
                     <svg viewBox="0 0 24 24"><path d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg>
                 </button>
-                <button class="send-btn" id="sendBtn" onclick="sendMessage()"><svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg></button>
+                <button class="send-btn" id="sendBtn" onclick="sendMessage()">
+                    <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>
+                    <span class="send-btn-trim-badge" id="trimBadge" title="将丢弃开头部分上下文以控制 Token 总量">
+                        <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                    </span>
+                </button>
             </div>
         </div>
     </div>
@@ -222,14 +239,14 @@
     <input type="file" id="importInput" accept=".json" style="display: none;" onchange="handleFileImport(event)">
 
     <script src="presets.js" defer></script>
-    <script src="js/utils.js?v=4" defer></script>
-    <script src="js/renderer.js?v=4" defer></script>
-    <script src="js/state.js?v=4" defer></script>
-    <script src="js/components.js?v=4" defer></script>
-    <script src="js/ui.js?v=4" defer></script>
-    <script src="js/api.js?v=4" defer></script>
-    <script src="js/export.js?v=4" defer></script>
-    <script src="js/queue.js?v=4" defer></script>
-    <script src="js/app.js?v=4" defer></script>
+    <script src="js/utils.js?v=5" defer></script>
+    <script src="js/renderer.js?v=5" defer></script>
+    <script src="js/state.js?v=5" defer></script>
+    <script src="js/components.js?v=5" defer></script>
+    <script src="js/ui.js?v=5" defer></script>
+    <script src="js/api.js?v=5" defer></script>
+    <script src="js/export.js?v=5" defer></script>
+    <script src="js/queue.js?v=5" defer></script>
+    <script src="js/app.js?v=5" defer></script>
 </body>
 </html>

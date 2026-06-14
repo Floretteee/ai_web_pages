@@ -13,16 +13,16 @@ function handleFileUpload(event) {
         reader.readAsText(file);
     } event.target.value = '';
 }
-function clearAttachment() { state.attachment = null; DOM.attachmentPreview.innerHTML = ''; DOM.attachmentPreview.style.display = 'none'; }
+function clearAttachment() { state.attachment = null; DOM.attachmentPreview.innerHTML = ''; DOM.attachmentPreview.style.display = 'none'; updateTrimIndicator(); }
 
 function createNewChat(render = true) {
     if (render) closeSettings();
-    const newChat = { id: Date.now().toString(), title: "新对话", messages: [], maxTokens: 0, temperature: 0.7, stream: true };
+    const newChat = { id: Date.now().toString(), title: "新对话", messages: [], maxTokens: 0, contextLimit: 65536, contextLimitWarned: false, temperature: 0.7, stream: true };
     state.chats.unshift(newChat); state.currentChatId = newChat.id; state.editingIndex = -1; saveState();
-    if (render) { renderChatList(); renderMessages(); DOM.userInput.focus(); }
+    if (render) { renderChatList(); renderMessages(); updateTrimIndicator(); DOM.userInput.focus(); }
 }
 
-function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; saveState(); renderChatList(); renderMessages(); closeSettings(); closeSidebar(); }
+function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; saveState(); renderChatList(); renderMessages(); updateTrimIndicator(); closeSettings(); closeSidebar(); }
 
 async function deleteChat(id, event) {
     event.stopPropagation();
@@ -36,7 +36,7 @@ async function deleteChat(id, event) {
 async function clearCurrentChat() {
     if (!(await showConfirm("确定清空当前对话的所有消息吗？此操作无法撤销。"))) return;
     const chat = state.chats.find(c => c.id === state.currentChatId);
-    if(chat) { chat.messages = []; state.editingIndex = -1; saveState(); renderMessages(); showToast("对话已清空"); }
+    if(chat) { chat.messages = []; state.editingIndex = -1; saveState(); renderMessages(); updateTrimIndicator(); showToast("对话已清空"); }
 }
 
 function renderChatList() {
@@ -67,7 +67,7 @@ function copyMessage(index) {
 async function deleteMessage(index) {
     if (!(await showConfirm("确定删除此条消息吗？"))) return;
     const chat = state.chats.find(c => c.id === state.currentChatId);
-    chat.messages.splice(index, 1); saveState(); renderMessages();
+    chat.messages.splice(index, 1); saveState(); renderMessages(); updateTrimIndicator();
 }
 
 function startEdit(index) { state.editingIndex = index; renderMessages(); }
@@ -78,7 +78,7 @@ function saveEdit(index, newText) {
         let textPart = chat.messages[index].content.find(c => c.type === 'text');
         if(textPart) textPart.text = newText;
     } else { chat.messages[index].content = newText; }
-    state.editingIndex = -1; saveState(); renderMessages(); showToast("修改已保存");
+    state.editingIndex = -1; saveState(); renderMessages(); updateTrimIndicator(); showToast("修改已保存");
 }
 
 async function retryMessage(index) {
@@ -195,6 +195,72 @@ function renderMessages() {
     setTimeout(() => { if (autoScroll) scrollToBottom(); }, 50);
 }
 
+function buildContextWithTrim(chat, newUserContent = null) {
+    const limit = chat && chat.contextLimit ? chat.contextLimit : 0;
+    const systemMsg = state.systemPrompt ? { role: 'system', content: state.systemPrompt } : null;
+    const newMsg = newUserContent !== null ? { role: 'user', content: newUserContent } : null;
+
+    const conversationMsgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
+
+    let messages = systemMsg ? [systemMsg] : [];
+    messages.push(...conversationMsgs);
+    if (newMsg) messages.push(newMsg);
+
+    if (!limit) return { messages, trimmed: false, skippedRounds: 0 };
+
+    const msgTokens = (msg) => {
+        const base = estimateTokens(msg.content) + 4;
+        return (msg.role === 'user' && state.userPrefix) ? base + estimateTokens(state.userPrefix) : base;
+    };
+
+    let total = messages.reduce((sum, m) => sum + msgTokens(m), 0);
+    if (total <= limit) return { messages, trimmed: false, skippedRounds: 0 };
+
+    // Trim whole conversation rounds from the beginning, while preserving system and the newest message.
+    let startIdx = systemMsg ? 1 : 0;
+    let skippedRounds = 0;
+    const minKeepEnd = newMsg ? 1 : 0;
+
+    while (total > limit && startIdx < messages.length - minKeepEnd - 1) {
+        if (messages[startIdx]?.role === 'user' && messages[startIdx + 1]?.role === 'assistant') {
+            total -= msgTokens(messages[startIdx]);
+            total -= msgTokens(messages[startIdx + 1]);
+            startIdx += 2;
+            skippedRounds++;
+        } else {
+            total -= msgTokens(messages[startIdx]);
+            startIdx++;
+        }
+    }
+
+    const trimmed = skippedRounds > 0 || startIdx > (systemMsg ? 1 : 0);
+    const result = [];
+    if (systemMsg) result.push(systemMsg);
+    for (let i = startIdx; i < messages.length; i++) {
+        if (!newMsg || messages[i] !== newMsg) result.push(messages[i]);
+    }
+    if (newMsg) result.push(newMsg);
+    return { messages: result, trimmed, skippedRounds };
+}
+
+function updateTrimIndicator() {
+    if (!DOM.trimBadge || !state.currentChatId) return;
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    if (!chat) return;
+
+    const text = DOM.userInput.value.trim();
+    const checkContent = text || state.attachment ? (text || '') : null;
+    let newContent = null;
+    if (checkContent !== null) {
+        newContent = state.attachment
+            ? [{ type: 'text', text: checkContent || '分析这张图片' }, { type: 'image_url', image_url: { url: state.attachment } }]
+            : checkContent;
+    }
+
+    const { trimmed } = buildContextWithTrim(chat, newContent);
+    DOM.trimBadge.classList.toggle('show', trimmed);
+}
+
 function handleKeydown(e) {
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
@@ -230,12 +296,22 @@ async function sendMessage() {
         clearAttachment();
     }
 
+    const { messages: preparedMessages, trimmed, skippedRounds } = buildContextWithTrim(currentChat, userMessageContent);
+    if (trimmed) {
+        const wasWarned = currentChat.contextLimitWarned;
+        if (!wasWarned) {
+            showToast(`上下文将超过 Token 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });
+            currentChat.contextLimitWarned = true;
+            saveState();
+        }
+    }
+
     currentChat.messages.push({ role: 'user', content: userMessageContent });
     DOM.userInput.value = ''; DOM.userInput.style.height = '52px'; state.editingIndex = -1; saveState(); renderMessages();
 
     if (isFirstMessage) generateTitle(currentChat.id, text || "分析图片");
 
-    await executeChatRequest(currentChat);
+    await executeChatRequest(currentChat, preparedMessages);
 }
 
 function renameChat() {
@@ -312,7 +388,7 @@ function init() {
     if (state.chats.length === 0) createNewChat(false);
     else {
         if (!state.currentChatId || !state.chats.find(c => c.id === state.currentChatId)) state.currentChatId = state.chats[0].id;
-        renderChatList(); renderMessages();
+        renderChatList(); renderMessages(); updateTrimIndicator();
     }
     if (state.apiKey && state.selectedModel) {
         DOM.modelSelect.innerHTML = `<option value="${state.selectedModel}">${state.selectedModel}</option>`;
@@ -334,6 +410,7 @@ function init() {
         this.style.height = '52px';
         this.style.height = (this.scrollHeight) + 'px';
         if (this.value === '') this.style.height = '52px';
+        updateTrimIndicator();
     });
 
     // 点击其他地方关闭右键菜单与聊天设置

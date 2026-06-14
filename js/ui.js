@@ -84,6 +84,8 @@ function openChatSettings() {
 
     DOM.chatMaxTokensInput.value = chat.maxTokens || 0;
     refreshCustomSelect(DOM.chatMaxTokensInput);
+    DOM.chatContextLimitInput.value = chat.contextLimit || 65536;
+    refreshCustomSelect(DOM.chatContextLimitInput);
     DOM.chatTemperatureRange.value = chat.temperature !== undefined ? chat.temperature : 0.7;
     DOM.chatTemperatureDisplay.textContent = DOM.chatTemperatureRange.value;
     DOM.chatStreamToggle.checked = chat.stream !== false;
@@ -107,10 +109,15 @@ function updateChatTemperatureDisplay() {
 function saveChatSettings() {
     const chat = state.chats.find(c => c.id === contextMenuChatId);
     if (!chat) return;
+    const newLimit = parseInt(DOM.chatContextLimitInput.value) || 0;
+    const oldLimit = chat.contextLimit || 0;
+    if (newLimit > oldLimit) chat.contextLimitWarned = false;
     chat.maxTokens = parseInt(DOM.chatMaxTokensInput.value) || 0;
+    chat.contextLimit = newLimit;
     chat.temperature = parseFloat(DOM.chatTemperatureRange.value);
     chat.stream = DOM.chatStreamToggle.checked;
     saveState();
+    updateTrimIndicator();
 }
 
 function handlePresetChange() {
@@ -123,4 +130,5 @@ function handlePresetChange() {
         DOM.userPrefixInput.value = '';
     }
     saveSettings();
+    updateTrimIndicator();
 }

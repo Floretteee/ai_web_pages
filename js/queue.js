@@ -60,11 +60,18 @@ async function processQueue() {
         const text = messageQueue.shift();
         renderQueue();
 
+        const { messages: preparedMessages, trimmed, skippedRounds } = buildContextWithTrim(currentChat, text);
+        if (trimmed && !currentChat.contextLimitWarned) {
+            showToast(`上下文将超过 Token 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });
+            currentChat.contextLimitWarned = true;
+            saveState();
+        }
+
         currentChat.messages.push({ role: 'user', content: text });
         saveState();
         renderMessages();
 
-        await executeChatRequest(currentChat);
+        await executeChatRequest(currentChat, preparedMessages);
     }
 
     isProcessingQueue = false;
