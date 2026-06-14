@@ -104,9 +104,10 @@ async function retryMessage(index) {
     await executeChatRequest(chat);
 }
 
-function createMessageDOM(msg, index) {
+function createMessageDOM(msg, index, isNew = false) {
     const wrapper = document.createElement('div');
     wrapper.className = `message-wrapper ${msg.role === 'user' ? 'user' : 'bot'}`;
+    if (isNew) wrapper.classList.add('animate-enter');
 
     if (index === state.editingIndex) {
         let textValue = msg.content;
@@ -225,7 +226,7 @@ function renderMessages() {
     if (isAppendOnly) {
         for (let i = existingWrappers.length; i < visibleMsgs.length; i++) {
             const realIdx = startIdx + i;
-            const domObj = createMessageDOM(visibleMsgs[i], realIdx);
+            const domObj = createMessageDOM(visibleMsgs[i], realIdx, true);
             DOM.chatMessages.appendChild(domObj.wrapper);
             visibleMsgs[i]._lastRenderedContent = typeof visibleMsgs[i].content === 'string' ? visibleMsgs[i].content : JSON.stringify(visibleMsgs[i].content);
         }
@@ -234,9 +235,12 @@ function renderMessages() {
         if (hasMore) {
             DOM.chatMessages.appendChild(createLoadMoreButton(startIdx));
         }
+        const sameChatFull = _lastRenderChatId === state.currentChatId;
+        const newCountThreshold = sameChatFull ? _lastRenderMsgCount : msgs.length;
         visibleMsgs.forEach((msg, i) => {
             const realIdx = startIdx + i;
-            const domObj = createMessageDOM(msg, realIdx);
+            const isNew = sameChatFull && realIdx >= newCountThreshold;
+            const domObj = createMessageDOM(msg, realIdx, isNew);
             DOM.chatMessages.appendChild(domObj.wrapper);
             msg._lastRenderedContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
         });

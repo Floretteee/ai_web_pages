@@ -1,25 +1,52 @@
 .settings-backdrop {
     position: fixed; inset: 0; z-index: 49;
-    background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0); backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px);
     opacity: 0; visibility: hidden; pointer-events: none;
-    transition: opacity 0.25s ease, visibility 0.25s ease;
+    transition: opacity var(--duration-exit) var(--ease-in-expo),
+                background-color var(--duration-exit) var(--ease-in-expo),
+                backdrop-filter var(--duration-exit) var(--ease-in-expo),
+                -webkit-backdrop-filter var(--duration-exit) var(--ease-in-expo),
+                visibility var(--duration-exit);
 }
-.settings-backdrop.show { opacity: 1; visibility: visible; pointer-events: auto; }
+.settings-backdrop.show {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: opacity var(--duration-enter) var(--ease-out-expo),
+                background-color var(--duration-enter) var(--ease-out-expo),
+                backdrop-filter var(--duration-enter) var(--ease-out-expo),
+                -webkit-backdrop-filter var(--duration-enter) var(--ease-out-expo),
+                visibility var(--duration-enter);
+}
 
 .chat-settings-backdrop {
     position: fixed; inset: 0; z-index: 49;
-    background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    background: rgba(0,0,0,0); backdrop-filter: blur(0px); -webkit-backdrop-filter: blur(0px);
     opacity: 0; visibility: hidden; pointer-events: none;
-    transition: opacity 0.25s ease, visibility 0.25s ease;
+    transition: opacity var(--duration-exit) var(--ease-in-expo),
+                background-color var(--duration-exit) var(--ease-in-expo),
+                backdrop-filter var(--duration-exit) var(--ease-in-expo),
+                -webkit-backdrop-filter var(--duration-exit) var(--ease-in-expo),
+                visibility var(--duration-exit);
 }
-.chat-settings-backdrop.show { opacity: 1; visibility: visible; pointer-events: auto; }
+.chat-settings-backdrop.show {
+    opacity: 1; visibility: visible; pointer-events: auto;
+    background: rgba(0,0,0,0.45); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    transition: opacity var(--duration-enter) var(--ease-out-expo),
+                background-color var(--duration-enter) var(--ease-out-expo),
+                backdrop-filter var(--duration-enter) var(--ease-out-expo),
+                -webkit-backdrop-filter var(--duration-enter) var(--ease-out-expo),
+                visibility var(--duration-enter);
+}
 
 .chat-settings-panel {
     position: fixed; top: 24px; left: 24px; right: 24px; bottom: 24px;
     display: flex; flex-direction: column; gap: 0; padding: 0;
     background: #fff; border-radius: 20px; overflow-y: auto;
     opacity: 0; transform: translateY(12px) scale(0.97);
-    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s ease;
+    will-change: transform, opacity;
+    transition: opacity var(--duration-exit) var(--ease-in-expo),
+                transform var(--duration-exit) var(--ease-in-expo),
+                visibility var(--duration-exit);
     visibility: hidden; pointer-events: none;
     z-index: 60; box-shadow: 0 25px 80px rgba(0,0,0,0.3);
     width: auto; height: auto; margin: 0;
@@ -27,6 +54,9 @@
 .chat-settings-panel.show {
     opacity: 1; transform: translateY(0) scale(1);
     visibility: visible; pointer-events: auto;
+    transition: opacity var(--duration-enter) var(--ease-out-expo),
+                transform var(--duration-enter) var(--ease-out-back),
+                visibility var(--duration-enter);
 }
 .chat-settings-panel .settings-section:last-child { margin-bottom: 28px; }
 .chat-settings-panel .range-wrapper {
@@ -51,7 +81,10 @@
     display: flex; flex-direction: column; gap: 0; padding: 0;
     background: #fff; border-radius: 20px; overflow-y: auto;
     opacity: 0; transform: translateY(12px) scale(0.97);
-    transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.25s ease;
+    will-change: transform, opacity;
+    transition: opacity var(--duration-exit) var(--ease-in-expo),
+                transform var(--duration-exit) var(--ease-in-expo),
+                visibility var(--duration-exit);
     visibility: hidden; pointer-events: none;
     z-index: 50; box-shadow: 0 25px 80px rgba(0,0,0,0.3);
     width: auto; height: auto; margin: 0;
@@ -59,6 +92,9 @@
 .settings-panel.show {
     opacity: 1; transform: translateY(0) scale(1);
     visibility: visible; pointer-events: auto;
+    transition: opacity var(--duration-enter) var(--ease-out-expo),
+                transform var(--duration-enter) var(--ease-out-back),
+                visibility var(--duration-enter);
 }
 
 .settings-panel-header {

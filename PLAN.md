@@ -107,32 +107,280 @@
 - 消息列表使用 `role="log"`、`aria-live="polite"`，新增消息时屏幕阅读器可自动朗读。
 - 发送按钮增加 `aria-label`，生成中时改为“停止生成”。
 
-## 六、UI / 体验
+## 六、UI 体验与丝滑过渡动画 (流畅性优化)
 
-### 6.1 深色模式
+### 6.1 动画设计语言与性能规范 (Motion Design System) ✅
+1. **动画基本原则 (Motion Principles)**
+   - **空间连续性**：动画必须提供物理和视觉上的因果关系（例如模态框应从触发源原位缩放淡入，侧边栏应从屏幕外平滑推入）。
+   - **GPU 硬件加速**：所有动画过渡仅对 `transform` 和 `opacity` 进行处理，严禁动画 `width`、`height`、`top`、`left`、`margin` 等属性，以防止浏览器触发重排 (Reflow) 导致掉帧。
+   - **交互响应性**：动画必须是可中断的 (Interruptible)，用户在动画进行中点击或滑动应能立刻交互。退出动画时长应比进入动画短 30%~40%（感觉更轻快）。
+
+2. **核心动画参数 (CSS 变量设计)**
+   ```css
+   :root {
+     /* 动画时长 (Duration) */
+     --duration-micro: 150ms;   /* 微交互: 悬停 hover、激活 active */
+     --duration-enter: 280ms;   /* 进入/展开: 模态框 modal-open、侧边栏 sidebar-open */
+     --duration-exit: 180ms;    /* 退出/关闭: 模态框 modal-close、侧边栏 sidebar-close */
+     --duration-stagger: 35ms;  /* 列表项交错渲染延迟 */
+
+     /* 缓动函数 (Easing) */
+     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);    /* 极致丝滑减速曲线，适合淡入和展开 */
+     --ease-in-expo: cubic-bezier(0.7, 0, 0.84, 0);     /* 极致加速曲线，适合淡出和收起 */
+     --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1); /* 微弹簧超调曲线，用于交互点击反馈 */
+     --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);      /* 对称平滑曲线，用于一般非突变过渡 */
+   }
+   ```
+
+### 6.2 关键组件丝滑过渡动画示例代码 (Example Implementations) ✅
+1. **侧边栏抽屉式滑入滑出**
+   ```css
+   .sidebar {
+     will-change: transform;
+     transition: transform var(--duration-enter) var(--ease-out-expo);
+     transform: translateX(-100%);
+   }
+   .sidebar.active {
+     transform: translateX(0);
+   }
+   .sidebar.exiting {
+     transition-duration: var(--duration-exit);
+     transition-timing-function: var(--ease-in-expo);
+     transform: translateX(-100%);
+   }
+   ```
+2. **毛玻璃模态框渐变与弹簧缩放**
+   ```css
+   .modal-backdrop {
+     will-change: backdrop-filter, background-color;
+     backdrop-filter: blur(0px);
+     background-color: rgba(0, 0, 0, 0);
+     transition: backdrop-filter var(--duration-enter) var(--ease-out-expo),
+                 background-color var(--duration-enter) var(--ease-out-expo);
+   }
+   .modal-backdrop.active {
+     backdrop-filter: blur(12px);
+     background-color: rgba(0, 0, 0, 0.4);
+   }
+   .modal-content {
+     will-change: transform, opacity;
+     transform: scale(0.95) translateY(12px);
+     opacity: 0;
+     transition: transform var(--duration-enter) var(--ease-out-back),
+                 opacity var(--duration-enter) var(--ease-out-expo);
+   }
+   .modal-content.active {
+     transform: scale(1) translateY(0);
+     opacity: 1;
+   }
+   .modal-content.exiting {
+     transition: transform var(--duration-exit) var(--ease-in-expo),
+                 opacity var(--duration-exit) var(--ease-in-expo);
+     transform: scale(0.95) translateY(12px);
+     opacity: 0;
+   }
+   ```
+3. **消息气泡流交错淡入 (Staggered Entrance)**
+   ```css
+   @keyframes msg-fade-in {
+     from {
+       opacity: 0;
+       transform: translateY(12px) scale(0.98);
+     }
+     to {
+       opacity: 1;
+       transform: translateY(0) scale(1);
+     }
+   }
+   .message-item {
+     animation: msg-fade-in var(--duration-enter) var(--ease-out-expo) both;
+   }
+   /* 动态交错延迟 */
+   .message-item {
+     animation-delay: calc(var(--msg-index, 0) * var(--duration-stagger));
+   }
+   ```
+4. **JS 级防抖滚动与 requestAnimationFrame 控制**
+   ```javascript
+   // 避免在消息连续生成时高频触发 scrollTo 导致重绘阻塞
+   let isScrollTicking = false;
+   function smoothScrollToBottom(container) {
+     if (isScrollTicking) return;
+     isScrollTicking = true;
+     requestAnimationFrame(() => {
+       container.scrollTo({
+         top: container.scrollHeight,
+         behavior: 'smooth'
+       });
+       isScrollTicking = false;
+     });
+   }
+   ```
+
+### 6.3 网页流畅性保障 (Jank-free Execution) ✅
+1. **消除布局抖动 (Layout Thrashing)**：严禁在动画执行或连续滚动期间混用 DOM 读取（如 `scrollTop`, `getBoundingClientRect`）与 DOM 写入（如修改 style）。读取必须做缓存或防抖，写入必须使用 `requestAnimationFrame` 批处理。
+2. **列表虚拟化与分片重绘**：结合 2.2 消息分页渲染，控制可视区域 DOM 树的节点数，避免深层 DOM 频繁进行无效重绘。
+3. **合理配置 `will-change`**：在 `.sidebar`、`.modal-content` 等经常做变换的元素上启用硬件加速，但在动画结束后或普通元素上不应滥用，防止 GPU 显存过载。
+4. **控制流式生成时的渲染频率**：在 `executeChatRequest` 中，调整流式 markdown 解析频率（如 100ms - 150ms 渲染一次），避免长文本生成时主线程被垃圾回收 (GC) 和大量 Markdown 转 DOM 阻塞。
+
+### 6.4 现有项目动画专项改造方案与示例代码 (Refactoring Roadmap) ✅
+针对目前项目中存在的动画性能和过渡生硬问题，制定以下重构路径与精确的代码修改方案：
+
+**完成内容**：
+- `css/base.css`：新增统一动画 token（`--duration-micro/enter/exit/stagger`、`--ease-out-expo/in-expo/out-back/in-out`），新增 `@keyframes msgFadeIn`，加入 `prefers-reduced-motion` 适配。
+- `css/components/sidebar.css`：`.sidebar-backdrop` 改为 `opacity + visibility + pointer-events + backdrop-filter` 联动机制，进入用 `--ease-out-expo`，退出（`.exiting`）用 `--ease-in-expo`，废除 `display:none` 硬切。
+- `css/responsive.css`：移动端 `.sidebar` 加 `will-change:transform`，进入 `--duration-enter/--ease-out-expo`，`.exiting` 走 `--duration-exit/--ease-in-expo`；PC 端遮罩用 `visibility/opacity` 隐藏而非 `display:none`，避免破坏过渡。
+- `css/components/settings.css`：设置 / 聊天设置面板 + 遮罩进出分流，进入 transform 用 `--ease-out-back` 弹簧曲线，退出统一用 `--ease-in-expo` 加速曲线，背景 backdrop-filter 平滑淡入淡出。
+- `css/components/chat.css`：剥离 `.message-wrapper` 默认 `animation`，仅 `.animate-enter` 触发 `msgFadeIn` 进场，避免历史 50 条同时渲染卡顿。
+- `js/app.js`：`createMessageDOM(msg, index, isNew)` 新增第三参数；`renderMessages` 增量追加分支统一 `isNew=true`，全量重绘分支根据 `_lastRenderMsgCount` 判断尾部新消息是否首次渲染。
+- `js/api.js`：流式机器人气泡 `createMessageDOM(..., true)` 启用进场动画。
+- `js/ui.js`：`scrollToBottom` 改用 `requestAnimationFrame` 单帧防抖；`keepMobileComposerVisible` 从 `setTimeout` 节流升级为 rAF 节流；`closeSidebar` / `closeSettings` / `closeChatSettings` 增加 `.exiting` 类完成"进出分流"，过渡结束自动清理。
+
+针对目前项目中存在的动画性能和过渡生硬问题，制定以下重构路径与精确的代码修改方案：
+
+1. **统一核心动画变量 (`css/base.css`)**
+   * **设计思想**：统一时长和缓动定义，提供清晰的微交互、进入与退出的过渡规范。
+   * **实例代码**：
+     ```css
+     :root {
+         /* 统一动画时长 */
+         --duration-micro: 150ms;   /* 微交互 */
+         --duration-enter: 280ms;   /* 打开/进入 */
+         --duration-exit: 180ms;    /* 关闭/退出 */
+         --duration-stagger: 35ms;  /* 消息交错渲染延迟 */
+         
+         /* 统一缓动函数 */
+         --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);    /* 极致减速（滑入/淡入） */
+         --ease-in-expo: cubic-bezier(0.7, 0, 0.84, 0);     /* 极致加速（滑出/淡出） */
+         --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1); /* 微弹性回弹 */
+     }
+     ```
+
+2. **手机端侧边栏背景遮罩平滑淡入淡出 (`css/components/sidebar.css` & `css/responsive.css`)**
+   * **设计思想**：废除传统的 `display: none`，采用 `opacity` + `visibility` + `pointer-events` 联动机制，防止动画瞬间硬切。配合 `backdrop-filter` 提升磨砂质感。
+   * **实例代码**：
+     ```css
+     .sidebar-backdrop {
+         position: fixed;
+         top: 0; left: 0; width: 100%; height: 100%;
+         background: rgba(0, 0, 0, 0.3);
+         backdrop-filter: blur(0px);
+         -webkit-backdrop-filter: blur(0px);
+         z-index: 9;
+         opacity: 0;
+         visibility: hidden;
+         pointer-events: none;
+         transition: opacity var(--duration-enter) var(--ease-out-expo),
+                     backdrop-filter var(--duration-enter) var(--ease-out-expo),
+                     visibility var(--duration-enter);
+     }
+     .sidebar-backdrop.show {
+         opacity: 1;
+         visibility: visible;
+         pointer-events: auto;
+         backdrop-filter: blur(6px);
+         -webkit-backdrop-filter: blur(6px);
+     }
+     ```
+
+3. **设置面板“进出分流”动效 (`css/components/settings.css`)**
+   * **设计思想**：进入时使用弹性慢过渡（`var(--ease-out-back)`），退出时使用加速快过渡（`var(--ease-in-expo)`），使弹窗极具物理运动反馈。
+   * **实例代码**：
+     ```css
+     .settings-panel, .chat-settings-panel {
+         opacity: 0;
+         transform: translateY(12px) scale(0.97);
+         visibility: hidden;
+         pointer-events: none;
+         transition: opacity var(--duration-exit) var(--ease-in-expo),
+                     transform var(--duration-exit) var(--ease-in-expo),
+                     visibility var(--duration-exit);
+     }
+     .settings-panel.show, .chat-settings-panel.show {
+         opacity: 1;
+         transform: translateY(0) scale(1);
+         visibility: visible;
+         pointer-events: auto;
+         transition: opacity var(--duration-enter) var(--ease-out-expo),
+                     transform var(--duration-enter) var(--ease-out-back),
+                     visibility var(--duration-enter);
+     }
+     ```
+
+4. **历史消息首屏静态秒开与新消息动画分离 (`css/components/chat.css` & `js/app.js`)**
+   * **设计思想**：默认剥离消息容器的 `animation`，防止切换聊天时 50 条历史记录同时渲染导致严重卡顿；仅在新消息产生时，在 JS 端动态挂载 `.animate-enter` 进场类。
+   * **实例代码**：
+     * *CSS 修改 (`chat.css`)*:
+       ```css
+       .message-wrapper { 
+           position: relative; 
+           display: flex; 
+           flex-direction: column; 
+           max-width: 80%;
+           will-change: transform, opacity;
+       }
+       .message-wrapper.animate-enter {
+           animation: slideUpFade var(--duration-enter) var(--ease-out-expo) both;
+       }
+       ```
+     * *JS 修改 (`js/app.js`)*:
+       ```javascript
+       // createMessageDOM 增加 isNew 参数支持
+       function createMessageDOM(msg, index, isNew = false) {
+           const wrapper = document.createElement('div');
+           wrapper.className = `message-wrapper ${msg.role === 'user' ? 'user' : 'bot'}`;
+           if (isNew) {
+               wrapper.classList.add('animate-enter');
+           }
+           // ... 其余逻辑保持一致
+       }
+       
+       // renderMessages 增量渲染时传入 isNew = true，全量重绘时传入 false
+       if (isAppendOnly) {
+           for (let i = existingWrappers.length; i < visibleMsgs.length; i++) {
+               const realIdx = startIdx + i;
+               const domObj = createMessageDOM(visibleMsgs[i], realIdx, true); // 启用滑入动画
+               DOM.chatMessages.appendChild(domObj.wrapper);
+               // ...
+           }
+       } else {
+           DOM.chatMessages.innerHTML = '';
+           if (hasMore) {
+               DOM.chatMessages.appendChild(createLoadMoreButton(startIdx));
+           }
+           visibleMsgs.forEach((msg, i) => {
+               const realIdx = startIdx + i;
+               const domObj = createMessageDOM(msg, realIdx, false); // 历史纪录静默秒开
+               DOM.chatMessages.appendChild(domObj.wrapper);
+               // ...
+           });
+       }
+       ```
+
+### 6.5 深色模式
 - **目标**：
   - 添加 `dark` 类切换，所有 CSS 变量支持暗色值。
   - 用户偏好持久化到 `localStorage`。
   - 跟随系统 `prefers-color-scheme`。
 
-### 6.2 消息搜索
+### 6.6 消息搜索
 - **目标**：在侧边栏或聊天顶部增加搜索框，按关键字过滤当前对话消息。
 
-### 6.3 代码块一键复制
+### 6.7 代码块一键复制
 - **目标**：每个 `<pre>` 右上角增加复制按钮，复制代码原文到剪贴板。
 
-### 6.4 输入限制与提示
-- 增加 `maxlength`（如 8000）与字符计数。
+### 6.8 输入限制与提示
+- 增加 `maxlength`（如 8000）与字符计数.
 - 粘贴大段文本时给出提示。
 
-### 6.5 模型列表缓存
+### 6.9 模型列表缓存
 - **目标**：获取成功后缓存模型列表与最后更新时间，24h 内不再重复请求；用户可手动刷新。
 
-### 6.6 导入合并而非覆盖
+### 6.10 导入合并而非覆盖
 - **现状**：导入 JSON 直接覆盖全部聊天记录。
 - **目标**：提供“合并导入”选项，按对话 ID 去重或新增；保留覆盖选项供高级用户选择。
 
-### 6.7 队列体验优化
+### 6.11 队列体验优化
 - 当前队列图标默认隐藏，仅在生成中显示，发现性较低。
 - 目标：队列按钮常驻，有队列项时显示 badge；支持拖拽排序。
 

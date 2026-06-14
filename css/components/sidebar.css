@@ -49,15 +49,31 @@
 .delete-chat-btn svg { width: 14px; height: 14px; fill: currentColor; }
 
 .sidebar-backdrop {
-    display: none;
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(0,0,0,0.3);
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
     z-index: 9;
     opacity: 0;
-    transition: opacity 0.3s ease;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--duration-enter) var(--ease-out-expo),
+                backdrop-filter var(--duration-enter) var(--ease-out-expo),
+                -webkit-backdrop-filter var(--duration-enter) var(--ease-out-expo),
+                visibility var(--duration-enter);
 }
-.sidebar-backdrop.show { opacity: 1; }
+.sidebar-backdrop.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+}
+.sidebar-backdrop.exiting {
+    transition-duration: var(--duration-exit);
+    transition-timing-function: var(--ease-in-expo);
+}

@@ -76,7 +76,7 @@ async function executeChatRequest(currentChat, preparedMessages) {
     }
 
     const targetIndex = currentChat.messages.length;
-    const botDomObj = createMessageDOM({ role: 'assistant', content: '' }, targetIndex);
+    const botDomObj = createMessageDOM({ role: 'assistant', content: '' }, targetIndex, true);
     botDomObj.wrapper.querySelector('.message-actions').style.display = 'none';
     DOM.chatMessages.appendChild(botDomObj.wrapper);
     let streamThinkOpen = false;

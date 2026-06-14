@@ -54,7 +54,13 @@
     fill: #666;
 }
 
-.message-wrapper { position: relative; display: flex; flex-direction: column; max-width: 80%; animation: slideUpFade 0.4s forwards; }
+.message-wrapper {
+    position: relative; display: flex; flex-direction: column; max-width: 80%;
+}
+.message-wrapper.animate-enter {
+    will-change: transform, opacity;
+    animation: msgFadeIn var(--duration-enter) var(--ease-out-expo) both;
+}
 .message-wrapper.user { align-self: flex-end; align-items: flex-end; }
 .message-wrapper.bot { align-self: flex-start; align-items: flex-start; }
 

@@ -11,35 +11,72 @@ function updatePrefixBadge() {
 
 function openSettings() {
     closeSidebar();
+    DOM.settingsBackdrop.classList.remove('exiting');
+    DOM.settingsContainer.classList.remove('exiting');
     DOM.settingsBackdrop.classList.add('show');
     DOM.settingsContainer.classList.add('show');
     DOM.settingsContainer.setAttribute('aria-hidden', 'false');
 }
 function closeSettings() {
+    if (!DOM.settingsContainer.classList.contains('show')) return;
+    DOM.settingsContainer.classList.add('exiting');
+    DOM.settingsBackdrop.classList.add('exiting');
     DOM.settingsContainer.classList.remove('show');
     DOM.settingsContainer.setAttribute('aria-hidden', 'true');
     DOM.settingsBackdrop.classList.remove('show');
     closeCustomSelects();
+    setTimeout(() => {
+        DOM.settingsContainer.classList.remove('exiting');
+        DOM.settingsBackdrop.classList.remove('exiting');
+    }, 200);
 }
 function toggleSettings() { DOM.settingsContainer.classList.contains('show') ? closeSettings() : openSettings(); }
-function toggleSidebar() { DOM.sidebar.classList.toggle('open'); DOM.sidebarBackdrop.classList.toggle('show'); }
-function closeSidebar() { DOM.sidebar.classList.remove('open'); DOM.sidebarBackdrop.classList.remove('show'); }
+function toggleSidebar() {
+    const open = DOM.sidebar.classList.contains('open');
+    if (open) {
+        closeSidebar();
+    } else {
+        DOM.sidebar.classList.remove('exiting');
+        DOM.sidebarBackdrop.classList.remove('exiting');
+        DOM.sidebar.classList.add('open');
+        DOM.sidebarBackdrop.classList.add('show');
+    }
+}
+function closeSidebar() {
+    if (!DOM.sidebar.classList.contains('open')) return;
+    DOM.sidebar.classList.add('exiting');
+    DOM.sidebarBackdrop.classList.add('exiting');
+    DOM.sidebar.classList.remove('open');
+    DOM.sidebarBackdrop.classList.remove('show');
+    setTimeout(() => {
+        DOM.sidebar.classList.remove('exiting');
+        DOM.sidebarBackdrop.classList.remove('exiting');
+    }, 200);
+}
 
+let _vvRafId = 0;
 function keepMobileComposerVisible() {
     if (window.innerWidth > 768) return;
-    const vv = window.visualViewport;
-    if (vv) {
-        document.documentElement.style.height = vv.height + 'px';
-    }
-    requestAnimationFrame(() => {
+    if (_vvRafId) return;
+    _vvRafId = requestAnimationFrame(() => {
+        _vvRafId = 0;
+        const vv = window.visualViewport;
+        if (vv) {
+            document.documentElement.style.height = vv.height + 'px';
+        }
         document.querySelector('.input-wrapper')?.scrollIntoView({ block: 'end', inline: 'nearest' });
     });
 }
-const throttledKeepMobileVisible = throttle(keepMobileComposerVisible, 100);
+const throttledKeepMobileVisible = keepMobileComposerVisible;
 
+let _scrollRafId = 0;
 function scrollToBottom() {
-    DOM.chatMessages.scrollTop = DOM.chatMessages.scrollHeight;
-    updateScrollButton();
+    if (_scrollRafId) return;
+    _scrollRafId = requestAnimationFrame(() => {
+        _scrollRafId = 0;
+        DOM.chatMessages.scrollTop = DOM.chatMessages.scrollHeight;
+        updateScrollButton();
+    });
 }
 
 function enableAutoScroll() {
@@ -90,15 +127,24 @@ function openChatSettings() {
     DOM.chatTemperatureDisplay.textContent = DOM.chatTemperatureRange.value;
     DOM.chatStreamToggle.checked = chat.stream !== false;
 
+    DOM.chatSettingsBackdrop.classList.remove('exiting');
+    DOM.chatSettingsContainer.classList.remove('exiting');
     DOM.chatSettingsBackdrop.classList.add('show');
     DOM.chatSettingsContainer.classList.add('show');
     DOM.chatSettingsContainer.setAttribute('aria-hidden', 'false');
 }
 
 function closeChatSettings() {
+    if (!DOM.chatSettingsContainer.classList.contains('show')) return;
+    DOM.chatSettingsContainer.classList.add('exiting');
+    DOM.chatSettingsBackdrop.classList.add('exiting');
     DOM.chatSettingsContainer.classList.remove('show');
     DOM.chatSettingsContainer.setAttribute('aria-hidden', 'true');
     DOM.chatSettingsBackdrop.classList.remove('show');
+    setTimeout(() => {
+        DOM.chatSettingsContainer.classList.remove('exiting');
+        DOM.chatSettingsBackdrop.classList.remove('exiting');
+    }, 200);
 }
 
 function updateChatTemperatureDisplay() {
