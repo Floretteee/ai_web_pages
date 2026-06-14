@@ -84,7 +84,7 @@ function openChatSettings() {
 
     DOM.chatMaxTokensInput.value = chat.maxTokens || 0;
     refreshCustomSelect(DOM.chatMaxTokensInput);
-    DOM.chatContextLimitInput.value = chat.contextLimit || 65536;
+    DOM.chatContextLimitInput.value = chat.contextLimit || 131072;
     refreshCustomSelect(DOM.chatContextLimitInput);
     DOM.chatTemperatureRange.value = chat.temperature !== undefined ? chat.temperature : 0.7;
     DOM.chatTemperatureDisplay.textContent = DOM.chatTemperatureRange.value;

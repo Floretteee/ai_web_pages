@@ -17,7 +17,7 @@ function clearAttachment() { state.attachment = null; DOM.attachmentPreview.inne
 
 function createNewChat(render = true) {
     if (render) closeSettings();
-    const newChat = { id: Date.now().toString(), title: "新对话", messages: [], maxTokens: 0, contextLimit: 65536, contextLimitWarned: false, temperature: 0.7, stream: true };
+    const newChat = { id: Date.now().toString(), title: "新对话", messages: [], maxTokens: 0, contextLimit: 131072, contextLimitWarned: false, temperature: 0.7, stream: true };
     state.chats.unshift(newChat); state.currentChatId = newChat.id; state.editingIndex = -1; saveState();
     if (render) { renderChatList(); renderMessages(); updateTrimIndicator(); DOM.userInput.focus(); }
 }
