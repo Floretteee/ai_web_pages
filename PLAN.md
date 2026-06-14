@@ -64,13 +64,7 @@
   - 添加 `lint`、`format` npm scripts。
   - 推荐在 Git 仓库配置 pre-commit hook（如 `lint-staged`）。
 
-### 3.2 Service Worker 版本管理
-- **现状**：`sw.js` 中 `CACHE_VERSION` 硬编码为 `fimall-chat-sw-v6`，每次更新容易遗漏。
-- **目标**：
-  - 构建脚本读取 `package.json` 版本，写入 `CACHE_VERSION`（如 `fimall-chat-sw-v1.0.0`）。
-  - 页面监听 `controllerchange`，提示用户“新版本可用，点击刷新”。
-
-### 3.3 CSS 结构优化
+### 3.2 CSS 结构优化
 - **现状**：`styles.css` 997 行，混合通用、组件、响应式。
 - **目标**：
   - 拆分为 `base.css`、`components.css`、`responsive.css`。
@@ -146,7 +140,7 @@
 
 ## 八、实施顺序建议
 
-1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、SW 版本管理、CSS 拆分。
+1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、~~SW 版本管理~~、CSS 拆分。
 2. **再做结构**：拆分 `app.js`、抽象 UI 组件。
 3. **接着性能**：IndexedDB 迁移、消息列表分片渲染。
 4. **最后体验**：深色模式、搜索、复制代码块、测试。
