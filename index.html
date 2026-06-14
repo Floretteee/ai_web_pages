@@ -90,6 +90,18 @@
             </div>
 
             <div class="settings-section">
+                <div class="settings-section-title">外观</div>
+                <div class="settings-group">
+                    <label>主题</label>
+                    <select id="themeSelect" onchange="setTheme(this.value)">
+                        <option value="system">跟随系统</option>
+                        <option value="light">浅色</option>
+                        <option value="dark">深色</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="settings-section">
                 <div class="settings-section-title">连接</div>
                 <div class="settings-group"><label>API Key</label><input type="password" id="apiKeyInput" placeholder="sk-..." onchange="saveSettings()" autocomplete="off"></div>
                 <button class="btn-outline" onclick="fetchModels()">获取 / 刷新模型列表</button>
@@ -205,10 +217,20 @@
             </button>
             <span class="chat-token-counter" id="chatTokenCounter" title="估计的上下文 Token 用量">0/128K</span>
             <h3 id="chatHeaderTitle" oncontextmenu="showContextMenu(event)">新对话</h3>
+            <button class="search-toggle-btn" onclick="toggleSearch()" title="搜索">
+                <svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </button>
             <button class="clear-chat-btn" onclick="clearCurrentChat()">
                 <svg viewBox="0 0 24 24"><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
                 <span>清空对话</span>
             </button>
+        </div>
+
+        <div class="search-bar" id="searchBar">
+            <svg class="search-bar-icon" viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0016 9.5 6.5 6.5 0 109.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="searchInput" placeholder="搜索当前对话..." oninput="handleSearch(this.value)">
+            <button class="search-bar-close" onclick="clearSearch()" title="关闭搜索">&times;</button>
+            <span class="search-bar-count" id="searchCount"></span>
         </div>
         
         <div class="chat-messages" id="chatMessages"></div>

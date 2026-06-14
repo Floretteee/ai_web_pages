@@ -44,9 +44,11 @@ function initDOM() {
         chatStreamToggle: document.getElementById('chatStreamToggle'),
         trimBadge: document.getElementById('trimBadge'),
         chatTokenCounter: document.getElementById('chatTokenCounter'),
+        searchBar: document.getElementById('searchBar'),
         ctxDrop20Label: document.getElementById('ctxDrop20Label'),
         ctxDrop20IconOn: document.getElementById('ctxDrop20IconOn'),
-        ctxDrop20IconOff: document.getElementById('ctxDrop20IconOff')
+        ctxDrop20IconOff: document.getElementById('ctxDrop20IconOff'),
+        themeSelect: document.getElementById('themeSelect')
     });
 }
 

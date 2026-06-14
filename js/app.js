@@ -22,7 +22,7 @@ function createNewChat(render = true) {
     if (render) { renderChatList(); renderMessages(); updateTrimIndicator(); DOM.userInput.focus(); }
 }
 
-function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; setVisibleCount(id, MESSAGE_PAGE_SIZE); autoScroll = true; saveState(); renderChatList(); renderMessages(); updateTrimIndicator(); closeSettings(); closeSidebar(); }
+function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; setVisibleCount(id, MESSAGE_PAGE_SIZE); autoScroll = true; saveState(); renderChatList(); renderMessages(); updateTrimIndicator(); closeSettings(); closeSidebar(); clearSearch(); }
 
 async function deleteChat(id, event) {
     event.stopPropagation();
@@ -377,6 +377,63 @@ function handleKeydown(e) {
     } else {
         if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
     }
+    if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        toggleSearch(true);
+    }
+    if (e.key === 'Escape' && DOM.searchBar && DOM.searchBar.classList.contains('active')) {
+        clearSearch();
+    }
+}
+
+let _searchActive = false;
+function toggleSearch(forceOpen) {
+    const bar = DOM.searchBar;
+    if (!bar) return;
+    if (forceOpen || !bar.classList.contains('active')) {
+        bar.classList.add('active');
+        _searchActive = true;
+        const input = document.getElementById('searchInput');
+        if (input) input.focus();
+    } else {
+        clearSearch();
+    }
+}
+
+function clearSearch() {
+    const bar = DOM.searchBar;
+    const input = document.getElementById('searchInput');
+    const count = document.getElementById('searchCount');
+    if (bar) bar.classList.remove('active');
+    if (input) input.value = '';
+    if (count) count.textContent = '';
+    _searchActive = false;
+    DOM.chatMessages.querySelectorAll('.message-wrapper.search-hidden').forEach(el => el.classList.remove('search-hidden'));
+    DOM.chatMessages.querySelectorAll('.message-wrapper.search-highlight').forEach(el => el.classList.remove('search-highlight'));
+}
+
+let _searchRaf = 0;
+function handleSearch(query) {
+    if (_searchRaf) cancelAnimationFrame(_searchRaf);
+    _searchRaf = requestAnimationFrame(() => {
+        _searchRaf = 0;
+        const q = query.trim().toLowerCase();
+        const wrappers = DOM.chatMessages.querySelectorAll(':scope > .message-wrapper');
+        let matchCount = 0;
+        wrappers.forEach(w => {
+            w.classList.remove('search-hidden', 'search-highlight');
+            if (!q) return;
+            const text = w.textContent.toLowerCase();
+            if (text.includes(q)) {
+                matchCount++;
+                w.classList.add('search-highlight');
+            } else {
+                w.classList.add('search-hidden');
+            }
+        });
+        const count = document.getElementById('searchCount');
+        if (count) count.textContent = q ? `${matchCount} 条结果` : '';
+    });
 }
 
 async function sendMessage() {
@@ -553,6 +610,8 @@ async function init() {
     }
 
     updatePrefixBadge();
+
+    initTheme();
 
     DOM.userInput.addEventListener('input', function() {
         this.style.height = '52px';

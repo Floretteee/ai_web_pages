@@ -178,3 +178,38 @@ function handlePresetChange() {
     saveSettings();
     updateTrimIndicator();
 }
+
+function setTheme(theme) {
+    localStorage.setItem('ai_theme', theme);
+    applyTheme(theme);
+}
+
+function applyTheme(theme) {
+    const root = document.documentElement;
+    if (theme === 'dark') {
+        root.setAttribute('data-theme', 'dark');
+    } else if (theme === 'light') {
+        root.removeAttribute('data-theme');
+    } else {
+        if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            root.setAttribute('data-theme', 'dark');
+        } else {
+            root.removeAttribute('data-theme');
+        }
+    }
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+        meta.content = root.getAttribute('data-theme') === 'dark' ? '#0f0f10' : '#f7f7f7';
+    }
+}
+
+function initTheme() {
+    const saved = localStorage.getItem('ai_theme') || 'system';
+    if (DOM.themeSelect) DOM.themeSelect.value = saved;
+    applyTheme(saved);
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        if (localStorage.getItem('ai_theme') === 'system' || !localStorage.getItem('ai_theme')) {
+            applyTheme('system');
+        }
+    });
+}

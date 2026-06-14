@@ -36,6 +36,30 @@ function highlightCodeBlocks(container) {
     container.querySelectorAll('pre code:not(.hljs)').forEach((block) => {
         try { window.hljs.highlightElement(block); } catch (e) {}
     });
+    addCopyButtons(container);
+}
+
+function addCopyButtons(container) {
+    container.querySelectorAll('pre:not(.copy-btn-added)').forEach(pre => {
+        pre.classList.add('copy-btn-added');
+        const btn = document.createElement('button');
+        btn.className = 'code-copy-btn';
+        btn.title = '复制代码';
+        btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+        btn.onclick = () => {
+            const code = pre.querySelector('code');
+            const text = code ? code.textContent : pre.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                btn.classList.add('copied');
+                btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+                setTimeout(() => {
+                    btn.classList.remove('copied');
+                    btn.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>';
+                }, 2000);
+            }).catch(() => {});
+        };
+        pre.appendChild(btn);
+    });
 }
 
 function shouldProcessMath(text) {
@@ -88,7 +112,8 @@ function renderMarkdownToHtml(markdown) {
 function renderMarkdownIntoElement(element, markdown) {
     element.innerHTML = renderMarkdownToHtml(markdown);
     if (shouldProcessMath(markdown)) renderMath(element);
-    if (markdown && (markdown.includes('<pre') || markdown.includes('```'))) highlightCodeBlocks(element);
+    if (markdown && (markdown.includes('<pre') || markdown.includes('```'))) { highlightCodeBlocks(element); }
+    else { addCopyButtons(element); }
 }
 
 function renderMarkdownInlineNative(text) {
