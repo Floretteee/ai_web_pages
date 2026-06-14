@@ -365,8 +365,9 @@ function renameChat() {
     }
 }
 
-function init() {
+async function init() {
     initDOM();
+    await loadChatsFromDB();
 
     DOM.apiKeyInput.value = state.apiKey;
     DOM.systemPromptInput.value = state.systemPrompt;
@@ -461,7 +462,6 @@ function registerServiceWorker() {
     });
 }
 
-// 页面关闭前刷新待处理的存储
 window.addEventListener('beforeunload', () => {
     flushPendingStateSave();
     flushPendingSettingsSave();
@@ -485,4 +485,4 @@ document.addEventListener('visibilitychange', () => {
 });
 
 registerServiceWorker();
-init();
+init().catch(e => console.error('Init failed:', e));

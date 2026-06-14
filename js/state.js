@@ -13,7 +13,7 @@ let state = {
     htmlStyle: localStorage.getItem('ai_html_style') || 'autumn',
     filterMode: localStorage.getItem('ai_filter_mode') || (localStorage.getItem('ai_filter_think') !== 'false' ? 'think' : 'none'),
     exportRole: localStorage.getItem('ai_export_role') || 'both',
-    chats: JSON.parse(localStorage.getItem('ai_chats')) || [], currentChatId: localStorage.getItem('ai_current_chat_id') || null,
+    chats: [], currentChatId: localStorage.getItem('ai_current_chat_id') || null,
     attachment: null, editingIndex: -1
 };
 
@@ -52,8 +52,11 @@ function _saveStateSync() {
         const { _lastRenderedContent, ...rest } = m;
         return rest;
     }) }));
-    localStorage.setItem('ai_chats', JSON.stringify(clean));
+    saveAllChats(clean).catch(e => console.warn('IndexedDB save failed:', e));
     localStorage.setItem('ai_current_chat_id', state.currentChatId);
+    try {
+        localStorage.setItem('ai_chats', JSON.stringify(clean));
+    } catch (e) {}
 }
 
 function saveState() {
@@ -62,6 +65,33 @@ function saveState() {
         _saveTimer = null;
         _saveStateSync();
     }, 50);
+}
+
+async function loadChatsFromDB() {
+    try {
+        const chats = await getAllChats();
+        if (chats && chats.length > 0) {
+            state.chats = chats;
+            return;
+        }
+    } catch (e) {
+        console.warn('IndexedDB load failed:', e);
+    }
+    const lsData = localStorage.getItem('ai_chats');
+    if (lsData) {
+        try {
+            const parsed = JSON.parse(lsData);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                state.chats = parsed;
+                const clean = parsed.map(c => ({ ...c, messages: c.messages.map(m => {
+                    const { _lastRenderedContent, ...rest } = m;
+                    return rest;
+                }) }));
+                saveAllChats(clean).catch(e => console.warn('IndexedDB migration save failed:', e));
+                localStorage.removeItem('ai_chats');
+            }
+        } catch (e) {}
+    }
 }
 
 let _saveSettingsTimer = null;
@@ -105,10 +135,11 @@ function flushPendingSettingsSave() {
     }
 }
 
-function flushPendingStateSave() {
+async function flushPendingStateSave() {
     if (_saveTimer) {
         clearTimeout(_saveTimer);
         _saveTimer = null;
         _saveStateSync();
+        await new Promise(r => setTimeout(r, 100));
     }
 }
