@@ -4,7 +4,8 @@
   "description": "一个简洁优雅的 AI 聊天 Web 应用，支持多对话管理、Markdown 渲染、代码高亮、LaTeX 公式、HTML/Markdown/JSON 导出等功能。",
   "main": "app.js",
   "scripts": {
-    "build": "node scripts/build-domd.mjs"
+    "build": "node scripts/build-domd.mjs",
+    "build:sw": "node scripts/build-sw.mjs"
   },
   "keywords": [],
   "author": "",

@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'fimall-chat-sw-v6';
+const CACHE_VERSION = '__VERSION__';
 
 const CORE_ASSETS = [
   './',

@@ -1583,6 +1583,35 @@ async function processQueue() {
 
 function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
+    
+    // 监听 Service Worker 更新
+    let refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+        if (refreshing) return;
+        refreshing = true;
+        
+        // 提示用户新版本可用
+        const updateBanner = document.createElement('div');
+        updateBanner.className = 'update-banner';
+        updateBanner.innerHTML = `
+            <span>新版本可用</span>
+            <button class="update-refresh-btn">点击刷新</button>
+            <button class="update-dismiss-btn">×</button>
+        `;
+        document.body.appendChild(updateBanner);
+        
+        const refreshBtn = updateBanner.querySelector('.update-refresh-btn');
+        const dismissBtn = updateBanner.querySelector('.update-dismiss-btn');
+        
+        refreshBtn.addEventListener('click', () => {
+            window.location.reload();
+        });
+        
+        dismissBtn.addEventListener('click', () => {
+            updateBanner.remove();
+        });
+    });
+    
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js').catch((error) => {
             console.warn('Service worker registration failed:', error);

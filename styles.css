@@ -995,3 +995,66 @@ body {
     color: #888;
     letter-spacing: 0.3px;
 }
+
+/* Service Worker 更新提示横幅 */
+.update-banner {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, #000000 0%, #333333 100%);
+    color: #ffffff;
+    padding: 12px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    z-index: 9999;
+    font-size: 14px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.update-refresh-btn {
+    background: #ffffff;
+    color: #000000;
+    border: none;
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.update-refresh-btn:hover {
+    background: #f0f0f0;
+    transform: translateY(-1px);
+}
+
+.update-dismiss-btn {
+    background: transparent;
+    color: #ffffff;
+    border: none;
+    font-size: 20px;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0 8px;
+    opacity: 0.7;
+    transition: opacity 0.2s;
+}
+
+.update-dismiss-btn:hover {
+    opacity: 1;
+}
