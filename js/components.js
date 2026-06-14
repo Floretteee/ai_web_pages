@@ -402,6 +402,17 @@ function showContextMenu(e, chatId) {
     e.preventDefault();
     contextMenuChatId = chatId || state.currentChatId;
     const menu = DOM.contextMenu;
+    const fromSidebar = chatId !== undefined && chatId !== null;
+    menu.classList.toggle('from-sidebar', fromSidebar);
+
+    if (fromSidebar && DOM.ctxDrop20Label) {
+        const chat = state.chats.find(c => c.id === contextMenuChatId);
+        const enabled = !!(chat && chat.dropFront20);
+        DOM.ctxDrop20Label.textContent = enabled ? '取消丢弃前 20%' : '固定丢弃前 20%';
+        if (DOM.ctxDrop20IconOn) DOM.ctxDrop20IconOn.style.display = enabled ? '' : 'none';
+        if (DOM.ctxDrop20IconOff) DOM.ctxDrop20IconOff.style.display = enabled ? 'none' : '';
+    }
+
     menu.style.display = 'block';
     menu.style.left = e.pageX + 'px';
     menu.style.top = e.pageY + 'px';

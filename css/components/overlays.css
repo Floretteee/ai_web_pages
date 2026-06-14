@@ -71,6 +71,8 @@
     background: #e0e0e0;
     margin: 4px 0;
 }
+.context-menu-item-sidebar-only { display: none; }
+.context-menu.from-sidebar .context-menu-item-sidebar-only { display: flex; }
 
 
 .think-block {

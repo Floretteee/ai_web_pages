@@ -16,10 +16,10 @@
     <link rel="stylesheet" href="css/base.css?v=4">
     <link rel="stylesheet" href="css/components/sidebar.css?v=4">
     <link rel="stylesheet" href="css/components/settings.css?v=4">
-    <link rel="stylesheet" href="css/components/chat.css?v=5">
+    <link rel="stylesheet" href="css/components/chat.css?v=6">
     <link rel="stylesheet" href="css/components/input.css?v=4">
-    <link rel="stylesheet" href="css/components/overlays.css?v=4">
-    <link rel="stylesheet" href="css/responsive.css?v=4">
+    <link rel="stylesheet" href="css/components/overlays.css?v=5">
+    <link rel="stylesheet" href="css/responsive.css?v=5">
 </head>
 <body>
 
@@ -44,6 +44,11 @@
             <span>导出 HTML</span>
         </div>
         <div class="context-menu-divider"></div>
+        <div class="context-menu-divider"></div>
+        <div class="context-menu-item context-menu-item-sidebar-only" id="ctxToggleDrop20" role="menuitem" tabindex="-1" onclick="toggleDropFront20()">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" id="ctxDrop20IconOff" style="display:none;"/><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" id="ctxDrop20IconOn"/></svg>
+            <span id="ctxDrop20Label">固定丢弃前 20%</span>
+        </div>
         <div class="context-menu-item" role="menuitem" tabindex="-1" onclick="openChatSettings()">
             <svg viewBox="0 0 24 24"><path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.06-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.73,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.8,11.69,4.8,12s0.02,0.64,0.06,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.43-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.49-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/></svg>
             <span>聊天设置</span>
@@ -198,6 +203,7 @@
             <button class="menu-btn" onclick="toggleSidebar()" title="菜单" style="display: none;">
                 <svg viewBox="0 0 24 24"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
             </button>
+            <span class="chat-token-counter" id="chatTokenCounter" title="估计的上下文 Token 用量">0/128K</span>
             <h3 id="chatHeaderTitle" oncontextmenu="showContextMenu(event)">新对话</h3>
             <button class="clear-chat-btn" onclick="clearCurrentChat()">
                 <svg viewBox="0 0 24 24"><path d="M16 9v10H8V9h8m-1.5-6h-5l-1 1H5v2h14V4h-3.5l-1-1zM18 7H6v12c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7z"/></svg>
@@ -246,12 +252,12 @@
     <script src="js/utils.js?v=6" defer></script>
     <script src="js/renderer.js?v=6" defer></script>
     <script src="js/db.js?v=6" defer></script>
-    <script src="js/state.js?v=6" defer></script>
-    <script src="js/components.js?v=5" defer></script>
+    <script src="js/state.js?v=7" defer></script>
+    <script src="js/components.js?v=6" defer></script>
     <script src="js/ui.js?v=5" defer></script>
     <script src="js/api.js?v=5" defer></script>
     <script src="js/export.js?v=5" defer></script>
     <script src="js/queue.js?v=5" defer></script>
-    <script src="js/app.js?v=6" defer></script>
+    <script src="js/app.js?v=7" defer></script>
 </body>
 </html>

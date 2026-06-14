@@ -42,7 +42,11 @@ function initDOM() {
         chatTemperatureRange: document.getElementById('chatTemperatureRange'),
         chatTemperatureDisplay: document.getElementById('chatTemperatureDisplay'),
         chatStreamToggle: document.getElementById('chatStreamToggle'),
-        trimBadge: document.getElementById('trimBadge')
+        trimBadge: document.getElementById('trimBadge'),
+        chatTokenCounter: document.getElementById('chatTokenCounter'),
+        ctxDrop20Label: document.getElementById('ctxDrop20Label'),
+        ctxDrop20IconOn: document.getElementById('ctxDrop20IconOn'),
+        ctxDrop20IconOff: document.getElementById('ctxDrop20IconOff')
     });
 }
 

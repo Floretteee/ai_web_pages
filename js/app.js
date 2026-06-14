@@ -252,6 +252,8 @@ function renderMessages() {
     _lastRenderEditIdx = state.editingIndex;
     _lastRenderChatId = state.currentChatId;
 
+    updateTokenCounter();
+
     setTimeout(() => { if (autoScroll) scrollToBottom(); }, 50);
 }
 
@@ -260,13 +262,19 @@ function buildContextWithTrim(chat, newUserContent = null) {
     const systemMsg = state.systemPrompt ? { role: 'system', content: state.systemPrompt } : null;
     const newMsg = newUserContent !== null ? { role: 'user', content: newUserContent } : null;
 
-    const conversationMsgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
+    let conversationMsgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
+
+    let dropped20 = 0;
+    if (chat && chat.dropFront20 && conversationMsgs.length > 0) {
+        dropped20 = Math.floor(conversationMsgs.length * 0.2);
+        if (dropped20 > 0) conversationMsgs = conversationMsgs.slice(dropped20);
+    }
 
     let messages = systemMsg ? [systemMsg] : [];
     messages.push(...conversationMsgs);
     if (newMsg) messages.push(newMsg);
 
-    if (!limit) return { messages, trimmed: false, skippedRounds: 0 };
+    if (!limit) return { messages, trimmed: dropped20 > 0, skippedRounds: 0, dropped20 };
 
     const msgTokens = (msg) => {
         const base = estimateTokens(msg.content) + 4;
@@ -274,7 +282,7 @@ function buildContextWithTrim(chat, newUserContent = null) {
     };
 
     let total = messages.reduce((sum, m) => sum + msgTokens(m), 0);
-    if (total <= limit) return { messages, trimmed: false, skippedRounds: 0 };
+    if (total <= limit) return { messages, trimmed: dropped20 > 0, skippedRounds: 0, dropped20 };
 
     // Trim whole conversation rounds from the beginning, while preserving system and the newest message.
     let startIdx = systemMsg ? 1 : 0;
@@ -293,32 +301,73 @@ function buildContextWithTrim(chat, newUserContent = null) {
         }
     }
 
-    const trimmed = skippedRounds > 0 || startIdx > (systemMsg ? 1 : 0);
+    const trimmed = skippedRounds > 0 || startIdx > (systemMsg ? 1 : 0) || dropped20 > 0;
     const result = [];
     if (systemMsg) result.push(systemMsg);
     for (let i = startIdx; i < messages.length; i++) {
         if (!newMsg || messages[i] !== newMsg) result.push(messages[i]);
     }
     if (newMsg) result.push(newMsg);
-    return { messages: result, trimmed, skippedRounds };
+    return { messages: result, trimmed, skippedRounds, dropped20 };
 }
 
-function updateTrimIndicator() {
-    if (!DOM.trimBadge || !state.currentChatId) return;
+function formatTokenCount(n) {
+    if (n >= 1_000_000) return (n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1) + 'M';
+    if (n >= 1000) return (n / 1000).toFixed(n >= 10_000 ? 0 : 1) + 'K';
+    return String(n);
+}
+
+function updateTokenCounter() {
+    if (!DOM.chatTokenCounter || !state.currentChatId) return;
     const chat = state.chats.find(c => c.id === state.currentChatId);
     if (!chat) return;
 
-    const text = DOM.userInput.value.trim();
-    const checkContent = text || state.attachment ? (text || '') : null;
+    const text = DOM.userInput ? DOM.userInput.value.trim() : '';
     let newContent = null;
-    if (checkContent !== null) {
+    if (text || state.attachment) {
         newContent = state.attachment
-            ? [{ type: 'text', text: checkContent || '分析这张图片' }, { type: 'image_url', image_url: { url: state.attachment } }]
-            : checkContent;
+            ? [{ type: 'text', text: text || '分析这张图片' }, { type: 'image_url', image_url: { url: state.attachment } }]
+            : text;
     }
+    const { messages } = buildContextWithTrim(chat, newContent);
+    const tokens = estimateMessagesTokens(messages);
+    const limit = chat.contextLimit || 0;
+    DOM.chatTokenCounter.textContent = limit
+        ? `${tokens}/${formatTokenCount(limit)}`
+        : `${tokens}`;
+    DOM.chatTokenCounter.classList.toggle('over-limit', limit > 0 && tokens > limit);
+}
 
-    const { trimmed } = buildContextWithTrim(chat, newContent);
-    DOM.trimBadge.classList.toggle('show', trimmed);
+function updateTrimIndicator() {
+    if (!state.currentChatId) return;
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    if (!chat) return;
+
+    if (DOM.trimBadge) {
+        const text = DOM.userInput.value.trim();
+        const checkContent = text || state.attachment ? (text || '') : null;
+        let newContent = null;
+        if (checkContent !== null) {
+            newContent = state.attachment
+                ? [{ type: 'text', text: checkContent || '分析这张图片' }, { type: 'image_url', image_url: { url: state.attachment } }]
+                : checkContent;
+        }
+
+        const { trimmed } = buildContextWithTrim(chat, newContent);
+        DOM.trimBadge.classList.toggle('show', trimmed);
+    }
+    updateTokenCounter();
+}
+
+function toggleDropFront20() {
+    DOM.contextMenu.style.display = 'none';
+    const chat = state.chats.find(c => c.id === contextMenuChatId);
+    if (!chat) return;
+    chat.dropFront20 = !chat.dropFront20;
+    chat.contextLimitWarned = false;
+    saveState();
+    updateTrimIndicator();
+    showToast(chat.dropFront20 ? '已开启：固定丢弃前 20% 对话' : '已关闭：固定丢弃前 20% 对话');
 }
 
 function handleKeydown(e) {
