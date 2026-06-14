@@ -372,6 +372,44 @@ async function sendMessage() {
     await executeChatRequest(currentChat, preparedMessages);
 }
 
+function forkChat() {
+    DOM.contextMenu.style.display = 'none';
+    const chatId = contextMenuChatId;
+    const sourceIdx = state.chats.findIndex(c => c.id === chatId);
+    if (sourceIdx === -1) return;
+    const source = state.chats[sourceIdx];
+
+    const baseTitle = (source.title || '新对话').replace(/\.\d+$/, '');
+    const usedNumbers = new Set();
+    state.chats.forEach(c => {
+        if (!c.title) return;
+        if (c.title === baseTitle) { usedNumbers.add(0); return; }
+        const m = c.title.match(/^(.+)\.(\d+)$/);
+        if (m && m[1] === baseTitle) usedNumbers.add(parseInt(m[2], 10));
+    });
+    let n = 1;
+    while (usedNumbers.has(n)) n++;
+
+    const cloned = JSON.parse(JSON.stringify({ ...source, messages: source.messages.map(m => {
+        const { _lastRenderedContent, ...rest } = m;
+        return rest;
+    }) }));
+    cloned.id = Date.now().toString();
+    cloned.title = `${baseTitle}.${n}`;
+    cloned.contextLimitWarned = false;
+
+    state.chats.splice(sourceIdx + 1, 0, cloned);
+    state.currentChatId = cloned.id;
+    state.editingIndex = -1;
+    setVisibleCount(cloned.id, MESSAGE_PAGE_SIZE);
+    saveState();
+    renderChatList();
+    renderMessages();
+    updateTrimIndicator();
+    closeSidebar();
+    showToast(`已 Fork 为「${cloned.title}」`);
+}
+
 function renameChat() {
     DOM.contextMenu.style.display = 'none';
     const chatId = contextMenuChatId;
