@@ -224,7 +224,7 @@
 4. **控制流式生成时的渲染频率**：在 `executeChatRequest` 中，调整流式 markdown 解析频率（如 100ms - 150ms 渲染一次），避免长文本生成时主线程被垃圾回收 (GC) 和大量 Markdown 转 DOM 阻塞。
 
 ### 6.4 现有项目动画专项改造方案与示例代码 (Refactoring Roadmap) ✅
-针对目前项目中存在的动画性能和过渡生硬问题，制定以下重构路径与精确的代码修改方案：
+针对目前项目中存在的动画性能和过渡生硬问题，已按以下重构路径完成精确的代码修改：
 
 **完成内容**：
 - `css/base.css`：新增统一动画 token（`--duration-micro/enter/exit/stagger`、`--ease-out-expo/in-expo/out-back/in-out`），新增 `@keyframes msgFadeIn`，加入 `prefers-reduced-motion` 适配。
@@ -235,127 +235,6 @@
 - `js/app.js`：`createMessageDOM(msg, index, isNew)` 新增第三参数；`renderMessages` 增量追加分支统一 `isNew=true`，全量重绘分支根据 `_lastRenderMsgCount` 判断尾部新消息是否首次渲染。
 - `js/api.js`：流式机器人气泡 `createMessageDOM(..., true)` 启用进场动画。
 - `js/ui.js`：`scrollToBottom` 改用 `requestAnimationFrame` 单帧防抖；`keepMobileComposerVisible` 从 `setTimeout` 节流升级为 rAF 节流；`closeSidebar` / `closeSettings` / `closeChatSettings` 增加 `.exiting` 类完成"进出分流"，过渡结束自动清理。
-
-针对目前项目中存在的动画性能和过渡生硬问题，制定以下重构路径与精确的代码修改方案：
-
-1. **统一核心动画变量 (`css/base.css`)**
-   * **设计思想**：统一时长和缓动定义，提供清晰的微交互、进入与退出的过渡规范。
-   * **实例代码**：
-     ```css
-     :root {
-         /* 统一动画时长 */
-         --duration-micro: 150ms;   /* 微交互 */
-         --duration-enter: 280ms;   /* 打开/进入 */
-         --duration-exit: 180ms;    /* 关闭/退出 */
-         --duration-stagger: 35ms;  /* 消息交错渲染延迟 */
-         
-         /* 统一缓动函数 */
-         --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);    /* 极致减速（滑入/淡入） */
-         --ease-in-expo: cubic-bezier(0.7, 0, 0.84, 0);     /* 极致加速（滑出/淡出） */
-         --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1); /* 微弹性回弹 */
-     }
-     ```
-
-2. **手机端侧边栏背景遮罩平滑淡入淡出 (`css/components/sidebar.css` & `css/responsive.css`)**
-   * **设计思想**：废除传统的 `display: none`，采用 `opacity` + `visibility` + `pointer-events` 联动机制，防止动画瞬间硬切。配合 `backdrop-filter` 提升磨砂质感。
-   * **实例代码**：
-     ```css
-     .sidebar-backdrop {
-         position: fixed;
-         top: 0; left: 0; width: 100%; height: 100%;
-         background: rgba(0, 0, 0, 0.3);
-         backdrop-filter: blur(0px);
-         -webkit-backdrop-filter: blur(0px);
-         z-index: 9;
-         opacity: 0;
-         visibility: hidden;
-         pointer-events: none;
-         transition: opacity var(--duration-enter) var(--ease-out-expo),
-                     backdrop-filter var(--duration-enter) var(--ease-out-expo),
-                     visibility var(--duration-enter);
-     }
-     .sidebar-backdrop.show {
-         opacity: 1;
-         visibility: visible;
-         pointer-events: auto;
-         backdrop-filter: blur(6px);
-         -webkit-backdrop-filter: blur(6px);
-     }
-     ```
-
-3. **设置面板“进出分流”动效 (`css/components/settings.css`)**
-   * **设计思想**：进入时使用弹性慢过渡（`var(--ease-out-back)`），退出时使用加速快过渡（`var(--ease-in-expo)`），使弹窗极具物理运动反馈。
-   * **实例代码**：
-     ```css
-     .settings-panel, .chat-settings-panel {
-         opacity: 0;
-         transform: translateY(12px) scale(0.97);
-         visibility: hidden;
-         pointer-events: none;
-         transition: opacity var(--duration-exit) var(--ease-in-expo),
-                     transform var(--duration-exit) var(--ease-in-expo),
-                     visibility var(--duration-exit);
-     }
-     .settings-panel.show, .chat-settings-panel.show {
-         opacity: 1;
-         transform: translateY(0) scale(1);
-         visibility: visible;
-         pointer-events: auto;
-         transition: opacity var(--duration-enter) var(--ease-out-expo),
-                     transform var(--duration-enter) var(--ease-out-back),
-                     visibility var(--duration-enter);
-     }
-     ```
-
-4. **历史消息首屏静态秒开与新消息动画分离 (`css/components/chat.css` & `js/app.js`)**
-   * **设计思想**：默认剥离消息容器的 `animation`，防止切换聊天时 50 条历史记录同时渲染导致严重卡顿；仅在新消息产生时，在 JS 端动态挂载 `.animate-enter` 进场类。
-   * **实例代码**：
-     * *CSS 修改 (`chat.css`)*:
-       ```css
-       .message-wrapper { 
-           position: relative; 
-           display: flex; 
-           flex-direction: column; 
-           max-width: 80%;
-           will-change: transform, opacity;
-       }
-       .message-wrapper.animate-enter {
-           animation: slideUpFade var(--duration-enter) var(--ease-out-expo) both;
-       }
-       ```
-     * *JS 修改 (`js/app.js`)*:
-       ```javascript
-       // createMessageDOM 增加 isNew 参数支持
-       function createMessageDOM(msg, index, isNew = false) {
-           const wrapper = document.createElement('div');
-           wrapper.className = `message-wrapper ${msg.role === 'user' ? 'user' : 'bot'}`;
-           if (isNew) {
-               wrapper.classList.add('animate-enter');
-           }
-           // ... 其余逻辑保持一致
-       }
-       
-       // renderMessages 增量渲染时传入 isNew = true，全量重绘时传入 false
-       if (isAppendOnly) {
-           for (let i = existingWrappers.length; i < visibleMsgs.length; i++) {
-               const realIdx = startIdx + i;
-               const domObj = createMessageDOM(visibleMsgs[i], realIdx, true); // 启用滑入动画
-               DOM.chatMessages.appendChild(domObj.wrapper);
-               // ...
-           }
-       } else {
-           DOM.chatMessages.innerHTML = '';
-           if (hasMore) {
-               DOM.chatMessages.appendChild(createLoadMoreButton(startIdx));
-           }
-           visibleMsgs.forEach((msg, i) => {
-               const realIdx = startIdx + i;
-               const domObj = createMessageDOM(msg, realIdx, false); // 历史纪录静默秒开
-               DOM.chatMessages.appendChild(domObj.wrapper);
-               // ...
-           });
-       }
-       ```
 
 ### 6.5 深色模式
 - **目标**：
@@ -395,7 +274,7 @@
 
 1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、~~SW 版本管理~~、~~CSS 拆分~~。
 2. **再做结构**：~~拆分 `app.js`~~、~~抽象 UI 组件~~。
-3. **接着性能**：~~IndexedDB 迁移~~、~~消息列表分片渲染~~。
+3. **接着性能**：~~IndexedDB 迁移~~、~~消息列表分片渲染~~、~~动画系统重构（6.1-6.4）~~。
 4. **最后体验**：深色模式、搜索、复制代码块、测试。
 
 ## 附录：暂不涉及
