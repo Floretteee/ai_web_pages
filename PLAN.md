@@ -24,11 +24,20 @@
   - 已引入 `immer`，可借机使用不可更新模式减少深拷贝BUG。
   - 将 `_lastRenderedContent` 等运行时临时字段从持久化对象中剥离。
 
-### 1.3 抽象 UI 组件
-- **现状**：toast、confirm、context menu、custom select 等均由原生 DOM API 拼写。
+### 1.3 抽象 UI 组件 ✅
+- **现状**：~~toast、confirm、context menu、custom select 等均由原生 DOM API 拼写。~~ 已完成。
 - **目标**：
   - 为重复 UI 模式建立轻量级工厂函数，例如 `createToast(message)`、`createConfirm(message)`。
   - 自定义 select 补齐键盘导航与 ARIA 状态。
+- **完成内容**：
+  - 新建 `js/components.js`，封装 `Components` 工厂模块（IIFE），提供 `createToast`、`createConfirm`、`createCustomSelect`、`createContextMenu` 等工厂函数。
+  - Toast：增加 `role="status"` / `aria-live="polite"`，支持自定义 duration。
+  - Confirm：增加 `role="dialog"` / `aria-modal="true"` / focus trap / Esc 关闭 / 自动聚焦确认按钮。
+  - Custom Select：完整键盘导航（↑/↓/Enter/Escape/Home/End），`role="combobox"` / `aria-expanded` / `role="listbox"` / `role="option"` / `aria-selected` / `aria-activedescendant`，hover 高亮联动。
+  - Context Menu：增加 `role="menu"` / `role="menuitem"` / `tabindex`，支持 ↑/↓ 方向键聚焦、Esc 关闭，边界溢出自动调整位置。
+  - 底部保留全局函数别名（`showToast`、`showConfirm` 等）确保向后兼容。
+  - 重构 `js/ui.js`，移除原有内联实现，仅保留非组件 UI 逻辑。
+  - CSS 补齐 `.highlighted` 和 `:focus` 状态样式。
 
 ## 二、性能与存储
 
@@ -84,10 +93,8 @@
 ## 五、可访问性（a11y）
 
 ### 5.1 自定义组件键盘支持
-- **自定义 select**：
-  - 打开后支持 ↑/↓ 选择、Enter 确认、Esc 关闭。
-  - 维护 `aria-expanded`、`aria-selected`。
-- **右键菜单**：支持 Esc 关闭、方向键聚焦。
+- **自定义 select**：~~打开后支持 ↑/↓ 选择、Enter 确认、Esc 关闭。~~ ~~维护 `aria-expanded`、`aria-selected`。~~ 已完成（1.3 抽象 UI 组件中实现）。
+- **右键菜单**：~~支持 Esc 关闭、方向键聚焦。~~ 已完成（1.3 抽象 UI 组件中实现）。
 - **模态框（设置/聊天设置）**：
   - 打开时焦点移入首个可聚焦元素。
   - Tab 键限定在模态框内循环（focus trap）。
@@ -136,7 +143,7 @@
 ## 八、实施顺序建议
 
 1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、~~SW 版本管理~~、~~CSS 拆分~~。
-2. **再做结构**：~~拆分 `app.js`~~、抽象 UI 组件。
+2. **再做结构**：~~拆分 `app.js`~~、~~抽象 UI 组件~~。
 3. **接着性能**：IndexedDB 迁移、消息列表分片渲染。
 4. **最后体验**：深色模式、搜索、复制代码块、测试。
 
