@@ -1,0 +1,258 @@
+@media screen and (max-width: 768px) {
+    .settings-grid { grid-template-columns: 1fr; }
+}
+
+@media screen and (min-width: 769px) {
+    .settings-panel {
+        top: 48px; bottom: 48px;
+        left: 0; right: 0;
+        width: 90%; max-width: 920px;
+        margin: 0 auto;
+        border-radius: 22px;
+    }
+}
+
+@media screen and (min-width: 769px) {
+    .chat-settings-panel {
+        top: 48px; bottom: 48px;
+        left: 0; right: 0;
+        width: 90%; max-width: 920px;
+        margin: 0 auto;
+        border-radius: 22px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    :root {
+        --sidebar-width: 100%;
+    }
+
+    body { flex-direction: column; }
+
+    .sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        transform: translateX(-100%);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        padding: 16px;
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-header { margin-bottom: 16px; }
+    .sidebar-header h2 { font-size: 16px; }
+    .desktop-title { display: none; }
+    .new-chat-btn { margin-bottom: 12px; }
+    .chat-list { margin-bottom: 8px; }
+
+    .settings-panel-header { padding: 20px 20px 10px; margin-bottom: 16px; }
+    .settings-section { margin: 0 20px 14px; }
+    .settings-section:last-child { margin-bottom: 20px; }
+
+    .mobile-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+    }
+    .menu-btn {
+        display: flex !important;
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        width: 40px;
+        height: 40px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 8px;
+    }
+    .menu-btn:hover { background-color: #e0e0e0; }
+    .menu-btn svg { width: 24px; height: 24px; fill: var(--text-primary); }
+
+    .main-chat { width: 100%; }
+
+    .chat-header {
+        padding: 12px 16px;
+    }
+    .chat-header h3 { font-size: 14px; padding: 0 10px; }
+    .clear-chat-btn {
+        padding: 4px 8px;
+        font-size: 11px;
+    }
+    .clear-chat-btn span { display: none; }
+    .clear-chat-btn svg { width: 16px; height: 16px; }
+
+    .chat-messages {
+        padding: 20px 64px 20px 16px;
+        gap: 16px;
+    }
+
+    .message-wrapper { max-width: 94%; }
+    .message { padding: 12px 16px; font-size: 14px; }
+
+    .input-area { padding: 12px 16px; gap: 8px; }
+    .upload-btn, .queue-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+    }
+    .upload-btn svg, .queue-btn svg { width: 20px; height: 20px; }
+    .textarea-container { border-radius: 22px; }
+    .input-area textarea {
+        padding: 12px 16px;
+        height: 44px;
+        max-height: 140px;
+        font-size: 15px;
+    }
+    .send-btn {
+        width: 44px;
+        height: 44px;
+        border-radius: 22px;
+    }
+    .send-btn svg { width: 18px; height: 18px; }
+
+    .queue-panel {
+        left: 16px;
+        right: 16px;
+        bottom: calc(100% + 8px);
+        max-height: min(260px, 40vh);
+    }
+    .queue-list { max-height: 190px; }
+
+    .attachment-preview { padding: 12px 16px 0; }
+
+    .input-prefix-badge { padding: 0 12px; font-size: 12px; }
+
+    .message-actions { opacity: 1; }
+
+    .edit-area { min-width: 100%; }
+}
+
+
+@media screen and (max-width: 480px) {
+    .sidebar { padding: 12px; }
+    .sidebar-header { margin-bottom: 12px; }
+    .sidebar-header h2 { font-size: 15px; }
+    .new-chat-btn { padding: 10px; font-size: 14px; }
+    .chat-item { padding: 8px 28px 8px 10px; font-size: 13px; }
+
+    .settings-panel { top: 12px; left: 12px; right: 12px; bottom: 12px; border-radius: 16px; }
+    .settings-panel-header { padding: 18px 16px 10px; margin-bottom: 14px; }
+    .settings-panel-header h2 { font-size: 24px; }
+    .settings-section { margin: 0 16px 12px; padding: 12px; border-radius: 14px; gap: 10px; }
+    .settings-section:last-child { margin-bottom: 18px; }
+    .settings-group { gap: 8px; }
+    .settings-group label { font-size: 11px; }
+    .settings-group input, .settings-group textarea, .custom-select-trigger, .custom-select-option { font-size: 12px; }
+    .settings-group input, .settings-group textarea, .custom-select-trigger { padding: 8px 10px; }
+    .settings-group textarea { min-height: 50px; }
+
+    .chat-header {
+        padding: 10px 12px;
+    }
+    .chat-header h3 { font-size: 13px; padding: 0 8px; }
+    .clear-chat-btn { padding: 4px 6px; }
+    .clear-chat-btn svg { width: 14px; height: 14px; }
+
+    .chat-messages {
+        padding: 12px 56px 12px 10px;
+        gap: 12px;
+    }
+
+    .message-wrapper { max-width: 96%; }
+    .message {
+        padding: 10px 12px;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+    .message img { max-width: 100%; border-radius: 6px; }
+    .markdown-body { font-size: 13px; }
+    .markdown-body pre { padding: 10px; font-size: 12px; }
+    .markdown-body table { font-size: 12px; }
+    .markdown-body th, .markdown-body td { padding: 6px 8px; }
+
+    .input-area {
+        padding: 8px 8px;
+        gap: 4px;
+    }
+    .upload-btn, .queue-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+    }
+    .upload-btn svg, .queue-btn svg { width: 16px; height: 16px; }
+    .textarea-container { border-radius: 20px; }
+    .input-area textarea {
+        padding: 10px 12px;
+        height: 38px;
+        max-height: 120px;
+        font-size: 14px;
+    }
+    .send-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 18px;
+    }
+    .send-btn svg { width: 16px; height: 16px; }
+
+    .queue-panel {
+        left: 10px;
+        right: 10px;
+        max-height: min(240px, 38vh);
+        border-radius: 10px;
+    }
+    .queue-header { padding: 9px 12px; }
+    .queue-list { max-height: 170px; padding: 6px 10px 12px; }
+    .queue-item { padding: 7px 10px; gap: 8px; font-size: 12px; }
+
+    .attachment-preview { padding: 8px 10px 0; gap: 8px; }
+    .attachment-preview .img-wrap { width: 50px; height: 50px; }
+
+    .input-prefix-badge { font-size: 11px; padding: 0 8px; }
+
+    .action-icon { width: 24px; height: 24px; }
+    .action-icon svg { width: 12px; height: 12px; }
+
+    .edit-area { min-width: 100%; padding: 10px; font-size: 13px; }
+
+    .custom-modal { width: 280px; padding: 20px; }
+    .custom-modal p { font-size: 14px; margin-bottom: 16px; }
+    .custom-modal-actions button { padding: 10px; font-size: 13px; }
+
+    .toast-container { top: 12px; width: 90%; }
+    .toast { padding: 10px 16px; font-size: 13px; border-radius: 20px; }
+}
+
+
+@media screen and (max-height: 500px) and (orientation: landscape) {
+    .chat-header { padding: 8px 20px; }
+    .chat-messages { padding: 12px 64px 12px 20px; gap: 12px; }
+    .message { padding: 10px 14px; }
+    .input-area { padding: 10px 20px; }
+    .input-area textarea { height: 40px; }
+    .upload-btn, .queue-btn, .send-btn { width: 40px; height: 40px; }
+    .settings-panel { top: 8px; left: 8px; right: 8px; bottom: 8px; border-radius: 16px; }
+    .settings-panel-header { padding: 16px 20px 8px; margin-bottom: 12px; }
+    .settings-section { margin: 0 20px 10px; }
+    .settings-section:last-child { margin-bottom: 16px; }
+}
+
+
+@media screen and (max-width: 360px) {
+    .chat-header h3 { font-size: 12px; }
+    .message { padding: 8px 10px; font-size: 12px; }
+    .input-area textarea { font-size: 13px; }
+    .textarea-container { border-radius: 16px; }
+    .upload-btn, .queue-btn, .send-btn { width: 32px; height: 32px; border-radius: 16px; }
+    .upload-btn svg, .queue-btn svg { width: 14px; height: 14px; }
+    .send-btn svg { width: 14px; height: 14px; }
+    .input-area textarea { height: 34px; padding: 8px 10px; }
+}
+
+@media screen and (min-width: 769px) {
+    .menu-btn { display: none !important; }
+    .mobile-header { display: none !important; }
+    .sidebar-backdrop { display: none !important; }
+    .desktop-title { display: block !important; }
+}

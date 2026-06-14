@@ -1,0 +1,185 @@
+.input-wrapper { background: var(--bg-color); border-top: 1px solid var(--glass-border); display: flex; flex-direction: column; position: relative; z-index: 20; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
+.attachment-preview { display: none; padding: 15px 40px 0; gap: 10px; flex-wrap: wrap; align-items: center; }
+.attachment-preview .img-wrap { position: relative; width: 60px; height: 60px; border-radius: 8px; border: 1px solid #ccc; overflow: hidden; animation: slideUpFade 0.3s forwards; }
+.attachment-preview img { width: 100%; height: 100%; object-fit: cover; }
+.attachment-preview .remove-btn { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+.input-area { padding: 20px 40px; display: flex; gap: 12px; align-items: flex-end; }
+.upload-btn { background: transparent; border: 1px solid #ccc; width: 52px; height: 52px; border-radius: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); flex-shrink: 0; }
+.upload-btn:hover { background: #eee; border-color: #999; transform: translateY(-2px); }
+.upload-btn svg { width: 22px; height: 22px; fill: #555; transition: var(--transition); }
+.upload-btn:hover svg { fill: #000; }
+
+.textarea-container {
+    flex: 1; display: flex; align-items: stretch;
+    border: 1px solid #ccc; border-radius: 24px; background: white;
+    transition: var(--transition); overflow: hidden;
+}
+.textarea-container:focus-within {
+    border-color: #000; box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.input-prefix-badge {
+    display: none; background-color: #c4c4c4; color: white;
+    padding: 0 16px; font-size: 14px; font-weight: 600;
+    white-space: nowrap; align-items: center; justify-content: center;
+    user-select: none; border-right: 1px solid #ccc;
+}
+.input-area textarea {
+    flex: 1; padding: 14px 20px; border: none; font-size: 15px;
+    font-family: inherit; resize: none; outline: none; background: transparent;
+    height: 52px; max-height: 200px; line-height: 1.5;
+}
+
+.send-btn { background-color: var(--accent-color); color: white; border: none; width: 52px; height: 52px; border-radius: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); flex-shrink: 0; }
+.send-btn:hover { background-color: #333; transform: translateY(-2px) scale(1.02); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.send-btn:disabled { background-color: #ccc; cursor: not-allowed; transform: none; box-shadow: none; }
+.send-btn svg { fill: white; width: 20px; height: 20px; margin-left: 2px; }
+
+.stop-btn { background-color: #fff !important; color: #111; border: 1px solid #ccc; box-shadow: none; }
+.stop-btn:hover { background-color: #eee !important; border-color: #999; color: #111; transform: translateY(-2px) scale(1.02); }
+.stop-btn svg { margin-left: 0; width: 20px; height: 20px; fill: currentColor; }
+.stop-spinner { animation: rotate 1s linear infinite; }
+.generating-text {
+    background: linear-gradient(90deg, #111 0%, #777 35%, #fff 50%, #777 65%, #111 100%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    animation: textSweep 1.4s linear infinite;
+}
+.stop-btn:hover .generating-text {
+    background: linear-gradient(90deg, #fff 0%, #aaa 35%, #111 50%, #aaa 65%, #fff 100%);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+}
+
+
+.queue-btn {
+    background: transparent;
+    border: 1px solid #ccc;
+    width: 52px;
+    height: 52px;
+    border-radius: 26px;
+    cursor: pointer;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition);
+    flex-shrink: 0;
+}
+.queue-btn.generating { display: flex; }
+.queue-btn:hover {
+    background: #eee;
+    border-color: #999;
+    transform: translateY(-2px);
+}
+.queue-btn svg {
+    width: 20px;
+    height: 20px;
+    fill: #555;
+}
+
+.queue-panel {
+    display: none;
+    position: absolute;
+    left: 40px;
+    right: 40px;
+    bottom: calc(100% + 10px);
+    margin: 0;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    background: rgba(249, 249, 249, 0.96);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+    overflow: hidden;
+    z-index: 30;
+    max-height: min(280px, 42vh);
+}
+.queue-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    color: #666;
+    user-select: none;
+}
+.queue-header:hover {
+    background: #f0f0f0;
+}
+.queue-arrow {
+    width: 18px;
+    height: 18px;
+    fill: #999;
+    transition: transform 0.2s;
+}
+.queue-panel.collapsed .queue-arrow {
+    transform: rotate(180deg);
+}
+.queue-panel.collapsed .queue-list {
+    display: none;
+}
+.queue-list {
+    padding: 8px 12px 16px;
+    max-height: 220px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.queue-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: #fff;
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    margin-top: 8px;
+    font-size: 13px;
+}
+.queue-item-num {
+    background: #000;
+    color: #fff;
+    width: 22px;
+    height: 22px;
+    border-radius: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+.queue-item-text {
+    flex: 1;
+    color: #333;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+}
+.queue-item-remove {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 4px;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+.queue-item-remove:hover {
+    background: #fee;
+}
+.queue-item-remove svg {
+    width: 16px;
+    height: 16px;
+    fill: #999;
+}
+.queue-item-remove:hover svg {
+    fill: #e74c3c;
+}

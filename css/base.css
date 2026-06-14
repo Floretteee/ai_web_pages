@@ -1,0 +1,86 @@
+:root {
+    --bg-color: #f7f7f7;
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: #e0e0e0;
+    --text-primary: #000000;
+    --text-secondary: #666666;
+    --accent-color: #000000;
+
+    --message-user-bg: #000000;
+    --message-user-text: #ffffff;
+    --message-bot-bg: #ffffff;
+    --message-bot-text: #000000;
+
+    --sidebar-width: 280px;
+    --radius-lg: 12px;
+    --radius-md: 8px;
+    --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+
+    --bp-sm: 360px;
+    --bp-md: 480px;
+    --bp-lg: 768px;
+    --bp-xl: 769px;
+    --control-size: 52px;
+    --control-size-md: 44px;
+    --control-size-sm: 36px;
+    --control-size-xs: 32px;
+    --header-padding-x: 40px;
+    --chat-padding-x: 40px;
+    --chat-padding-x-md: 16px;
+    --chat-padding-x-sm: 10px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+    height: 100%;
+    height: 100dvh;
+    overflow: hidden;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background-color: var(--bg-color); color: var(--text-primary);
+    height: 100%; display: flex; overflow: hidden; -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #999; }
+
+@keyframes slideUpFade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fadeIn { to { opacity: 1; } }
+@keyframes dots { 0%, 20% { content: '.'; } 40% { content: '..'; } 60%, 100% { content: '...'; } }
+@keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(231, 76, 60, 0); }
+}
+@keyframes textSweep {
+    from { background-position: 220% 0; }
+    to { background-position: -220% 0; }
+}
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+@keyframes cursorBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+@keyframes toastEnter { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes toastLeave { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
+@keyframes brainBlink {
+    0%, 100% { color: #111; fill: #111; stroke: #111; opacity: 1; }
+    50% { color: #8a8a8a; fill: #8a8a8a; stroke: #8a8a8a; opacity: 0.45; }
+}
+@keyframes slideDown {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
