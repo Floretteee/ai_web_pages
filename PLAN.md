@@ -48,11 +48,17 @@
   - ~~`localStorage` 仅保留轻量配置（模型、主题、 preset 名等）。~~ 已完成，聊天数据写入 IndexedDB，localStorage 仅作回退。
   - 图片不再以 base64 原样累加（待后续处理）。
 
-### 2.2 消息列表虚拟滚动或分页
-- **现状**：长对话所有消息一次性挂载在 DOM 中，滚动与重渲染都会越来越慢。
+### 2.2 消息列表虚拟滚动或分页 ✅
+- **现状**：~~长对话所有消息一次性挂载在 DOM 中，滚动与重渲染都会越来越慢。~~ 已完成（分页实现）。
 - **目标**：
-  - 首屏只渲染最近 N 条（如 50 条），向上滚动时动态加载历史。
+  - ~~首屏只渲染最近 N 条（如 50 条），向上滚动时动态加载历史。~~ 已完成。
   - 或引入虚拟滚动（自行实现或引入轻量库），仅渲染可视区域内的消息。
+- **完成内容**：
+  - `js/app.js` 中加入 `MESSAGE_PAGE_SIZE = 50` / `MESSAGE_PAGE_STEP = 50` 与 `_visibleCounts` Map 维护每个聊天的当前可见条数（运行时状态，不持久化）。
+  - `renderMessages` 仅渲染最近 N 条消息，超出部分在顶部插入"加载更早的消息（剩余 X 条）"按钮，点击后增量加载并保持滚动位置不跳动。
+  - 切换聊天时通过 `switchChat` 重置可见条数为 50，避免长对话切换卡顿。
+  - 增量追加路径同步增加 chatId 一致性、load-more 按钮存在性校验，避免误判导致 DOM 错乱。
+  - `css/components/chat.css` 加入 `.load-more-history-btn` 玻璃拟态样式，含 hover/focus-visible 状态。
 
 ### 2.3 渲染性能优化
 - **现状**：`renderMessages` 虽有增量追加逻辑，但 `msgs.slice(0, existingWrappers.length).every(...)` 每次遍历生成 JSON.stringify 比较，流量大时仍有开销。

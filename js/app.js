@@ -22,7 +22,7 @@ function createNewChat(render = true) {
     if (render) { renderChatList(); renderMessages(); updateTrimIndicator(); DOM.userInput.focus(); }
 }
 
-function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; saveState(); renderChatList(); renderMessages(); updateTrimIndicator(); closeSettings(); closeSidebar(); }
+function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; setVisibleCount(id, MESSAGE_PAGE_SIZE); autoScroll = true; saveState(); renderChatList(); renderMessages(); updateTrimIndicator(); closeSettings(); closeSidebar(); }
 
 async function deleteChat(id, event) {
     event.stopPropagation();
@@ -153,6 +153,46 @@ function createMessageDOM(msg, index) {
 
 let _lastRenderMsgCount = 0;
 let _lastRenderEditIdx = -1;
+let _lastRenderChatId = null;
+
+const MESSAGE_PAGE_SIZE = 50;
+const MESSAGE_PAGE_STEP = 50;
+const _visibleCounts = new Map();
+
+function getVisibleCount(chatId) {
+    return _visibleCounts.get(chatId) || MESSAGE_PAGE_SIZE;
+}
+
+function setVisibleCount(chatId, count) {
+    _visibleCounts.set(chatId, count);
+}
+
+function loadMoreHistory() {
+    const chatId = state.currentChatId;
+    const chat = state.chats.find(c => c.id === chatId);
+    if (!chat) return;
+    const total = chat.messages.filter(m => m.role !== 'system').length;
+    const cur = getVisibleCount(chatId);
+    setVisibleCount(chatId, Math.min(total, cur + MESSAGE_PAGE_STEP));
+
+    const el = DOM.chatMessages;
+    const prevHeight = el.scrollHeight;
+    const prevTop = el.scrollTop;
+    renderMessages();
+    requestAnimationFrame(() => {
+        const newHeight = el.scrollHeight;
+        el.scrollTop = prevTop + (newHeight - prevHeight);
+    });
+}
+
+function createLoadMoreButton(remaining) {
+    const btn = document.createElement('button');
+    btn.className = 'load-more-history-btn';
+    btn.type = 'button';
+    btn.textContent = `加载更早的消息（剩余 ${remaining} 条）`;
+    btn.onclick = loadMoreHistory;
+    return btn;
+}
 
 function renderMessages() {
     const currentChat = state.chats.find(c => c.id === state.currentChatId);
@@ -160,30 +200,43 @@ function renderMessages() {
     DOM.chatHeaderTitle.textContent = currentChat.title || "新对话";
 
     const msgs = currentChat.messages.filter(m => m.role !== 'system');
-    const existingWrappers = DOM.chatMessages.querySelectorAll(':scope > .message-wrapper');
+    const visibleCount = Math.min(getVisibleCount(state.currentChatId), msgs.length);
+    const startIdx = Math.max(0, msgs.length - visibleCount);
+    const visibleMsgs = msgs.slice(startIdx);
+    const hasMore = startIdx > 0;
 
-    // 增量更新：如果只是末尾追加消息且没有编辑状态，只追加新DOM
-    const isAppendOnly = state.editingIndex === -1
+    const existingWrappers = DOM.chatMessages.querySelectorAll(':scope > .message-wrapper');
+    const existingLoadMore = DOM.chatMessages.querySelector(':scope > .load-more-history-btn');
+
+    // 增量更新：仅当聊天未切换、只是末尾追加、未在编辑、可见区起始未变时才追加 DOM
+    const sameChat = _lastRenderChatId === state.currentChatId;
+    const isAppendOnly = sameChat
+        && state.editingIndex === -1
         && _lastRenderEditIdx === -1
         && existingWrappers.length > 0
-        && msgs.length > existingWrappers.length
-        && msgs.slice(0, existingWrappers.length).every((msg, i) => {
+        && visibleMsgs.length > existingWrappers.length
+        && !!existingLoadMore === hasMore
+        && visibleMsgs.slice(0, existingWrappers.length).every((msg) => {
             const oldText = msg._lastRenderedContent;
             const newText = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
             return oldText === newText;
         });
 
     if (isAppendOnly) {
-        for (let i = existingWrappers.length; i < msgs.length; i++) {
-            const domObj = createMessageDOM(msgs[i], i);
+        for (let i = existingWrappers.length; i < visibleMsgs.length; i++) {
+            const realIdx = startIdx + i;
+            const domObj = createMessageDOM(visibleMsgs[i], realIdx);
             DOM.chatMessages.appendChild(domObj.wrapper);
-            // 新消息标记为已渲染
-            msgs[i]._lastRenderedContent = typeof msgs[i].content === 'string' ? msgs[i].content : JSON.stringify(msgs[i].content);
+            visibleMsgs[i]._lastRenderedContent = typeof visibleMsgs[i].content === 'string' ? visibleMsgs[i].content : JSON.stringify(visibleMsgs[i].content);
         }
     } else {
         DOM.chatMessages.innerHTML = '';
-        msgs.forEach((msg, index) => {
-            const domObj = createMessageDOM(msg, index);
+        if (hasMore) {
+            DOM.chatMessages.appendChild(createLoadMoreButton(startIdx));
+        }
+        visibleMsgs.forEach((msg, i) => {
+            const realIdx = startIdx + i;
+            const domObj = createMessageDOM(msg, realIdx);
             DOM.chatMessages.appendChild(domObj.wrapper);
             msg._lastRenderedContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
         });
@@ -191,6 +244,7 @@ function renderMessages() {
 
     _lastRenderMsgCount = msgs.length;
     _lastRenderEditIdx = state.editingIndex;
+    _lastRenderChatId = state.currentChatId;
 
     setTimeout(() => { if (autoScroll) scrollToBottom(); }, 50);
 }
