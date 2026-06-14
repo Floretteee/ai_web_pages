@@ -78,6 +78,7 @@ function saveEdit(index, newText) {
         let textPart = chat.messages[index].content.find(c => c.type === 'text');
         if(textPart) textPart.text = newText;
     } else { chat.messages[index].content = newText; }
+    chat.messages[index]._renderVersion = (chat.messages[index]._renderVersion || 0) + 1;
     state.editingIndex = -1; saveState(); renderMessages(); updateTrimIndicator(); showToast("修改已保存");
 }
 
@@ -210,6 +211,7 @@ function renderMessages() {
     const existingLoadMore = DOM.chatMessages.querySelector(':scope > .load-more-history-btn');
 
     // 增量更新：仅当聊天未切换、只是末尾追加、未在编辑、可见区起始未变时才追加 DOM
+    // 使用版本戳（_renderVersion）比对而非 JSON.stringify，避免大对话每次重渲染都序列化所有消息
     const sameChat = _lastRenderChatId === state.currentChatId;
     const isAppendOnly = sameChat
         && state.editingIndex === -1
@@ -218,9 +220,7 @@ function renderMessages() {
         && visibleMsgs.length > existingWrappers.length
         && !!existingLoadMore === hasMore
         && visibleMsgs.slice(0, existingWrappers.length).every((msg) => {
-            const oldText = msg._lastRenderedContent;
-            const newText = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-            return oldText === newText;
+            return msg._renderVersion !== undefined && msg._renderVersion === msg._lastRenderedVersion;
         });
 
     if (isAppendOnly) {
@@ -228,7 +228,8 @@ function renderMessages() {
             const realIdx = startIdx + i;
             const domObj = createMessageDOM(visibleMsgs[i], realIdx, true);
             DOM.chatMessages.appendChild(domObj.wrapper);
-            visibleMsgs[i]._lastRenderedContent = typeof visibleMsgs[i].content === 'string' ? visibleMsgs[i].content : JSON.stringify(visibleMsgs[i].content);
+            if (visibleMsgs[i]._renderVersion === undefined) visibleMsgs[i]._renderVersion = 0;
+            visibleMsgs[i]._lastRenderedVersion = visibleMsgs[i]._renderVersion;
         }
     } else {
         DOM.chatMessages.innerHTML = '';
@@ -242,7 +243,8 @@ function renderMessages() {
             const isNew = sameChatFull && realIdx >= newCountThreshold;
             const domObj = createMessageDOM(msg, realIdx, isNew);
             DOM.chatMessages.appendChild(domObj.wrapper);
-            msg._lastRenderedContent = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+            if (msg._renderVersion === undefined) msg._renderVersion = 0;
+            msg._lastRenderedVersion = msg._renderVersion;
         });
     }
 
@@ -391,7 +393,7 @@ function forkChat() {
     while (usedNumbers.has(n)) n++;
 
     const cloned = JSON.parse(JSON.stringify({ ...source, messages: source.messages.map(m => {
-        const { _lastRenderedContent, ...rest } = m;
+        const { _lastRenderedContent, _lastRenderedVersion, _renderVersion, ...rest } = m;
         return rest;
     }) }));
     cloned.id = Date.now().toString();

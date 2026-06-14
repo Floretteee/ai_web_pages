@@ -49,7 +49,7 @@ function initDOM() {
 let _saveTimer = null;
 function _saveStateSync() {
     const clean = state.chats.map(c => ({ ...c, messages: c.messages.map(m => {
-        const { _lastRenderedContent, ...rest } = m;
+        const { _lastRenderedContent, _lastRenderedVersion, _renderVersion, ...rest } = m;
         return rest;
     }) }));
     saveAllChats(clean).catch(e => console.warn('IndexedDB save failed:', e));
@@ -84,7 +84,7 @@ async function loadChatsFromDB() {
             if (Array.isArray(parsed) && parsed.length > 0) {
                 state.chats = parsed;
                 const clean = parsed.map(c => ({ ...c, messages: c.messages.map(m => {
-                    const { _lastRenderedContent, ...rest } = m;
+                    const { _lastRenderedContent, _lastRenderedVersion, _renderVersion, ...rest } = m;
                     return rest;
                 }) }));
                 saveAllChats(clean).catch(e => console.warn('IndexedDB migration save failed:', e));

@@ -60,11 +60,16 @@
   - 增量追加路径同步增加 chatId 一致性、load-more 按钮存在性校验，避免误判导致 DOM 错乱。
   - `css/components/chat.css` 加入 `.load-more-history-btn` 玻璃拟态样式，含 hover/focus-visible 状态。
 
-### 2.3 渲染性能优化
-- **现状**：`renderMessages` 虽有增量追加逻辑，但 `msgs.slice(0, existingWrappers.length).every(...)` 每次遍历生成 JSON.stringify 比较，流量大时仍有开销。
+### 2.3 渲染性能优化 ✅
+- **现状**：~~`renderMessages` 虽有增量追加逻辑，但 `msgs.slice(0, existingWrappers.length).every(...)` 每次遍历生成 JSON.stringify 比较，流量大时仍有开销。~~ 已完成。
 - **目标**：
-  - 给消息引入稳定版本戳/version，比较版本号而非字符串化内容。
-  - `executeChatRequest` 中 scheduler 刷新可降低频率（如 60ms → 120ms），减少大段 Markdown 重复渲染。
+  - ~~给消息引入稳定版本戳/version，比较版本号而非字符串化内容。~~ 已完成。
+  - ~~`executeChatRequest` 中 scheduler 刷新可降低频率（如 60ms → 120ms），减少大段 Markdown 重复渲染。~~ 已完成。
+- **完成内容**：
+  - `js/app.js` `renderMessages` 中将 `_lastRenderedContent` 字符串化对比改为 `_renderVersion` / `_lastRenderedVersion` 数值版本戳对比，避免每次重渲染都 `JSON.stringify` 全部已渲染消息内容；新消息首次渲染后版本戳同步为 0，后续仅在内容变更时递增。
+  - `saveEdit` 在保存修改时递增 `_renderVersion`，使下一次 `renderMessages` 落入全量重绘分支，正确反映编辑结果。
+  - `forkChat` 克隆与 `state.js` 持久化（`_saveStateSync` / `loadChatsFromDB` 迁移路径）同步剥离运行时字段 `_renderVersion` / `_lastRenderedVersion` / `_lastRenderedContent`，避免污染 IndexedDB / localStorage 数据。
+  - `js/api.js` 流式调度 `setTimeout` 节流从 30ms 提高到 120ms，长文本生成时显著降低主线程被 Markdown 重渲染占用的时长。
 
 ### 2.4 节流/防抖优化
 - **现状**：`throttledKeepMobileVisible` 使用 setTimeout，节流精度一般。
@@ -274,7 +279,7 @@
 
 1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、~~SW 版本管理~~、~~CSS 拆分~~。
 2. **再做结构**：~~拆分 `app.js`~~、~~抽象 UI 组件~~。
-3. **接着性能**：~~IndexedDB 迁移~~、~~消息列表分片渲染~~、~~动画系统重构（6.1-6.4）~~。
+3. **接着性能**：~~IndexedDB 迁移~~、~~消息列表分片渲染~~、~~渲染性能优化（版本戳 + 流式节流）~~、~~动画系统重构（6.1-6.4）~~。
 4. **最后体验**：深色模式、搜索、复制代码块、测试。
 
 ## 附录：暂不涉及

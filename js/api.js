@@ -134,7 +134,7 @@ async function executeChatRequest(currentChat, preparedMessages) {
             cursorTarget.insertAdjacentHTML('beforeend', '<span class="stream-cursor"></span>');
         }
             if (autoScroll) scrollToBottom();
-        }, 30);
+        }, 120);
     }
 
     let botReply = '';
