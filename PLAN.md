@@ -4,16 +4,18 @@
 
 ## 一、代码结构重构
 
-### 1.1 拆分 app.js
-- **现状**：`app.js` 共 1619 行，状态、网络、渲染、导出、队列、UI 全部耦合。
+### 1.1 拆分 app.js ✅
+- **现状**：~~`app.js` 共 1619 行，状态、网络、渲染、导出、队列、UI 全部耦合。~~ 已完成。
 - **目标**：拆分为多个职责单一的模块。
-  - `state.js`：全局状态初始化、读取、持久化。
-  - `api.js`：`fetchModels`、`executeChatRequest`、`generateTitle`、重试、超时控制。
-  - `renderer.js`：Markdown/Math/代码高亮、消息 DOM 创建、增量渲染。
-  - `export.js`：HTML/Markdown/JSON 导入导出。
-  - `queue.js`：消息队列逻辑。
-  - `ui.js`：侧边栏、设置面板、右键菜单、自定义 select、toast/confirm。
-- **验证标准**：每个模块行数控制在 400 行以内，模块间通过明确 import/export 依赖。
+  - `js/utils.js`：常量正则、转义、节流、资源加载。
+  - `js/state.js`：全局状态初始化、读取、持久化、DOM 收集。
+  - `js/api.js`：`fetchModels`、`executeChatRequest`、`generateTitle`、`stopGeneration`。
+  - `js/renderer.js`：Markdown/Math/代码高亮、`renderContentWithThink`、原生导出渲染。
+  - `js/export.js`：HTML/Markdown/JSON 导入导出。
+  - `js/queue.js`：消息队列逻辑。
+  - `js/ui.js`：侧边栏、设置面板、右键菜单、自定义 select、toast/confirm、滚动控制。
+  - `js/app.js`：对话/消息 CRUD、`init`、渲染调度、事件挂载。
+- **验证标准**：每个模块行数控制在 400 行以内（已达成，最长 app.js ≈412 行）。
 
 ### 1.2 统一状态管理
 - **现状**：`state` 为全局可变对象，多处直接修改字段。
@@ -134,7 +136,7 @@
 ## 八、实施顺序建议
 
 1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、~~SW 版本管理~~、~~CSS 拆分~~。
-2. **再做结构**：拆分 `app.js`、抽象 UI 组件。
+2. **再做结构**：~~拆分 `app.js`~~、抽象 UI 组件。
 3. **接着性能**：IndexedDB 迁移、消息列表分片渲染。
 4. **最后体验**：深色模式、搜索、复制代码块、测试。
 
