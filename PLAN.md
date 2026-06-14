@@ -64,13 +64,6 @@
   - 添加 `lint`、`format` npm scripts。
   - 推荐在 Git 仓库配置 pre-commit hook（如 `lint-staged`）。
 
-### 3.2 CSS 结构优化
-- **现状**：`styles.css` 997 行，混合通用、组件、响应式。
-- **目标**：
-  - 拆分为 `base.css`、`components.css`、`responsive.css`。
-  - 统一 magic number（如 768px、52px 等）为 CSS 变量。
-  - 减少重复动画定义，集中管理 keyframes。
-
 ## 四、错误处理与可靠性
 
 ### 4.1 请求超时控制
@@ -140,7 +133,7 @@
 
 ## 八、实施顺序建议
 
-1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、~~SW 版本管理~~、CSS 拆分。
+1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、~~SW 版本管理~~、~~CSS 拆分~~。
 2. **再做结构**：拆分 `app.js`、抽象 UI 组件。
 3. **接着性能**：IndexedDB 迁移、消息列表分片渲染。
 4. **最后体验**：深色模式、搜索、复制代码块、测试。
