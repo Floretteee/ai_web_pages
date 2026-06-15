@@ -370,11 +370,15 @@ const Components = (() => {
         }
 
         document.body.appendChild(menu);
+        menu.dataset.autoRemove = '1';
         return { element: menu, show, hide: () => hideContextMenu(menu) };
     }
 
     function hideContextMenu(menu) {
         menu.style.display = 'none';
+        if (menu.dataset.autoRemove === '1') {
+            setTimeout(() => menu.remove(), 0);
+        }
     }
 
     return {

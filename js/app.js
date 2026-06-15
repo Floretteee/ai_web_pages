@@ -105,10 +105,105 @@ async function retryMessage(index) {
     await executeChatRequest(chat);
 }
 
+async function translateAssistantEnglishTokens(index) {
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    if (!chat) return;
+    const msg = chat.messages[index];
+    if (!msg || msg.role !== 'assistant') return;
+    if (!state.apiKey || !state.selectedModel) {
+        showToast("请先配置 API Key 和模型");
+        return;
+    }
+
+    const plainText = getMessagePlainText(msg);
+    const tokens = extractEnglishTokens(plainText);
+    if (!tokens.length) {
+        showToast("未发现需要翻译的英文单词");
+        return;
+    }
+
+    showToast(`正在翻译 ${tokens.length} 个英文词...`);
+    const modelToUse = state.titleModel || state.selectedModel;
+    try {
+        const prompt = `你是中英翻译。下面是一段中文回复中混入的错误英文 token，请将每个英文词翻译成最贴合上下文的简短中文（1-6 字）。仅返回 JSON 对象，键为英文词（保持原大小写），值为中文翻译。不要添加多余解释。\n\n英文词列表：\n${JSON.stringify(tokens)}`;
+        const response = await fetch(`${API_BASE}/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
+            body: JSON.stringify({
+                model: modelToUse,
+                messages: [{ role: 'user', content: prompt }],
+                stream: false,
+                temperature: 0.2,
+                response_format: { type: 'json_object' }
+            })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        let text = data.choices?.[0]?.message?.content?.trim() || '';
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/```$/i, '').trim();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) text = jsonMatch[0];
+        let map;
+        try { map = JSON.parse(text); } catch (e) { throw new Error('翻译结果解析失败'); }
+        if (!map || typeof map !== 'object') throw new Error('翻译结果格式错误');
+
+        let original = msg.content;
+        if (Array.isArray(original)) {
+            const part = original.find(c => c.type === 'text');
+            if (part) part.text = applyTranslationMap(part.text || '', map);
+        } else if (typeof original === 'string') {
+            msg.content = applyTranslationMap(original, map);
+        }
+        msg._renderVersion = (msg._renderVersion || 0) + 1;
+        saveState();
+        renderMessages();
+        const replaced = Object.keys(map).filter(k => map[k]).length;
+        showToast(`已替换 ${replaced} 个英文词`);
+    } catch (error) {
+        showToast("翻译失败：" + (error.message || ''));
+    }
+}
+
+function showMessageContextMenu(event, index) {
+    event.preventDefault();
+    event.stopPropagation();
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    if (!chat) return;
+    const msg = chat.messages[index];
+    if (!msg) return;
+
+    const items = [
+        { label: '复制', icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>', onClick: () => copyMessage(index) },
+        { label: '修改', icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>', onClick: () => startEdit(index) },
+        { label: '重试', icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>', onClick: () => retryMessage(index) },
+        { label: '删除', icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>', onClick: () => deleteMessage(index) }
+    ];
+
+    if (msg.role === 'assistant') {
+        const plain = getMessagePlainText(msg);
+        if (plain && calcChineseRatio(plain) >= 0.85 && extractEnglishTokens(plain).length > 0) {
+            items.push({ divider: true });
+            items.push({
+                label: '翻译错误英文',
+                icon: '<svg viewBox="0 0 24 24" width="16" height="16"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>',
+                onClick: () => translateAssistantEnglishTokens(index)
+            });
+        }
+    }
+
+    const menu = Components.createContextMenu({ items, ariaLabel: '消息操作菜单' });
+    menu.show(event.pageX, event.pageY);
+}
+
 function createMessageDOM(msg, index, isNew = false) {
     const wrapper = document.createElement('div');
     wrapper.className = `message-wrapper ${msg.role === 'user' ? 'user' : 'bot'}`;
     if (isNew) wrapper.classList.add('animate-enter');
+    wrapper.addEventListener('contextmenu', (e) => {
+        if (e.target.closest('a, button, input, textarea, select, pre code')) return;
+        if (index === state.editingIndex) return;
+        showMessageContextMenu(e, index);
+    });
 
     if (index === state.editingIndex) {
         let textValue = msg.content;

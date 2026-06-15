@@ -133,6 +133,87 @@ function estimateMessagesTokens(messages) {
     return messages.reduce((sum, m) => sum + estimateTokens(m.content) + 4, 0);
 }
 
+function getMessagePlainText(msg) {
+    if (!msg) return '';
+    let content = msg.content;
+    if (Array.isArray(content)) {
+        content = content.find(c => c.type === 'text')?.text || '';
+    }
+    if (typeof content !== 'string') return '';
+    return content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '');
+}
+
+function calcChineseRatio(text) {
+    if (!text) return 0;
+    let cjk = 0;
+    let counted = 0;
+    for (let i = 0; i < text.length; i++) {
+        const code = text.charCodeAt(i);
+        if (code <= 32) continue;
+        counted++;
+        if ((code >= 0x4E00 && code <= 0x9FFF) ||
+            (code >= 0x3400 && code <= 0x4DBF) ||
+            (code >= 0xF900 && code <= 0xFAFF) ||
+            (code >= 0x3000 && code <= 0x33FF) ||
+            (code >= 0xFF00 && code <= 0xFFEF)) {
+            cjk++;
+        }
+    }
+    return counted ? cjk / counted : 0;
+}
+
+function extractEnglishTokens(text) {
+    if (!text || typeof text !== 'string') return [];
+    const placeholders = [];
+    let stripped = text.replace(/```[\s\S]*?```/g, (m) => { placeholders.push(m); return '\x00'; });
+    stripped = stripped.replace(/`[^`\n]+`/g, '\x00');
+    stripped = stripped.replace(/!?\[[^\]]*\]\([^)]+\)/g, '\x00');
+    stripped = stripped.replace(/<[^>]+>/g, '\x00');
+    stripped = stripped.replace(/https?:\/\/\S+/g, '\x00');
+    const matches = stripped.match(/[A-Za-z][A-Za-z'-]*[A-Za-z]|[A-Za-z]/g) || [];
+    const seen = new Set();
+    const result = [];
+    matches.forEach(w => {
+        if (w.length < 2) return;
+        if (/^[A-Z]+$/.test(w) && w.length <= 3) return;
+        const key = w.toLowerCase();
+        if (seen.has(key)) return;
+        seen.add(key);
+        result.push(w);
+    });
+    return result;
+}
+
+function applyTranslationMap(text, map) {
+    if (!text || !map || typeof text !== 'string') return text;
+    const entries = Object.entries(map).filter(([k, v]) => k && v && typeof v === 'string');
+    if (!entries.length) return text;
+    entries.sort((a, b) => b[0].length - a[0].length);
+
+    const segments = [];
+    const codePattern = /(```[\s\S]*?```|`[^`\n]+`|!?\[[^\]]*\]\([^)]+\)|<[^>]+>|https?:\/\/\S+)/g;
+    let lastIdx = 0;
+    let m;
+    while ((m = codePattern.exec(text)) !== null) {
+        if (m.index > lastIdx) segments.push({ text: text.slice(lastIdx, m.index), translate: true });
+        segments.push({ text: m[0], translate: false });
+        lastIdx = m.index + m[0].length;
+    }
+    if (lastIdx < text.length) segments.push({ text: text.slice(lastIdx), translate: true });
+
+    const translated = segments.map(seg => {
+        if (!seg.translate) return seg.text;
+        let out = seg.text;
+        entries.forEach(([word, zh]) => {
+            const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const re = new RegExp('(?<![A-Za-z])' + escaped + '(?![A-Za-z])', 'g');
+            out = out.replace(re, zh);
+        });
+        return out;
+    });
+    return translated.join('');
+}
+
 function filterExportContent(content, mode) {
     if (!mode || mode === 'none' || typeof content !== 'string') return content;
     let result = content;
