@@ -56,6 +56,90 @@ function exportChatMarkdown() {
     showToast("已导出 Markdown");
 }
 
+function exportChatTXT(novelMode) {
+    DOM.contextMenu.style.display = 'none';
+    const chat = state.chats.find(c => c.id === contextMenuChatId);
+    if (!chat) return;
+
+    const filterMode = state.filterMode;
+    const exportRole = state.exportRole;
+
+    let txt = '';
+    if (novelMode) {
+        txt += `${chat.title || '新对话'}\n\n`;
+    }
+
+    let chapterNum = 0;
+    chat.messages.forEach(msg => {
+        if (msg.role === 'system') return;
+        if (exportRole !== 'both' && msg.role !== exportRole) return;
+
+        const content = Array.isArray(msg.content)
+            ? msg.content.find(c => c.type === 'text')?.text || ''
+            : msg.content;
+
+        const displayContent = filterExportContent(content, filterMode);
+        if (!displayContent) return;
+
+        if (novelMode) {
+            chapterNum++;
+            txt += `第${numberToChinese(chapterNum)}章\n\n${displayContent}\n\n`;
+        } else {
+            if (exportRole === 'both') {
+                txt += `${msg.role === 'user' ? '用户' : '助手'}：\n\n`;
+            }
+            txt += `${displayContent}\n\n`;
+        }
+    });
+
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([txt], { type: 'text/plain;charset=utf-8' }));
+    const suffix = novelMode ? '小说' : '纯文本';
+    a.download = `${chat.title || '对话'}_${suffix}_${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    showToast(novelMode ? '已导出 TXT（小说）' : '已导出 TXT（纯文本）');
+}
+
+function numberToChinese(n) {
+    const digits = ['零','一','二','三','四','五','六','七','八','九'];
+    const units = ['','十','百','千'];
+    const bigUnits = ['','万','亿'];
+
+    if (n === 0) return digits[0];
+    if (n < 0) return '负' + numberToChinese(-n);
+
+    let result = '';
+    let bigIdx = 0;
+
+    while (n > 0) {
+        let segment = n % 10000;
+        n = Math.floor(n / 10000);
+        let segStr = '';
+        let zeroFlag = false;
+
+        for (let i = 0; i < 4 && (segment > 0 || i === 0); i++) {
+            let d = segment % 10;
+            segment = Math.floor(segment / 10);
+            if (d === 0) {
+                zeroFlag = true;
+            } else {
+                if (zeroFlag) { segStr = digits[0] + segStr; zeroFlag = false; }
+                segStr = digits[d] + units[i] + segStr;
+            }
+        }
+
+        if (segStr) {
+            result = segStr + bigUnits[bigIdx] + result;
+        } else if (result) {
+            result = digits[0] + result;
+        }
+        bigIdx++;
+    }
+
+    if (result.startsWith('一十')) result = result.substring(1);
+    return result;
+}
+
 function exportChatHTML() {
     DOM.contextMenu.style.display = 'none';
     const chat = state.chats.find(c => c.id === contextMenuChatId);
