@@ -14,7 +14,7 @@
     user-select: none;
     flex-shrink: 0;
 }
-.chat-token-counter.over-limit { color: var(--danger); }
+.chat-token-counter.over-limit { color: var(--danger); font-weight: 600; }
 .clear-chat-btn {
     background: transparent; border: 1px solid var(--border-mid); padding: 6px 12px; border-radius: 6px; cursor: pointer;
     font-size: 12px; color: var(--text-primary); transition: var(--transition); display: flex; align-items: center; gap: 6px; font-weight: 500;

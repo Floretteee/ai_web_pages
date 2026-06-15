@@ -395,14 +395,14 @@ function buildContextWithTrim(chat, newUserContent = null) {
     };
 
     let total = messages.reduce((sum, m) => sum + msgTokens(m), 0);
-    if (total <= limit) return { messages, trimmed: dropped20 > 0, skippedRounds: 0, dropped20 };
+    const trimThreshold = limit * 0.8;
+    if (total <= trimThreshold) return { messages, trimmed: dropped20 > 0, skippedRounds: 0, dropped20 };
 
-    // Trim whole conversation rounds from the beginning, while preserving system and the newest message.
     let startIdx = systemMsg ? 1 : 0;
     let skippedRounds = 0;
     const minKeepEnd = newMsg ? 1 : 0;
 
-    while (total > limit && startIdx < messages.length - minKeepEnd - 1) {
+    while (total > trimThreshold && startIdx < messages.length - minKeepEnd - 1) {
         if (messages[startIdx]?.role === 'user' && messages[startIdx + 1]?.role === 'assistant') {
             total -= msgTokens(messages[startIdx]);
             total -= msgTokens(messages[startIdx + 1]);
@@ -442,13 +442,17 @@ function updateTokenCounter() {
             ? [{ type: 'text', text: text || '分析这张图片' }, { type: 'image_url', image_url: { url: state.attachment } }]
             : text;
     }
-    const { messages } = buildContextWithTrim(chat, newContent);
-    const tokens = estimateMessagesTokens(messages);
+    const allMsgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
+    let fullTokens = estimateMessagesTokens(allMsgs) + (state.systemPrompt ? estimateTokens(state.systemPrompt) + 4 : 0);
+    if (newContent) {
+        fullTokens += estimateTokens(newContent) + 4;
+        if (typeof newContent === 'string' && state.userPrefix) fullTokens += estimateTokens(state.userPrefix);
+    }
     const limit = chat.contextLimit || 0;
     DOM.chatTokenCounter.textContent = limit
-        ? `${tokens}/${formatTokenCount(limit)}`
-        : `${tokens}`;
-    DOM.chatTokenCounter.classList.toggle('over-limit', limit > 0 && tokens > limit);
+        ? `${formatTokenCount(fullTokens)}/${formatTokenCount(limit)}`
+        : `${formatTokenCount(fullTokens)}`;
+    DOM.chatTokenCounter.classList.toggle('over-limit', limit > 0 && fullTokens >= limit * 0.8);
 }
 
 function updateTrimIndicator() {
@@ -468,6 +472,9 @@ function updateTrimIndicator() {
 
         const { trimmed } = buildContextWithTrim(chat, newContent);
         DOM.trimBadge.classList.toggle('show', trimmed);
+        if (!trimmed && chat.contextLimitWarned) {
+            chat.contextLimitWarned = false;
+        }
     }
     updateTokenCounter();
 }
@@ -588,7 +595,7 @@ async function sendMessage() {
     if (trimmed) {
         const wasWarned = currentChat.contextLimitWarned;
         if (!wasWarned) {
-            showToast(`上下文将超过 Token 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });
+            showToast(`上下文已达 80% 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });
             currentChat.contextLimitWarned = true;
             saveState();
         }
