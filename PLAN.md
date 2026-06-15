@@ -71,9 +71,12 @@
   - `forkChat` 克隆与 `state.js` 持久化（`_saveStateSync` / `loadChatsFromDB` 迁移路径）同步剥离运行时字段 `_renderVersion` / `_lastRenderedVersion` / `_lastRenderedContent`，避免污染 IndexedDB / localStorage 数据。
   - `js/api.js` 流式调度 `setTimeout` 节流从 30ms 提高到 120ms，长文本生成时显著降低主线程被 Markdown 重渲染占用的时长。
 
-### 2.4 节流/防抖优化
-- **现状**：`throttledKeepMobileVisible` 使用 setTimeout，节流精度一般。
-- **目标**：使用 `requestAnimationFrame` + 时间戳实现更平滑的 viewport 适配。
+### 2.4 节流/防抖优化 ✅
+- **现状**：~~`throttledKeepMobileVisible` 使用 setTimeout，节流精度一般。~~ 已完成。
+- **完成内容**：
+  - `js/ui.js`：`keepMobileComposerVisible` 从 `setTimeout` 节流升级为 `requestAnimationFrame` 节流（`_vvRafId` 去重）。
+  - `scrollToBottom` 同样改为 rAF 单帧防抖（`_scrollRafId` 去重）。
+  - 此项在 6.4 动画系统重构中一并完成。
 
 ## 三、工程化与构建
 
@@ -241,17 +244,34 @@
 - `js/api.js`：流式机器人气泡 `createMessageDOM(..., true)` 启用进场动画。
 - `js/ui.js`：`scrollToBottom` 改用 `requestAnimationFrame` 单帧防抖；`keepMobileComposerVisible` 从 `setTimeout` 节流升级为 rAF 节流；`closeSidebar` / `closeSettings` / `closeChatSettings` 增加 `.exiting` 类完成"进出分流"，过渡结束自动清理。
 
-### 6.5 深色模式
+### 6.5 深色模式 ✅
 - **目标**：
-  - 添加 `dark` 类切换，所有 CSS 变量支持暗色值。
+  - 添加 `data-theme` 属性切换，所有 CSS 变量支持暗色值。
   - 用户偏好持久化到 `localStorage`。
   - 跟随系统 `prefers-color-scheme`。
+- **完成内容**：
+  - `css/base.css`：扩展完整语义化 CSS 变量体系（`--surface-1/2/3/hover/active`、`--border-soft/mid/strong`、`--text-tertiary/muted`、`--accent-text/hover`、`--shadow-soft/mid/strong`、`--code-bg/text/border`、`--inline-code-bg/on-user`、`--think-bg/border/text/summary`、`--message-bot-shadow`、`--backdrop-overlay/modal`、`--danger/strong` 等 30+ 变量）。
+  - `html[data-theme="dark"]`：完整暗色值覆盖，含 `color-scheme: dark` 浏览器原生适配。
+  - 所有组件 CSS（sidebar/chat/input/settings/overlays/responsive）硬编码颜色替换为 CSS 变量引用。
+  - 设置面板新增「外观 > 主题」section，提供"跟随系统 / 浅色 / 深色"三选。
+  - `js/ui.js`：实现 `setTheme()` / `applyTheme()` / `initTheme()`，localStorage 持久化，`matchMedia('(prefers-color-scheme: dark)')` 监听系统切换自动应用。
+  - `meta[name=theme-color]` 联动更新，适配移动端浏览器地址栏颜色。
 
-### 6.6 消息搜索
-- **目标**：在侧边栏或聊天顶部增加搜索框，按关键字过滤当前对话消息。
+### 6.6 消息搜索 ✅
+- **目标**：~~在侧边栏或聊天顶部增加搜索框，按关键字过滤当前对话消息。~~ 已完成。
+- **完成内容**：
+  - `index.html`：chat-header 新增搜索按钮（放大镜图标），点击展开/收起搜索栏。
+  - `css/components/chat.css`：新增 `.search-bar` / `.search-toggle-btn` / `.search-hidden` / `.search-highlight` 样式，搜索栏支持响应式适配。
+  - `js/app.js`：实现 `toggleSearch(forceOpen)` / `clearSearch()` / `handleSearch(query)`，rAF 防抖；匹配项高亮 `.search-highlight`，不匹配项隐藏 `.search-hidden`，结果计数显示。
+  - 快捷键支持：`Ctrl/Cmd+F` 打开搜索，`Esc` 关闭搜索。
+  - 切换聊天时自动 `clearSearch()` 清除搜索状态。
 
-### 6.7 代码块一键复制
-- **目标**：每个 `<pre>` 右上角增加复制按钮，复制代码原文到剪贴板。
+### 6.7 代码块一键复制 ✅
+- **目标**：~~每个 `<pre>` 右上角增加复制按钮，复制代码原文到剪贴板。~~ 已完成。
+- **完成内容**：
+  - `js/renderer.js`：`highlightCodeBlocks()` 末尾调用 `addCopyButtons(container)`，为每个 `<pre>` 动态注入 `.code-copy-btn`；新增独立 `addCopyButtons()` 函数确保无语法高亮的 `<pre>` 也能获得复制按钮。
+  - 点击复制调用 `navigator.clipboard.writeText()`，成功后图标切换为勾号，2 秒后恢复。
+  - `css/components/chat.css`：`.code-copy-btn` 绝对定位于 `pre` 右上角，默认 `opacity:0`，hover `pre` 时显示；暗色代码块半透明背景适配，`.copied` 状态绿色勾号反馈。
 
 ### 6.8 输入限制与提示
 - 增加 `maxlength`（如 8000）与字符计数.
@@ -280,7 +300,7 @@
 1. **先做低风险高价值**：~~清理未使用依赖~~、~~统一 README~~、~~SW 版本管理~~、~~CSS 拆分~~。
 2. **再做结构**：~~拆分 `app.js`~~、~~抽象 UI 组件~~。
 3. **接着性能**：~~IndexedDB 迁移~~、~~消息列表分片渲染~~、~~渲染性能优化（版本戳 + 流式节流）~~、~~动画系统重构（6.1-6.4）~~。
-4. **最后体验**：深色模式、搜索、复制代码块、测试。
+4. **最后体验**：~~深色模式~~、~~搜索~~、~~复制代码块~~、测试。
 
 ## 附录：暂不涉及
 

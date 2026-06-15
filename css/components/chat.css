@@ -104,7 +104,8 @@
 .action-icon:hover { background: var(--surface-hover); border-color: var(--border-soft); color: var(--text-primary); }
 .action-icon svg { width: 14px; height: 14px; fill: currentColor; }
 
-.edit-area { width: 100%; min-width: 400px; min-height: 100px; padding: 12px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 10px; outline: none; background: var(--surface-1); color: var(--text-primary); line-height: 1.5; box-shadow: var(--shadow-soft); }
+.message-wrapper:has(.edit-area) { max-width: 100%; width: 100%; }
+.edit-area { width: 100%; min-width: 600px; min-height: 240px; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); font-family: inherit; font-size: 15px; resize: vertical; margin-bottom: 10px; outline: none; background: var(--surface-1); color: var(--text-primary); line-height: 1.6; box-shadow: var(--shadow-soft); }
 .edit-actions { display: flex; gap: 10px; justify-content: flex-end; width: 100%; }
 
 
