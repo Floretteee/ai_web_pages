@@ -82,9 +82,51 @@ function estimateTokens(content) {
         }, 0);
     }
     const str = String(content);
-    let weighted = 0;
-    for (const ch of str) weighted += ch.charCodeAt(0) > 127 ? 4 : 1;
-    return Math.max(1, Math.ceil(weighted / 16));
+    if (!str) return 0;
+
+    let cjk = 0;          // 常用汉字/全角符号 ≈ 1.5 token
+    let cjkRare = 0;      // CJK 扩展区/罕用字 ≈ 3 token
+    let ascii = 0;        // 英文/数字/常见标点
+    let codeAscii = 0;    // 出现在代码块中的 ASCII（≈ 4.5 char/token）
+    let other = 0;        // 其他 Unicode 字符（≈ 2 token）
+
+    let inCode = 0;
+    const codeFenceRe = /```/g;
+    const fences = [];
+    let m;
+    while ((m = codeFenceRe.exec(str)) !== null) fences.push(m.index);
+    const codeRanges = [];
+    for (let i = 0; i + 1 < fences.length; i += 2) codeRanges.push([fences[i], fences[i + 1] + 3]);
+
+    let inInlineCode = false;
+    for (let i = 0; i < str.length; i++) {
+        const code = str.charCodeAt(i);
+
+        let inFenced = false;
+        for (const [s, e] of codeRanges) { if (i >= s && i < e) { inFenced = true; break; } }
+        if (str[i] === '`' && !inFenced) inInlineCode = !inInlineCode;
+        const isCode = inFenced || inInlineCode;
+
+        if (code <= 127) {
+            if (isCode) codeAscii++; else ascii++;
+        } else if (code >= 0x4E00 && code <= 0x9FFF) {
+            cjk++;
+        } else if (code >= 0x3000 && code <= 0x33FF) {
+            cjk++;
+        } else if (code >= 0xFF00 && code <= 0xFFEF) {
+            cjk++;
+        } else if (code >= 0xD800 && code <= 0xDBFF) {
+            cjkRare++;
+            i++;
+        } else if ((code >= 0x3400 && code <= 0x4DBF) || (code >= 0xF900 && code <= 0xFAFF)) {
+            cjkRare++;
+        } else {
+            other++;
+        }
+    }
+
+    const tokens = ascii / 4 + codeAscii / 4.5 + cjk * 1.5 + cjkRare * 3 + other / 2;
+    return Math.max(1, Math.ceil(tokens));
 }
 
 function estimateMessagesTokens(messages) {
