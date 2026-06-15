@@ -417,6 +417,14 @@ function showContextMenu(e, chatId) {
         if (DOM.ctxDrop20IconOff) DOM.ctxDrop20IconOff.style.display = enabled ? 'none' : '';
     }
 
+    if (fromSidebar && DOM.ctxAutoFixLabel) {
+        const chat = state.chats.find(c => c.id === contextMenuChatId);
+        const enabled = !!(chat && chat.autoFixEnglish);
+        DOM.ctxAutoFixLabel.textContent = enabled ? '关闭自动修复英文' : '开启自动修复英文';
+        if (DOM.ctxAutoFixIconOn) DOM.ctxAutoFixIconOn.style.display = enabled ? '' : 'none';
+        if (DOM.ctxAutoFixIconOff) DOM.ctxAutoFixIconOff.style.display = enabled ? 'none' : '';
+    }
+
     menu.style.display = 'block';
     menu.style.left = e.pageX + 'px';
     menu.style.top = e.pageY + 'px';

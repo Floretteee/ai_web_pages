@@ -48,6 +48,9 @@ function initDOM() {
         ctxDrop20Label: document.getElementById('ctxDrop20Label'),
         ctxDrop20IconOn: document.getElementById('ctxDrop20IconOn'),
         ctxDrop20IconOff: document.getElementById('ctxDrop20IconOff'),
+        ctxAutoFixLabel: document.getElementById('ctxAutoFixLabel'),
+        ctxAutoFixIconOn: document.getElementById('ctxAutoFixIconOn'),
+        ctxAutoFixIconOff: document.getElementById('ctxAutoFixIconOff'),
         themeSelect: document.getElementById('themeSelect')
     });
 }

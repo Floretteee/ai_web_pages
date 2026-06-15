@@ -105,24 +105,25 @@ async function retryMessage(index) {
     await executeChatRequest(chat);
 }
 
-async function translateAssistantEnglishTokens(index) {
+async function translateAssistantEnglishTokens(index, options = {}) {
+    const silent = !!options.silent;
     const chat = state.chats.find(c => c.id === state.currentChatId);
-    if (!chat) return;
+    if (!chat) return false;
     const msg = chat.messages[index];
-    if (!msg || msg.role !== 'assistant') return;
+    if (!msg || msg.role !== 'assistant') return false;
     if (!state.apiKey || !state.selectedModel) {
-        showToast("请先配置 API Key 和模型");
-        return;
+        if (!silent) showToast("请先配置 API Key 和模型");
+        return false;
     }
 
     const plainText = getMessagePlainText(msg);
     const tokens = extractEnglishTokens(plainText);
     if (!tokens.length) {
-        showToast("未发现需要翻译的英文片段");
-        return;
+        if (!silent) showToast("未发现需要翻译的英文片段");
+        return false;
     }
 
-    showToast(`正在翻译 ${tokens.length} 处英文...`);
+    if (!silent) showToast(`正在翻译 ${tokens.length} 处英文...`);
     const modelToUse = state.selectedModel;
     try {
         const prompt = `你是中英翻译。下面是从一段中文回复中抽取的、混入的错误英文片段（可能是单词、词组或短句）。请将每个英文片段翻译成最贴合中文上下文的简短译文。仅返回 JSON 对象，键为英文片段（保持原样、原大小写、原内部空格），值为对应中文翻译。不要添加多余解释。\n\n英文片段列表：\n${JSON.stringify(tokens)}`;
@@ -158,10 +159,27 @@ async function translateAssistantEnglishTokens(index) {
         saveState();
         renderMessages();
         const replaced = Object.keys(map).filter(k => map[k]).length;
-        showToast(`已替换 ${replaced} 处英文`);
+        if (!silent) showToast(`已替换 ${replaced} 处英文`);
+        else if (replaced > 0) showToast(`自动修复：替换 ${replaced} 处英文`);
+        return true;
     } catch (error) {
-        showToast("翻译失败：" + (error.message || ''));
+        if (!silent) showToast("翻译失败：" + (error.message || ''));
+        return false;
     }
+}
+
+async function autoFixLastAssistantMessage(chat) {
+    if (!chat || !chat.autoFixEnglish) return;
+    const lastIdx = chat.messages.length - 1;
+    if (lastIdx < 0) return;
+    const msg = chat.messages[lastIdx];
+    if (!msg || msg.role !== 'assistant') return;
+    const plain = getMessagePlainText(msg);
+    if (!plain) return;
+    if (calcChineseRatio(plain) < 0.85) return;
+    if (extractEnglishTokens(plain).length === 0) return;
+    if (chat.id !== state.currentChatId) return;
+    await translateAssistantEnglishTokens(lastIdx, { silent: true });
 }
 
 function showMessageContextMenu(event, index) {
@@ -463,6 +481,15 @@ function toggleDropFront20() {
     saveState();
     updateTrimIndicator();
     showToast(chat.dropFront20 ? '已开启：固定丢弃前 20% 对话' : '已关闭：固定丢弃前 20% 对话');
+}
+
+function toggleAutoFix() {
+    DOM.contextMenu.style.display = 'none';
+    const chat = state.chats.find(c => c.id === contextMenuChatId);
+    if (!chat) return;
+    chat.autoFixEnglish = !chat.autoFixEnglish;
+    saveState();
+    showToast(chat.autoFixEnglish ? '已开启：本对话自动修复英文' : '已关闭：本对话自动修复英文');
 }
 
 function handleKeydown(e) {

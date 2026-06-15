@@ -251,6 +251,10 @@ async function executeChatRequest(currentChat, preparedMessages) {
     DOM.loadingIndicator.style.display = 'none';
     DOM.userInput.focus();
 
+    if (currentChat.autoFixEnglish && botReply) {
+        autoFixLastAssistantMessage(currentChat).catch(() => {});
+    }
+
     // 检查队列是否有待发送消息
     if (messageQueue.length > 0 && !isProcessingQueue) {
         setTimeout(() => processQueue(), 500);
