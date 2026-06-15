@@ -118,14 +118,14 @@ async function translateAssistantEnglishTokens(index) {
     const plainText = getMessagePlainText(msg);
     const tokens = extractEnglishTokens(plainText);
     if (!tokens.length) {
-        showToast("未发现需要翻译的英文单词");
+        showToast("未发现需要翻译的英文片段");
         return;
     }
 
-    showToast(`正在翻译 ${tokens.length} 个英文词...`);
-    const modelToUse = state.titleModel || state.selectedModel;
+    showToast(`正在翻译 ${tokens.length} 处英文...`);
+    const modelToUse = state.selectedModel;
     try {
-        const prompt = `你是中英翻译。下面是一段中文回复中混入的错误英文 token，请将每个英文词翻译成最贴合上下文的简短中文（1-6 字）。仅返回 JSON 对象，键为英文词（保持原大小写），值为中文翻译。不要添加多余解释。\n\n英文词列表：\n${JSON.stringify(tokens)}`;
+        const prompt = `你是中英翻译。下面是从一段中文回复中抽取的、混入的错误英文片段（可能是单词、词组或短句）。请将每个英文片段翻译成最贴合中文上下文的简短译文。仅返回 JSON 对象，键为英文片段（保持原样、原大小写、原内部空格），值为对应中文翻译。不要添加多余解释。\n\n英文片段列表：\n${JSON.stringify(tokens)}`;
         const response = await fetch(`${API_BASE}/chat/completions`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
@@ -158,7 +158,7 @@ async function translateAssistantEnglishTokens(index) {
         saveState();
         renderMessages();
         const replaced = Object.keys(map).filter(k => map[k]).length;
-        showToast(`已替换 ${replaced} 个英文词`);
+        showToast(`已替换 ${replaced} 处英文`);
     } catch (error) {
         showToast("翻译失败：" + (error.message || ''));
     }

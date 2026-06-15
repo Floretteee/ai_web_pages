@@ -164,22 +164,29 @@ function calcChineseRatio(text) {
 
 function extractEnglishTokens(text) {
     if (!text || typeof text !== 'string') return [];
-    const placeholders = [];
-    let stripped = text.replace(/```[\s\S]*?```/g, (m) => { placeholders.push(m); return '\x00'; });
+    let stripped = text.replace(/```[\s\S]*?```/g, '\x00');
     stripped = stripped.replace(/`[^`\n]+`/g, '\x00');
     stripped = stripped.replace(/!?\[[^\]]*\]\([^)]+\)/g, '\x00');
     stripped = stripped.replace(/<[^>]+>/g, '\x00');
     stripped = stripped.replace(/https?:\/\/\S+/g, '\x00');
-    const matches = stripped.match(/[A-Za-z][A-Za-z'-]*[A-Za-z]|[A-Za-z]/g) || [];
+
+    // 连续英文短语：英文字母为核心，允许内部出现空格/连字符/撇号/常见标点连接
+    // 形如 "hello world", "state-of-the-art", "I'm fine"
+    const phrasePattern = /[A-Za-z][A-Za-z'\-]*(?:[ \t]+[A-Za-z][A-Za-z'\-]*|[\-'][A-Za-z]+)*/g;
+    const matches = stripped.match(phrasePattern) || [];
+
     const seen = new Set();
     const result = [];
-    matches.forEach(w => {
-        if (w.length < 2) return;
-        if (/^[A-Z]+$/.test(w) && w.length <= 3) return;
-        const key = w.toLowerCase();
+    matches.forEach(raw => {
+        const phrase = raw.trim();
+        if (!phrase) return;
+        if (phrase.length < 2) return;
+        // 单个单词且全大写且≤3字母（如 ID, OK, AI），跳过
+        if (!/\s/.test(phrase) && /^[A-Z]+$/.test(phrase) && phrase.length <= 3) return;
+        const key = phrase.toLowerCase();
         if (seen.has(key)) return;
         seen.add(key);
-        result.push(w);
+        result.push(phrase);
     });
     return result;
 }
@@ -188,6 +195,7 @@ function applyTranslationMap(text, map) {
     if (!text || !map || typeof text !== 'string') return text;
     const entries = Object.entries(map).filter(([k, v]) => k && v && typeof v === 'string');
     if (!entries.length) return text;
+    // 先替换长短语，避免被短词先吃掉
     entries.sort((a, b) => b[0].length - a[0].length);
 
     const segments = [];
@@ -204,8 +212,8 @@ function applyTranslationMap(text, map) {
     const translated = segments.map(seg => {
         if (!seg.translate) return seg.text;
         let out = seg.text;
-        entries.forEach(([word, zh]) => {
-            const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        entries.forEach(([phrase, zh]) => {
+            const escaped = phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&').replace(/[ \t]+/g, '[ \\t]+');
             const re = new RegExp('(?<![A-Za-z])' + escaped + '(?![A-Za-z])', 'g');
             out = out.replace(re, zh);
         });
