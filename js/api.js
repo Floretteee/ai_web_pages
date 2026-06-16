@@ -10,11 +10,12 @@ async function fetchModels() {
         const res = await fetch(`${API_BASE}/models`, { headers: { 'Authorization': `Bearer ${DOM.apiKeyInput.value.trim()}` } });
         const data = await res.json();
         if (data && data.data) {
-            DOM.modelSelect.innerHTML = ''; DOM.titleModelSelect.innerHTML = '<option value="">跟随对话模型</option>';
-            data.data.forEach(m => { DOM.modelSelect.add(new Option(m.id, m.id)); DOM.titleModelSelect.add(new Option(m.id, m.id)); });
+            DOM.modelSelect.innerHTML = ''; DOM.titleModelSelect.innerHTML = '<option value="">跟随对话模型</option>'; DOM.refuseModelSelect.innerHTML = '<option value="">跟随对话模型</option>';
+            data.data.forEach(m => { DOM.modelSelect.add(new Option(m.id, m.id)); DOM.titleModelSelect.add(new Option(m.id, m.id)); DOM.refuseModelSelect.add(new Option(m.id, m.id)); });
             if (state.selectedModel && data.data.find(m => m.id === state.selectedModel)) DOM.modelSelect.value = state.selectedModel;
             else { state.selectedModel = data.data[0].id; saveSettings(); }
             if (state.titleModel && data.data.find(m => m.id === state.titleModel)) DOM.titleModelSelect.value = state.titleModel;
+            if (state.refuseModel && data.data.find(m => m.id === state.refuseModel)) DOM.refuseModelSelect.value = state.refuseModel;
             refreshAllCustomSelects();
             showToast("模型列表获取成功！");
         }
@@ -256,7 +257,7 @@ async function executeChatRequest(currentChat, preparedMessages) {
     }
 
     if (currentChat.autoRetryOnRefuse && botReply) {
-        checkRefuseAndRetry(currentChat).catch(() => {});
+        await checkRefuseAndRetry(currentChat).catch(() => {});
     }
 
     // 检查队列是否有待发送消息
@@ -293,7 +294,7 @@ async function checkRefuseAndRetry(chat) {
     const msg = chat.messages[lastIdx];
     if (!msg || msg.role !== 'assistant') return;
 
-    const modelToUse = state.selectedModel;
+    const modelToUse = state.refuseModel || state.selectedModel;
     if (!modelToUse || !state.apiKey) return;
 
     const plain = getMessagePlainText(msg);

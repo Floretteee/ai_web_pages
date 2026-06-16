@@ -736,6 +736,9 @@ async function init() {
     if (state.apiKey && state.selectedModel) {
         DOM.modelSelect.innerHTML = `<option value="${state.selectedModel}">${state.selectedModel}</option>`;
         DOM.titleModelSelect.innerHTML = `<option value="">跟随对话模型</option><option value="${state.titleModel}" selected>${state.titleModel}</option>`;
+        DOM.refuseModelSelect.innerHTML = `<option value="">跟随对话模型</option>${state.refuseModel ? `<option value="${state.refuseModel}" selected>${state.refuseModel}</option>` : ''}`;
+        DOM.refuseModelSelect.innerHTML = `<option value="">跟随对话模型</option><option value="${state.refuseModel}" selected>${state.refuseModel}</option>`;
+        DOM.refuseModelSelect.innerHTML = `<option value="">跟随对话模型</option><option value="${state.refuseModel}" selected>${state.refuseModel}</option>`;
         refreshAllCustomSelects();
     }
 

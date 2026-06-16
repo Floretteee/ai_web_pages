@@ -7,6 +7,7 @@ let contextMenuChatId = null;
 let state = {
     apiKey: localStorage.getItem('ai_api_key') || '', selectedModel: localStorage.getItem('ai_selected_model') || '',
     titleModel: localStorage.getItem('ai_title_model') || '',
+    refuseModel: localStorage.getItem('ai_refuse_model') || '',
     systemPrompt: localStorage.getItem('ai_system_prompt') || '',
     userPrefix: localStorage.getItem('ai_user_prefix') || '',
     selectedPreset: localStorage.getItem('ai_selected_preset') || 'custom',
@@ -24,6 +25,7 @@ function initDOM() {
         chatList: document.getElementById('chatList'), chatMessages: document.getElementById('chatMessages'),
         userInput: document.getElementById('userInput'), apiKeyInput: document.getElementById('apiKeyInput'),
         modelSelect: document.getElementById('modelSelect'), titleModelSelect: document.getElementById('titleModelSelect'),
+        refuseModelSelect: document.getElementById('refuseModelSelect'),
         presetSelect: document.getElementById('presetSelect'), systemPromptInput: document.getElementById('systemPromptInput'),
         userPrefixInput: document.getElementById('userPrefixInput'), sendBtn: document.getElementById('sendBtn'),
         loadingIndicator: document.getElementById('loadingIndicator'), settingsContainer: document.getElementById('settingsContainer'),
@@ -110,6 +112,7 @@ let _saveSettingsTimer = null;
 function saveSettings() {
     state.apiKey = DOM.apiKeyInput.value.trim(); state.selectedModel = DOM.modelSelect.value;
     state.titleModel = DOM.titleModelSelect.value;
+    state.refuseModel = DOM.refuseModelSelect.value;
     state.systemPrompt = DOM.systemPromptInput.value.trim();
     state.userPrefix = DOM.userPrefixInput.value;
     state.selectedPreset = DOM.presetSelect.value;
@@ -121,7 +124,8 @@ function saveSettings() {
     _saveSettingsTimer = setTimeout(() => {
         _saveSettingsTimer = null;
         localStorage.setItem('ai_api_key', state.apiKey); localStorage.setItem('ai_selected_model', state.selectedModel);
-        localStorage.setItem('ai_title_model', state.titleModel); localStorage.setItem('ai_system_prompt', state.systemPrompt);
+        localStorage.setItem('ai_title_model', state.titleModel); localStorage.setItem('ai_refuse_model', state.refuseModel);
+        localStorage.setItem('ai_system_prompt', state.systemPrompt);
         localStorage.setItem('ai_user_prefix', state.userPrefix); localStorage.setItem('ai_selected_preset', state.selectedPreset);
         localStorage.setItem('ai_html_style', state.htmlStyle); localStorage.setItem('ai_filter_mode', state.filterMode);
         localStorage.setItem('ai_export_role', state.exportRole);
@@ -138,6 +142,7 @@ function flushPendingSettingsSave() {
         localStorage.setItem('ai_api_key', state.apiKey);
         localStorage.setItem('ai_selected_model', state.selectedModel);
         localStorage.setItem('ai_title_model', state.titleModel);
+        localStorage.setItem('ai_refuse_model', state.refuseModel);
         localStorage.setItem('ai_system_prompt', state.systemPrompt);
         localStorage.setItem('ai_user_prefix', state.userPrefix);
         localStorage.setItem('ai_selected_preset', state.selectedPreset);
