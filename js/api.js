@@ -32,7 +32,6 @@ async function executeChatRequest(currentChat, preparedMessages) {
     abortController = new AbortController();
     updateSendButton(true);
     updateTrimIndicator();
-    DOM.loadingIndicator.style.display = 'block';
     if (autoScroll) scrollToBottom();
 
     let apiMessages;
@@ -79,6 +78,7 @@ async function executeChatRequest(currentChat, preparedMessages) {
     const targetIndex = currentChat.messages.length;
     const botDomObj = createMessageDOM({ role: 'assistant', content: '' }, targetIndex, true);
     botDomObj.wrapper.querySelector('.message-actions').style.display = 'none';
+    botDomObj.contentNode.innerHTML = '<div class="result-thinking"><span></span><span></span><span></span></div>';
     DOM.chatMessages.appendChild(botDomObj.wrapper);
     let streamThinkOpen = false;
     botDomObj.contentNode.addEventListener('pointerdown', (event) => {
@@ -93,6 +93,23 @@ async function executeChatRequest(currentChat, preparedMessages) {
     let _streamTimer = null;
     let _pendingStreamContent = '';
     let _thinkRenderedOnce = false;
+    let _firstTokenArrived = false;
+    function _ensureStreamingState() {
+        if (_firstTokenArrived) return;
+        _firstTokenArrived = true;
+        const thinkingDots = botDomObj.contentNode.querySelector('.result-thinking');
+        if (thinkingDots) thinkingDots.remove();
+        const msgEl = botDomObj.wrapper.querySelector('.message.bot');
+        if (msgEl) msgEl.classList.add('result-streaming');
+    }
+    function _triggerPopIn(container) {
+        const targets = container.querySelectorAll('.markdown-body');
+        targets.forEach(el => {
+            el.classList.remove('text-pop-in');
+            void el.offsetWidth;
+            el.classList.add('text-pop-in');
+        });
+    }
     function scheduleStreamRender(content) {
         if (content === _pendingStreamContent) return;
         _pendingStreamContent = content;
@@ -112,11 +129,12 @@ async function executeChatRequest(currentChat, preparedMessages) {
             _streamTimer = null;
             const c = _pendingStreamContent;
             _pendingStreamContent = '';
+            _ensureStreamingState();
             const existingReply = botDomObj.contentNode.querySelector('.reply-content');
             const hasClosedThink = c && CLOSED_THINK_BLOCK_PATTERN.test(c);
         if (hasClosedThink && existingReply && _thinkRenderedOnce) {
             const replyContent = c.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
-            existingReply.innerHTML = renderMarkdownToHtml(replyContent) + '<span class="stream-cursor"></span>';
+            existingReply.innerHTML = renderMarkdownToHtml(replyContent);
             if (replyContent) {
                 if (shouldProcessMath(replyContent)) renderMath(existingReply);
                 if (replyContent.includes('<pre') || replyContent.includes('```')) highlightCodeBlocks(existingReply);
@@ -129,13 +147,9 @@ async function executeChatRequest(currentChat, preparedMessages) {
             const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
             if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
         }
-        // 流式光标：追加到内容末尾
-        const cursorTarget = botDomObj.contentNode.querySelector('.reply-content') || botDomObj.contentNode;
-        if (!cursorTarget.querySelector('.stream-cursor')) {
-            cursorTarget.insertAdjacentHTML('beforeend', '<span class="stream-cursor"></span>');
-        }
+            _triggerPopIn(botDomObj.contentNode);
             if (autoScroll) scrollToBottom();
-        }, 120);
+        }, 2000);
     }
 
     let botReply = '';
@@ -146,7 +160,6 @@ async function executeChatRequest(currentChat, preparedMessages) {
         try {
             botReply = '';
             reasoningBuffer = '';
-            DOM.loadingIndicator.innerHTML = retry > 0 ? `AI 正在思考 (重试 ${retry}/${maxRetries})<span></span>` : `AI 正在思考<span></span>`;
 
             const requestBody = { model: state.selectedModel, messages: apiMessages, stream: currentChat.stream !== false, temperature: currentChat.temperature !== undefined ? currentChat.temperature : 0.7 };
             if (currentChat.maxTokens) requestBody.max_tokens = currentChat.maxTokens;
@@ -158,8 +171,12 @@ async function executeChatRequest(currentChat, preparedMessages) {
                 signal: abortController.signal
             });
 
-            if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-            DOM.loadingIndicator.style.display = 'none';
+            if (!response.ok) {
+                let errDetail = `HTTP ${response.status}`;
+                try { const errBody = await response.json(); errDetail += ': ' + (errBody.error?.message || errBody.message || JSON.stringify(errBody).slice(0, 200)); } catch(e) {}
+                throw new Error(errDetail);
+            }
+            _ensureStreamingState();
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder('utf-8');
@@ -224,7 +241,8 @@ async function executeChatRequest(currentChat, preparedMessages) {
                 if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
                 if (autoScroll) scrollToBottom();
             }
-            botDomObj.contentNode.querySelectorAll('.stream-cursor').forEach(el => el.remove());
+            const msgEl = botDomObj.wrapper.querySelector('.message.bot');
+            if (msgEl) msgEl.classList.remove('result-streaming');
             break;
         } catch (error) {
             if (error.name === 'AbortError') {
@@ -233,7 +251,8 @@ async function executeChatRequest(currentChat, preparedMessages) {
             if (retry < maxRetries) {
                 await new Promise(r => setTimeout(r, retry * 3000));
             } else {
-                renderMarkdownIntoElement(botDomObj.contentNode, botReply + `\n\n请求失败，已重试 ${maxRetries} 次。错误: ` + error.message);
+                const retryNote = botReply ? `\n\n已有部分回复，错误: ${error.message}` : `请求失败，已重试 ${maxRetries} 次。错误: ${error.message}`;
+                botDomObj.contentNode.innerHTML = `<div class="error-message"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/></svg><span>${retryNote}</span></div>`;
                 showToast("消息请求失败，请重试");
             }
         }
@@ -243,13 +262,13 @@ async function executeChatRequest(currentChat, preparedMessages) {
         currentChat.messages.push({ role: 'assistant', content: reasoningBuffer ? `<think>${reasoningBuffer}</think>\n\n${botReply}` : botReply });
         saveState();
     }
-    botDomObj.contentNode.querySelectorAll('.stream-cursor').forEach(el => el.remove());
+    const msgEl = botDomObj.wrapper.querySelector('.message.bot');
+    if (msgEl) msgEl.classList.remove('result-streaming');
     renderMessages();
 
     abortController = null;
     updateSendButton(false);
     updateTrimIndicator();
-    DOM.loadingIndicator.style.display = 'none';
     DOM.userInput.focus();
 
     if (currentChat.autoFixEnglish && botReply) {

@@ -28,7 +28,7 @@ function initDOM() {
         refuseModelSelect: document.getElementById('refuseModelSelect'),
         presetSelect: document.getElementById('presetSelect'), systemPromptInput: document.getElementById('systemPromptInput'),
         userPrefixInput: document.getElementById('userPrefixInput'), sendBtn: document.getElementById('sendBtn'),
-        loadingIndicator: document.getElementById('loadingIndicator'), settingsContainer: document.getElementById('settingsContainer'),
+        settingsContainer: document.getElementById('settingsContainer'),
         queueBtn: document.getElementById('queueBtn'),
         attachmentPreview: document.getElementById('attachmentPreview'), chatHeaderTitle: document.getElementById('chatHeaderTitle'),
         inputPrefixBadge: document.getElementById('inputPrefixBadge'), sidebar: document.getElementById('sidebar'),
