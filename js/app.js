@@ -499,6 +499,15 @@ function toggleAutoFix() {
     showToast(chat.autoFixEnglish ? '已开启：本对话自动修复英文' : '已关闭：本对话自动修复英文');
 }
 
+function toggleAutoRetryRefuse() {
+    DOM.contextMenu.style.display = 'none';
+    const chat = state.chats.find(c => c.id === contextMenuChatId);
+    if (!chat) return;
+    chat.autoRetryOnRefuse = !chat.autoRetryOnRefuse;
+    saveState();
+    showToast(chat.autoRetryOnRefuse ? '已开启：本对话拒绝回答自动重试' : '已关闭：本对话拒绝回答自动重试');
+}
+
 function handleKeydown(e) {
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {

@@ -51,6 +51,9 @@ function initDOM() {
         ctxAutoFixLabel: document.getElementById('ctxAutoFixLabel'),
         ctxAutoFixIconOn: document.getElementById('ctxAutoFixIconOn'),
         ctxAutoFixIconOff: document.getElementById('ctxAutoFixIconOff'),
+        ctxAutoRetryRefuseLabel: document.getElementById('ctxAutoRetryRefuseLabel'),
+        ctxAutoRetryRefuseIconOn: document.getElementById('ctxAutoRetryRefuseIconOn'),
+        ctxAutoRetryRefuseIconOff: document.getElementById('ctxAutoRetryRefuseIconOff'),
         themeSelect: document.getElementById('themeSelect')
     });
 }

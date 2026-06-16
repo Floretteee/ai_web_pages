@@ -255,6 +255,10 @@ async function executeChatRequest(currentChat, preparedMessages) {
         autoFixLastAssistantMessage(currentChat).catch(() => {});
     }
 
+    if (currentChat.autoRetryOnRefuse && botReply) {
+        checkRefuseAndRetry(currentChat).catch(() => {});
+    }
+
     // 检查队列是否有待发送消息
     if (messageQueue.length > 0 && !isProcessingQueue) {
         setTimeout(() => processQueue(), 500);
@@ -280,6 +284,47 @@ function updateSendButton(isGenerating) {
         DOM.sendBtn.classList.remove('stop-btn');
         DOM.queueBtn.classList.remove('generating');
     }
+}
+
+async function checkRefuseAndRetry(chat) {
+    if (chat.id !== state.currentChatId) return;
+    const lastIdx = chat.messages.length - 1;
+    if (lastIdx < 0) return;
+    const msg = chat.messages[lastIdx];
+    if (!msg || msg.role !== 'assistant') return;
+
+    const modelToUse = state.selectedModel;
+    if (!modelToUse || !state.apiKey) return;
+
+    const plain = getMessagePlainText(msg);
+    if (!plain) return;
+
+    try {
+        const prompt = `你是一个判断助手。请判断以下AI回复是否在拒绝回答用户的问题（例如：表示无法回答、不愿意回答、因安全策略拒绝、回避问题等）。\n\nAI回复内容：\n${plain}\n\n请以JSON格式回复，格式为：{"refused": true/false}`;
+        const response = await fetch(`${API_BASE}/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
+            body: JSON.stringify({
+                model: modelToUse,
+                messages: [{ role: 'user', content: prompt }],
+                stream: false,
+                temperature: 0,
+                response_format: { type: 'json_object' }
+            })
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        let text = data.choices?.[0]?.message?.content?.trim() || '';
+        text = text.replace(/^```(?:json)?\s*/i, '').replace(/```$/i, '').trim();
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) text = jsonMatch[0];
+        let result;
+        try { result = JSON.parse(text); } catch (e) { return; }
+        if (result && result.refused === true) {
+            showToast('检测到拒绝回答，正在自动重试...');
+            retryMessage(lastIdx);
+        }
+    } catch (error) {}
 }
 
 async function generateTitle(chatId, text) {

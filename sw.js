@@ -1,15 +1,15 @@
-const CACHE_VERSION = '__VERSION__';
+const CACHE_VERSION = 'fimall-chat-sw-v1.0.0';
 
 const CORE_ASSETS = [
   './',
   './index.html',
-  './css/base.css?v=__CACHE_BUST__',
-  './css/components/sidebar.css?v=__CACHE_BUST__',
-  './css/components/settings.css?v=__CACHE_BUST__',
-  './css/components/chat.css?v=__CACHE_BUST__',
-  './css/components/input.css?v=__CACHE_BUST__',
-  './css/components/overlays.css?v=__CACHE_BUST__',
-  './css/responsive.css?v=__CACHE_BUST__',
+  './css/base.css?v=1781619480646',
+  './css/components/sidebar.css?v=1781619480646',
+  './css/components/settings.css?v=1781619480646',
+  './css/components/chat.css?v=1781619480646',
+  './css/components/input.css?v=1781619480646',
+  './css/components/overlays.css?v=1781619480646',
+  './css/responsive.css?v=1781619480646',
   './app.js',
   './presets.js',
   './manifest.webmanifest',

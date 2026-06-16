@@ -425,6 +425,14 @@ function showContextMenu(e, chatId) {
         if (DOM.ctxAutoFixIconOff) DOM.ctxAutoFixIconOff.style.display = enabled ? 'none' : '';
     }
 
+    if (fromSidebar && DOM.ctxAutoRetryRefuseLabel) {
+        const chat = state.chats.find(c => c.id === contextMenuChatId);
+        const enabled = !!(chat && chat.autoRetryOnRefuse);
+        DOM.ctxAutoRetryRefuseLabel.textContent = enabled ? '关闭拒绝重试' : '开启拒绝重试';
+        if (DOM.ctxAutoRetryRefuseIconOn) DOM.ctxAutoRetryRefuseIconOn.style.display = enabled ? '' : 'none';
+        if (DOM.ctxAutoRetryRefuseIconOff) DOM.ctxAutoRetryRefuseIconOff.style.display = enabled ? 'none' : '';
+    }
+
     menu.style.display = 'block';
     menu.style.left = e.pageX + 'px';
     menu.style.top = e.pageY + 'px';
