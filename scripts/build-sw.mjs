@@ -6,20 +6,20 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const rootDir = join(__dirname, '..');
 
-// 读取 package.json 获取版本号
 const packageJson = JSON.parse(readFileSync(join(rootDir, 'package.json'), 'utf-8'));
 const version = packageJson.version;
+const timestamp = Date.now();
 
-// 读取 sw.js 模板
-const swTemplate = readFileSync(join(rootDir, 'sw.js'), 'utf-8');
+const swTemplate = readFileSync(join(rootDir, 'sw.template.js'), 'utf-8');
 
-// 替换版本占位符
-const swContent = swTemplate.replace(
-  /const CACHE_VERSION = ['"]__VERSION__['"];/,
-  `const CACHE_VERSION = 'fimall-chat-sw-v${version}';`
-);
+const swContent = swTemplate
+  .replace(
+    /const CACHE_VERSION = ['"]__VERSION__['"];/,
+    `const CACHE_VERSION = 'fimall-chat-sw-v${version}';`
+  )
+  .replace(/__CACHE_BUST__/g, String(timestamp));
 
-// 写回 sw.js
 writeFileSync(join(rootDir, 'sw.js'), swContent, 'utf-8');
 
-console.log(`✓ Service Worker version updated to: fimall-chat-sw-v${version}`);
+console.log(`✓ Service Worker version: fimall-chat-sw-v${version}`);
+console.log(`✓ Cache bust token: ${timestamp}`);

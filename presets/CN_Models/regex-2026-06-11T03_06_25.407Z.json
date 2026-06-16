@@ -1,0 +1,238 @@
+[
+    {
+        "id": "a6a22773-41e5-4243-b7f6-596986b4771e",
+        "scriptName": "防ai抽风",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "<!-- 2.正文前的格式 -->([\\s\\S]*)",
+        "trimStrings": [
+            "<draft_notes>",
+            "</draft_notes>"
+        ],
+        "replaceString": "$1",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": null,
+        "markdownOnly": true,
+        "promptOnly": true
+    },
+    {
+        "id": "2006a79b-af60-4069-a9b5-e47c3b3d673a",
+        "scriptName": "TG-思维链美化",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "/([\\s\\S]*)(</draft_notes>|<!-- end_of_梳理 -->)/g",
+        "trimStrings": [
+            "<",
+            "【",
+            "[",
+            "]",
+            "`",
+            ">"
+        ],
+        "replaceString": "<div class=\"my-foldable-block\" style=\"width: 100%; margin: 20px auto;\">\n  <details class=\"thinking-description\">\n    <summary class=\"thinking-summary\">\n      <span class=\"jump-char\" style=\"--i:0;\">😽</span>\n      <span class=\"jump-char\" style=\"--i:1;\"> </span>\n      <span class=\"jump-char\" style=\"--i:2;\">T</span>\n      <span class=\"jump-char\" style=\"--i:3;\">G</span>\n      <span class=\"jump-char\" style=\"--i:4;\">D</span>\n      <span class=\"jump-char\" style=\"--i:5;\"> </span>\n      <span class=\"jump-char\" style=\"--i:6;\">思</span>\n      <span class=\"jump-char\" style=\"--i:7;\">维</span>\n      <span class=\"jump-char\" style=\"--i:8;\">链</span>\n    </summary>\n    <div class=\"thinking-content\">\n      $1\n    </div>\n  </details>\n</div>\n\n<style>\n/* 所有样式前都加上 .my-foldable-block 容器限定 */\n.my-foldable-block .thinking-description {\n  background: transparent;\n  border: none;\n  box-shadow: none;\n  color: #fff;\n}\n\n.my-foldable-block .thinking-summary {\n  padding: 12px 16px;\n  color: white;\n  cursor: pointer;\n  list-style: none;\n  background: transparent;\n  font-weight: 600;\n  font-size: 2rem;           /* 调大字号 */\n  letter-spacing: 0.5px;\n  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);\n  border: none;\n  transition: color 0.2s ease, text-shadow 0.2s ease;\n  display: block;            /* 占满整行 */\n  text-align: center;        /* 居中 */\n}\n\n.my-foldable-block .thinking-content {\n  max-height: 300px;\n  overflow-y: auto;\n  padding: 8px 16px;\n  background: transparent;\n  color: #f0f8ff;\n  line-height: 1.7;\n  font-size: 1rem;\n  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);\n  white-space: pre-wrap;\n  border: none;\n  font-family: 'SimSun', '宋体', serif;\n}\n\n/* 跳动动画 */\n@keyframes bounce {\n  0%, 100% { transform: translateY(0); }\n  50% { transform: translateY(-6px); }\n}\n\n.my-foldable-block .jump-char {\n  display: inline-block;\n  animation: bounce 0.8s infinite ease-in-out;\n  animation-delay: calc(0.1s * var(--i));\n}\n\n/* 滚动条样式 */\n.my-foldable-block .thinking-description::-webkit-scrollbar {\n  width: 6px;\n}\n.my-foldable-block .thinking-description::-webkit-scrollbar-track {\n  background: transparent;\n}\n.my-foldable-block .thinking-description::-webkit-scrollbar-thumb {\n  background: rgba(255, 255, 255, 0.5);\n  border-radius: 6px;\n}\n\n.my-foldable-block .thinking-summary::marker {\n  display: none;\n}\n\n/* 悬停高亮 */\n.my-foldable-block .thinking-summary:hover .jump-char {\n  color: #aaddff;\n  text-shadow: 0 2px 8px rgba(0, 160, 255, 0.8);\n}\n\n/* 强制背景透明（仅限该容器内部） */\n.my-foldable-block .thinking-description,\n.my-foldable-block .thinking-description * {\n  background: transparent !important;\n  border-color: transparent !important;\n  box-shadow: none !important;\n  backdrop-filter: none !important;\n}\n</style>",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": null,
+        "markdownOnly": true,
+        "promptOnly": false
+    },
+    {
+        "id": "3af1690d-6514-4c4b-bbcf-501821c954e7",
+        "scriptName": "TG-思维隐藏",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "/([\\s\\S]*)(</draft_notes>|<!-- end_of_梳理 -->)/g",
+        "trimStrings": [],
+        "replaceString": "",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": null,
+        "markdownOnly": false,
+        "promptOnly": true
+    },
+    {
+        "id": "c978ce71-db47-47e7-8e1d-a13ea1afdbd1",
+        "scriptName": "TG-一拳超人",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "/<draft_notes>(?!.*</draft_notes>).+/s",
+        "trimStrings": [],
+        "replaceString": "<div class=\"tgd-thinking-block\">\n  <div class=\"tgd-thinking-bar\">\n    <span class=\"tgd-orb\"></span>\n    <span class=\"tgd-label\">\n      <span class=\"tgd-text-init\">本咪正在思考，没有卡住哦<span class=\"tgd-dot\" style=\"--j:0\">.</span><span class=\"tgd-dot\" style=\"--j:1\">.</span><span class=\"tgd-dot\" style=\"--j:2\">.</span></span>\n      <span class=\"tgd-text-late\">完蛋了，好像截断在里面了，呜呜~</span>\n    </span>\n    <span class=\"tgd-scan\"></span>\n  </div>\n</div>\n\n<style>\n.tgd-thinking-block { width: 100%; }\n.tgd-thinking-bar {\n  position: relative;\n  width: 100%;\n  padding: 10px 18px;\n  background: rgba(8, 12, 24, 0.75);\n  backdrop-filter: blur(20px) saturate(1.5);\n  border-top: 1px solid rgba(0, 200, 255, 0.15);\n  border-bottom: 1px solid rgba(0, 200, 255, 0.15);\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  overflow: hidden;\n  box-sizing: border-box;\n}\n.tgd-thinking-bar::before {\n  content: '';\n  position: absolute;\n  inset: 0;\n  background: linear-gradient(90deg, rgba(0,200,255,0.04) 0%, transparent 40%, rgba(120,60,255,0.04) 100%);\n  pointer-events: none;\n}\n.tgd-orb {\n  width: 8px;\n  height: 8px;\n  border-radius: 50%;\n  background: #00d4ff;\n  box-shadow: 0 0 6px #00d4ff, 0 0 14px rgba(0,200,255,0.5);\n  flex-shrink: 0;\n  display: inline-block;\n  animation: tgdOrbPulse 1.8s ease-in-out infinite;\n  animation-delay: -0.9s;\n}\n@keyframes tgdOrbPulse {\n  0%, 100% { opacity: 1; transform: scale(1); }\n  50% { opacity: 0.4; transform: scale(0.7); }\n}\n.tgd-label {\n  font-family: 'JetBrains Mono', monospace;\n  font-size: 13px;\n  color: rgba(200, 230, 255, 0.85);\n  letter-spacing: 1px;\n  position: relative;\n}\n.tgd-dot {\n  display: inline-block;\n  color: #00d4ff;\n  text-shadow: 0 0 6px #00d4ff;\n  opacity: 0;\n  animation: tgdDotShow 1.44s ease-in-out infinite;\n  animation-delay: calc(-1.44s + 0.48s * var(--j));\n}\n@keyframes tgdDotShow {\n  0%, 32% { opacity: 0; }\n  40%, 90% { opacity: 1; }\n  100% { opacity: 0; }\n}\n.tgd-scan {\n  position: absolute;\n  bottom: 0; left: 0; right: 0;\n  height: 1px;\n  background: linear-gradient(90deg, transparent, rgba(0,200,255,0.7) 40%, rgba(120,60,255,0.9) 60%, transparent);\n  animation: tgdScan 2.2s ease-in-out infinite;\n  animation-delay: -1.1s;\n}\n@keyframes tgdScan {\n  0%   { transform: scaleX(0); transform-origin: left; }\n  49%  { transform: scaleX(1); transform-origin: left; }\n  50%  { transform: scaleX(1); transform-origin: right; }\n  100% { transform: scaleX(0); transform-origin: right; }\n}\n.tgd-text-init {\n  animation: tgdFadeOut 0.3s linear 2s forwards;\n}\n.tgd-text-late {\n  position: absolute;\n  left: 0;\n  top: 0;\n  opacity: 0;\n  white-space: nowrap;\n  animation: tgdFadeIn 0.3s linear 2s forwards;\n}\n@keyframes tgdFadeOut {\n  to { opacity: 0; visibility: hidden; }\n}\n@keyframes tgdFadeIn {\n  to { opacity: 1; visibility: visible; }\n}\n</style>",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": null,
+        "markdownOnly": true,
+        "promptOnly": false
+    },
+    {
+        "id": "114ab8f8-62cf-487e-98a3-624fee650640",
+        "scriptName": "TG-行动选项美化",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "/<w2g>([\\s\\S]*?)<\\/w2g>/g",
+        "trimStrings": [],
+        "replaceString": "```\n<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>选项卡片</title>\n\n    <link rel=\"preconnect\" href=\"https://fonts.googleapis.com\">\n    <link rel=\"preconnect\" href=\"https://gstatic.com\" crossorigin>\n    <link href=\"https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Caveat:wght@400..700&display=swap\" rel=\"stylesheet\">\n\n<style>\n:root {\n    --accent-color: #6dd5d5;\n    --text-primary: #d4d0c8;\n    --border-color: #2a2a2a;\n    --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.6);\n    --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);\n}\n\n* { box-sizing: border-box; }\n\nbody {\n    margin: 0;\n    padding: 12px;\n    font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;\n    background: transparent;\n    color: var(--text-primary);\n    display: flex;\n    justify-content: center;\n}\n\n.choice-card {\n    width: 100%;\n    max-width: 380px;\n    background: linear-gradient(135deg, #1a1a1a 0%, #0f0f0f 100%);\n    border-radius: 12px;\n    padding: 20px;\n    box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.05);\n    border: 1px solid var(--border-color);\n}\n\n/* 优化了头部布局，采用 space-between 两端对齐，避免移动端挤压 */\n.card-header {\n    display: flex;\n    align-items: center;\n    justify-content: space-between;\n    margin-bottom: 16px;\n    cursor: pointer;\n    user-select: none;\n    width: 100%;\n}\n\n.header-center-group {\n    display: flex;\n    align-items: center;\n    justify-content: center;\n    gap: 8px;\n    flex: 1; /* 让中央区域占据剩余空间 */\n    text-align: center;\n}\n\n.header-title {\n    font-family: 'Caveat', cursive;\n    font-size: 26px;\n    font-weight: 700;\n    letter-spacing: 2px;\n    background: linear-gradient(135deg, #6dd5d5 0%, #88d8b0 100%);\n    -webkit-background-clip: text;\n    -webkit-text-fill-color: transparent;\n    background-clip: text;\n    white-space: nowrap;\n}\n\n.header-icon {\n    font-size: 20px;\n    filter: drop-shadow(0 0 8px rgba(109,213,213,0.4));\n    transition: transform var(--transition);\n}\n\n.card-header:hover .header-icon {\n    transform: scale(1.15) rotate(10deg);\n}\n\n.mode-btn {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    padding: 3px 10px;\n    border: 1px solid var(--border-color);\n    border-radius: 4px;\n    background: transparent;\n    color: #555;\n    font-family: 'Noto Sans SC', sans-serif;\n    font-size: 11px;\n    cursor: pointer;\n    transition: all var(--transition);\n    white-space: nowrap;\n    line-height: 1.4;\n    flex-shrink: 0; /* 保证按钮不会被压缩变形 */\n}\n\n.mode-btn:hover {\n    border-color: #555;\n    color: #999;\n}\n\n.mode-btn.active {\n    border-color: var(--accent-color);\n    color: var(--accent-color);\n    background: rgba(109,213,213,0.1);\n    box-shadow: 0 0 8px rgba(109,213,213,0.2);\n}\n\n.options-container {\n    display: grid;\n    grid-template-rows: 1fr;\n    transition: grid-template-rows var(--transition);\n    overflow: hidden;\n}\n\n.options-container.collapsed {\n    grid-template-rows: 0fr;\n}\n\n.options-wrapper {\n    overflow: hidden;\n    min-height: 0;\n}\n\n.options-list {\n    display: flex;\n    flex-direction: column;\n    gap: 10px;\n    list-style: none;\n    margin: 0;\n    padding: 0;\n}\n\n.option-item {\n    position: relative;\n    padding: 14px 16px;\n    background: linear-gradient(135deg, #1a1a1a 0%, #151515 100%);\n    border: 1px solid var(--border-color);\n    border-radius: 8px;\n    cursor: pointer;\n    font-size: 14px;\n    color: var(--text-primary);\n    transition: all var(--transition);\n    overflow: hidden;\n    display: flex;\n    align-items: flex-start;\n    gap: 12px;\n}\n\n.option-item::before {\n    content: '';\n    position: absolute;\n    top: 0; left: 0;\n    width: 3px; height: 100%;\n    background: linear-gradient(180deg, var(--accent-color) 0%, #5dd5d5 100%);\n    transform: scaleY(0);\n    transform-origin: top;\n    transition: transform var(--transition);\n    box-shadow: 0 0 8px rgba(109,213,213,0.5);\n}\n\n.option-item::after {\n    content: '';\n    position: absolute;\n    top: 0; left: 0;\n    width: 100%; height: 100%;\n    background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%), rgba(109,213,213,0.1) 0%, transparent 80%);\n    opacity: 0;\n    transition: opacity var(--transition);\n    pointer-events: none;\n}\n\n.option-item:hover {\n    background: linear-gradient(135deg, #1f2a2a 0%, #1a2525 100%);\n    border-color: var(--accent-color);\n    color: var(--accent-color);\n    box-shadow: 0 0 16px rgba(109,213,213,0.3), inset 0 0 16px rgba(109,213,213,0.05);\n    transform: translateX(4px);\n}\n\n.option-item:hover::before { transform: scaleY(1); }\n.option-item:hover::after  { opacity: 1; }\n.option-item:active { transform: translateX(4px) scale(0.98); }\n\n.option-label {\n    display: inline-flex;\n    align-items: center;\n    justify-content: center;\n    min-width: 22px; width: 22px; height: 22px;\n    background: linear-gradient(135deg, var(--accent-color) 0%, #5dd5d5 100%);\n    border-radius: 4px;\n    font-size: 11px;\n    font-weight: 700;\n    flex-shrink: 0;\n    color: #0f0f0f;\n    box-shadow: 0 0 8px rgba(109,213,213,0.4);\n    margin-top: 1px;\n}\n\n.option-title {\n    font-weight: 500;\n    color: var(--accent-color);\n    margin-right: 6px;\n    /* white-space: nowrap; 删掉这行 */\n    word-break: break-all;\n}\n\n.option-content {\n    flex: 1;\n    line-height: 1.5;\n    position: relative;\n    z-index: 1;\n    word-break: break-all;   /* ← 新增，防止内容本身也溢出 */\n    overflow-wrap: anywhere; /* ← 新增，更智能的断行 */\n    min-width: 0;            /* ← 新增，flex 子项必须加，否则不会收缩 */\n}\n\n@media (max-width: 600px) {\n    body { padding: 8px; }\n    .choice-card { padding: 16px; border-radius: 10px; max-width: 100%; }\n    .header-title { font-size: 20px; letter-spacing: 1px; } /* 移动端字号微调 */\n    .header-icon { font-size: 16px; }\n    .option-item { padding: 12px 14px; font-size: 13px; }\n    .options-list { gap: 8px; }\n    .mode-btn { font-size: 10px; padding: 2px 6px; }\n    .header-center-group { gap: 4px; }\n}\n\n@keyframes fadeIn {\n    from { opacity: 0; transform: translateY(-6px); }\n    to   { opacity: 1; transform: translateY(0); }\n}\n\n.option-item:nth-child(1) { animation: fadeIn 0.3s ease-out 0.05s both; }\n.option-item:nth-child(2) { animation: fadeIn 0.3s ease-out 0.10s both; }\n.option-item:nth-child(3) { animation: fadeIn 0.3s ease-out 0.15s both; }\n.option-item:nth-child(4) { animation: fadeIn 0.3s ease-out 0.20s both; }\n.option-item:nth-child(5) { animation: fadeIn 0.3s ease-out 0.25s both; }\n.option-item:nth-child(n+6) { animation: fadeIn 0.3s ease-out 0.30s both; }\n</style>\n</head>\n<body>\n\n<div class=\"choice-card\" id=\"choiceCard\">\n    <div class=\"card-header\" id=\"cardHeader\">\n        <span class=\"mode-btn\" id=\"btnSend\">直发</span>\n        <div class=\"header-center-group\">\n            <span class=\"header-icon\">✦</span>\n            <span class=\"header-title\">行动选项</span>\n            <span class=\"header-icon\">✦</span>\n        </div>\n        <span class=\"mode-btn\" id=\"btnAppend\">追加</span>\n    </div>\n\n    <div class=\"options-container\" id=\"optionsContainer\">\n        <div class=\"options-wrapper\">\n            <ul class=\"options-list\" id=\"optionsList\"></ul>\n        </div>\n    </div>\n</div>\n\n<div id=\"rawData\" style=\"display:none;\">$1</div>\n\n<script>\ndocument.addEventListener('DOMContentLoaded', function() {\n    const rawData          = document.getElementById('rawData');\n    const optionsList      = document.getElementById('optionsList');\n    const optionsContainer = document.getElementById('optionsContainer');\n    const cardHeader       = document.getElementById('cardHeader');\n    const btnSend          = document.getElementById('btnSend');\n    const btnAppend        = document.getElementById('btnAppend');\n\n    // 本地存储的 Key\n    const STORAGE_KEY = 'st_choice_card_mode';\n\n    // 初始化状态，读取 localStorage，若无则默认为 'append'\n    let currentMode = localStorage.getItem(STORAGE_KEY) || 'append';\n\n    // 渲染初始按钮状态\n    function updateBtnUI() {\n        if (currentMode === 'send') {\n            btnSend.className = 'mode-btn active';\n            btnAppend.className = 'mode-btn';\n        } else {\n            btnAppend.className = 'mode-btn active';\n            btnSend.className = 'mode-btn';\n        }\n    }\n    updateBtnUI();\n\n    // 按钮点击事件，同时持久化到 localStorage\n    btnSend.addEventListener('click', function(e) {\n        e.stopPropagation();\n        currentMode = 'send';\n        localStorage.setItem(STORAGE_KEY, currentMode);\n        updateBtnUI();\n    });\n\n    btnAppend.addEventListener('click', function(e) {\n        e.stopPropagation();\n        currentMode = 'append';\n        localStorage.setItem(STORAGE_KEY, currentMode);\n        updateBtnUI();\n    });\n\n    function setupOptionList(dataEl, targetContainer) {\n        const rawText = dataEl.textContent.trim();\n        const lines   = rawText.split(/\\r?\\n/).filter(function(line) { return line.trim() !== ''; });\n\n        lines.forEach(function(line) {\n            const trimmed = line.trim();\n            if (!trimmed) return;\n\n            const match = trimmed.match(/^([A-Z])[：:]\\s*([^：:]+)[：:]\\s*(.+)$/);\n\n            let label, title, content, sendText;\n\n            if (match) {\n                label    = match[1];\n                title    = match[2].trim();\n                content  = match[3].trim();\n                sendText = content;\n            } else {\n                const simpleMatch = trimmed.match(/^([A-Z])[：:]\\s*(.+)$/);\n                if (simpleMatch) {\n                    label    = simpleMatch[1];\n                    title    = '';\n                    content  = simpleMatch[2].trim();\n                    sendText = content;\n                } else {\n                    label    = '';\n                    title    = '';\n                    content  = trimmed;\n                    sendText = trimmed;\n                }\n            }\n\n            const optionDiv = document.createElement('li');\n            optionDiv.className = 'option-item';\n            optionDiv.setAttribute('data-action', sendText);\n\n            let html = '';\n            if (label) html += '<span class=\"option-label\">' + label + '</span>';\n            html += '<span class=\"option-content\">';\n            if (title) html += '<span class=\"option-title\">' + title + '：</span>';\n            html += content;\n            html += '</span>';\n            optionDiv.innerHTML = html;\n\n            optionDiv.addEventListener('click', function(e) {\n                e.stopPropagation();\n                const textToSend = this.getAttribute('data-action');\n                try {\n                    const input   = window.parent.document.querySelector('#send_textarea');\n                    const trigger = window.parent.triggerSlash;\n\n                    if (currentMode === 'send') {\n                        if (trigger) {\n                            trigger('/setinput ' + textToSend);\n                        } else if (input) {\n                            input.value = textToSend;\n                            input.dispatchEvent(new Event('input', { bubbles: true }));\n                        }\n                        // 触发发送\n                        setTimeout(function() {\n                            try {\n                                const sendBtn = window.parent.document.querySelector('#send_but');\n                                if (sendBtn) sendBtn.click();\n                            } catch(err) {}\n                        }, 100);\n                    } else {\n                        // 追加模式：在现有内容后面拼接\n                        if (input) {\n                            const existing = input.value;\n                            const separator = existing.trim() === '' ? '' : ' ';\n                            input.value = existing + separator + textToSend;\n                            input.dispatchEvent(new Event('input', { bubbles: true }));\n                        } else if (trigger) {\n                            // trigger 无法获取现有内容，只能直接追加（降级处理）\n                            trigger('/setinput ' + textToSend);\n                        }\n                    }\n                } catch (err) {\n                    console.error('Error:', err);\n                }\n            });\n\n            optionDiv.addEventListener('mousemove', function(e) {\n                const rect = optionDiv.getBoundingClientRect();\n                optionDiv.style.setProperty('--mouse-x', ((e.clientX - rect.left) / rect.width  * 100) + '%');\n                optionDiv.style.setProperty('--mouse-y', ((e.clientY - rect.top)  / rect.height * 100) + '%');\n            });\n\n            targetContainer.appendChild(optionDiv);\n        });\n    }\n\n    function setupCollapsible() {\n        cardHeader.addEventListener('click', function(e) {\n            const tid = e.target.id;\n            if (tid === 'btnSend' || tid === 'btnAppend') return;\n            optionsContainer.classList.toggle('collapsed');\n        });\n    }\n\n    setupOptionList(rawData, optionsList);\n    setupCollapsible();\n});\n</script>\n</body>\n</html>\n```",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": null,
+        "markdownOnly": true,
+        "promptOnly": false
+    },
+    {
+        "id": "c66f253d-3c08-40e1-b99b-58e515f2b57f",
+        "scriptName": "TG-7楼内摘要隐藏",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "/<details>[\\n]?<summary>摘要[\\s\\S]*?<\\/details>/g",
+        "trimStrings": [],
+        "replaceString": "",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": 7,
+        "markdownOnly": true,
+        "promptOnly": false
+    },
+    {
+        "id": "04b48d4d-1794-4a30-b4d7-befae0ef0ff7",
+        "scriptName": "TG-7楼之前只显示摘要",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "([\\s\\S]*?)<details>[\\n]?<summary>摘要<\\/summary>([\\s\\S]*?)<\\/details>([\\s\\S]*)",
+        "trimStrings": [],
+        "replaceString": "$2",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": 7,
+        "maxDepth": null,
+        "markdownOnly": true,
+        "promptOnly": true
+    },
+    {
+        "id": "776147ee-890f-4487-843c-489235114406",
+        "scriptName": "TG-特写",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "/<SexualScene>([\\s\\S]*?)</SexualScene>/g",
+        "trimStrings": [],
+        "replaceString": "```\n<!DOCTYPE html>\n<html lang=\"zh-CN\">\n<head>\n  <meta charset=\"UTF-8\">\n  <style>\n    /* --- 1. 引入字体 API --- */\n    /* 霞鹜文楷 - 用于内心独白 */\n    @import url(\"https://fontsapi.zeoseven.com/292/main/result.css\");\n    /* 朱雀仿宋 - 用于正文描述 */\n    @import url(\"https://fontsapi.zeoseven.com/7/main/result.css\");\n\n    /* --- 2. 基础布局 --- */\n    * { box-sizing: border-box; }\n    body { margin: 0; padding: 8px 12px; background: transparent; font-family: sans-serif; }\n    .ssc-details { border: none; width: 100%; }\n    .ssc-summary { list-style: none; cursor: pointer; text-align: center; padding: 12px 0; display: flex; align-items: center; justify-content: center; gap: 14px; }\n    .ssc-line { display: inline-block; width: 35px; height: 0.5px; background: #fff; opacity: 0.3; }\n    .ssc-title { font-size: 1.1rem; color: #ffffff; opacity: 0.75; letter-spacing: 0.2rem; }\n\n    .ssc-body { margin-top: 8px; border-radius: 16px; padding: 8px; background: rgba(255, 255, 255, 0.03); border: 0.5px solid rgba(255, 255, 255, 0.1); display: flex; flex-direction: column; gap: 10px; }\n\n    .ssc-row {\n      border-radius: 12px; padding: 12px 16px; \n      background: rgba(255, 255, 255, 0.02);\n      border: 0.5px solid rgba(255, 255, 255, 0.08);\n      display: flex; flex-direction: column; align-items: flex-start; gap: 4px;\n    }\n\n    .ssc-label { color: rgba(255, 255, 255, 0.4); font-size: 0.8rem; border-bottom: 1px solid rgba(255, 255, 255, 0.06); width: 100%; font-weight: bold; padding-bottom: 2px; }\n    \n    /* --- 3. 正文：使用朱雀仿宋，并调小字号 --- */\n    .ssc-text { \n        color: rgba(255, 255, 255, 0.85); \n        /* 字号从 1.1rem 调小至 1rem */\n        font-size: 1rem; \n        line-height: 1.55; \n        font-family: \"Zhuque Fangsong (technical preview)\", serif;\n        word-break: break-all;\n    }\n\n    /* --- 4. 内心独白：使用霞鹜文楷，字号同步调小 --- */\n    .thought-style {\n        font-family: \"LXGW WenKai\", serif !important;\n        font-style: italic;\n        /* 独白字号比正文再稍微小一点，增加层级感 */\n        font-size: 0.95rem !important;\n        color: rgba(255, 255, 255, 0.55) !important;\n        letter-spacing: 0.02rem;\n    }\n  </style>\n</head>\n<body>\n  <div id=\"rawData\" style=\"display:none;\">$1</div>\n  <details class=\"ssc-details\" open>\n    <summary class=\"ssc-summary\">\n      <span class=\"ssc-line\"></span><span class=\"ssc-title\">场景特写</span><span class=\"ssc-line\"></span>\n    </summary>\n    <div class=\"ssc-body\" id=\"sscBody\"></div>\n  </details>\n\n  <script>\n    document.addEventListener('DOMContentLoaded', function() {\n      var rawEl = document.getElementById('rawData');\n      var body = document.getElementById('sscBody');\n      if (!rawEl || !body) return;\n\n      var raw = (rawEl.innerText || rawEl.textContent || '').trim();\n      var lines = raw.split('\\n');\n      \n      for (var i = 0; i < lines.length; i++) {\n        var line = lines[i].trim();\n        if (!line) continue;\n        \n        var div = document.createElement('div');\n        div.className = 'ssc-row';\n        \n        var parts = line.split(/[：:]/);\n        var labelHTML = \"\";\n        var contentText = \"\";\n\n        if (parts.length > 1) {\n          labelHTML = '<span class=\"ssc-label\">' + parts[0] + '</span>';\n          contentText = parts.slice(1).join(':').trim();\n        } else {\n          contentText = line;\n        }\n\n        var isThought = contentText.indexOf('*') !== -1;\n        var textClass = isThought ? 'ssc-text thought-style' : 'ssc-text';\n\n        div.innerHTML = labelHTML + '<span class=\"' + textClass + '\">' + contentText + '</span>';\n        body.appendChild(div);\n      }\n    });\n  </script>\n</body>\n</html>\n```",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": null,
+        "markdownOnly": true,
+        "promptOnly": false
+    },
+    {
+        "id": "eb920284-2f6d-490a-b4ad-7d1979c1113e",
+        "scriptName": "TG-对你隐藏",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "/<(VariableCheck|Disclaimer|memo)>([\\s\\S]*?)<\\/\\1>|《end》|<!--([\\s\\S]*?)-->/ig",
+        "trimStrings": [
+            "<",
+            ">",
+            "【",
+            "["
+        ],
+        "replaceString": "",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": null,
+        "markdownOnly": true,
+        "promptOnly": false
+    },
+    {
+        "id": "d1997eaf-eaab-4542-a870-7c1dc6d2ba7a",
+        "scriptName": "TG-对ai隐藏",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "/<(VariableCheck|SexualScene|Disclaimer)>([\\s\\S]*?)<\\/\\1>|<!--([\\s\\S]*?)-->/ig",
+        "trimStrings": [],
+        "replaceString": "",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": null,
+        "markdownOnly": false,
+        "promptOnly": true
+    },
+    {
+        "id": "db60b69f-d68e-4b03-8508-1e8b51ad4c03",
+        "scriptName": "TG-杀",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "/(不是[^,，]+[,，]([^,，]+)?是[^。]+。|像是|不可置信|月牙|两秒。|——|如蒙大赦|浮木|绝望|沙哑|不容置|的那种|指节|石子|一丝|一抹|一股|勾勒)/g",
+        "trimStrings": [],
+        "replaceString": "<cliche>$1</cliche>",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": 2,
+        "markdownOnly": false,
+        "promptOnly": true
+    },
+    {
+        "id": "22da2f4c-6bc7-407c-bbcf-b138e4b29890",
+        "scriptName": "TG-别关V3.1.1",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "^([\\s\\S]*)$",
+        "trimStrings": [],
+        "replaceString": "<peip>\n$1{{getvar::supernsfw}}\n</peip>",
+        "placement": [
+            1
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": 2,
+        "markdownOnly": false,
+        "promptOnly": true
+    },
+    {
+        "id": "b4180734-d12b-4033-8e95-395dcce59864",
+        "scriptName": "TG-巡回",
+        "disabled": false,
+        "runOnEdit": true,
+        "findRegex": "^([\\s\\S]*)$",
+        "trimStrings": [],
+        "replaceString": "<ai_last_output>\n$1\n</ai_last_output>",
+        "placement": [
+            2
+        ],
+        "substituteRegex": 0,
+        "minDepth": null,
+        "maxDepth": 2,
+        "markdownOnly": false,
+        "promptOnly": true
+    }
+]
