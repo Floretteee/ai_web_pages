@@ -28,7 +28,7 @@ async function fetchModels() {
     }
 }
 
-async function executeChatRequest(currentChat, preparedMessages) {
+async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     abortController = new AbortController();
     updateSendButton(true);
     updateTrimIndicator();
@@ -76,10 +76,23 @@ async function executeChatRequest(currentChat, preparedMessages) {
     }
 
     const targetIndex = currentChat.messages.length;
-    const botDomObj = createMessageDOM({ role: 'assistant', content: '' }, targetIndex, true);
-    botDomObj.wrapper.querySelector('.message-actions').style.display = 'none';
-    botDomObj.contentNode.innerHTML = '<div class="result-thinking"><span></span><span></span><span></span></div>';
-    DOM.chatMessages.appendChild(botDomObj.wrapper);
+    let botDomObj;
+    const reuseWrapper = options && options.reuseWrapper;
+    if (reuseWrapper && reuseWrapper.isConnected) {
+        botDomObj = {
+            wrapper: reuseWrapper,
+            contentNode: reuseWrapper.querySelector('.message.bot, .message')
+        };
+        botDomObj.wrapper.classList.remove('bubble-resetting');
+        botDomObj.wrapper.classList.add('bubble-reenter');
+        botDomObj.wrapper.querySelector('.message-actions').style.display = 'none';
+        botDomObj.contentNode.innerHTML = '<div class="result-thinking"><span></span><span></span><span></span></div>';
+    } else {
+        botDomObj = createMessageDOM({ role: 'assistant', content: '' }, targetIndex, true);
+        botDomObj.wrapper.querySelector('.message-actions').style.display = 'none';
+        botDomObj.contentNode.innerHTML = '<div class="result-thinking"><span></span><span></span><span></span></div>';
+        DOM.chatMessages.appendChild(botDomObj.wrapper);
+    }
     let streamThinkOpen = false;
     botDomObj.contentNode.addEventListener('pointerdown', (event) => {
         const summary = event.target.closest('.think-summary');
@@ -264,23 +277,36 @@ async function executeChatRequest(currentChat, preparedMessages) {
     }
     const msgEl = botDomObj.wrapper.querySelector('.message.bot');
     if (msgEl) msgEl.classList.remove('result-streaming');
-    renderMessages();
+    botDomObj.wrapper.classList.remove('bubble-reenter');
+
+    const isReuse = !!(options && options.reuseWrapper);
+    // 复用气泡重试时，流式渲染已直接更新 DOM，跳过 renderMessages 全量重建以保留原气泡
+    if (!isReuse) {
+        renderMessages();
+    }
 
     abortController = null;
     updateSendButton(false);
     updateTrimIndicator();
-    DOM.userInput.focus();
+    if (!isReuse) DOM.userInput.focus();
 
     if (currentChat.autoFixEnglish && botReply) {
         autoFixLastAssistantMessage(currentChat).catch(() => {});
     }
 
+    let refused = false;
     if (currentChat.autoRetryOnRefuse && botReply) {
-        await checkRefuseAndRetry(currentChat).catch(() => {});
+        refused = await checkRefuseAndRetry(currentChat, botDomObj.wrapper).catch(() => false);
     }
 
-    // 检查队列是否有待发送消息
-    if (messageQueue.length > 0 && !isProcessingQueue) {
+    // 重试复用气泡：若未触发再次重试，则最终同步渲染以恢复操作按钮与版本戳
+    if (isReuse && !refused) {
+        renderMessages();
+        DOM.userInput.focus();
+    }
+
+    // 未重试时才检查队列（重试中由最内层非重试调用处理队列）
+    if (!refused && messageQueue.length > 0 && !isProcessingQueue) {
         setTimeout(() => processQueue(), 500);
     }
 }
@@ -306,7 +332,7 @@ function updateSendButton(isGenerating) {
     }
 }
 
-async function checkRefuseAndRetry(chat) {
+async function checkRefuseAndRetry(chat, reuseWrapper) {
     if (chat.id !== state.currentChatId) return;
     const lastIdx = chat.messages.length - 1;
     if (lastIdx < 0) return;
@@ -332,19 +358,48 @@ async function checkRefuseAndRetry(chat) {
                 response_format: { type: 'json_object' }
             })
         });
-        if (!response.ok) return;
+        if (!response.ok) return false;
         const data = await response.json();
         let text = data.choices?.[0]?.message?.content?.trim() || '';
         text = text.replace(/^```(?:json)?\s*/i, '').replace(/```$/i, '').trim();
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) text = jsonMatch[0];
         let result;
-        try { result = JSON.parse(text); } catch (e) { return; }
+        try { result = JSON.parse(text); } catch (e) { return false; }
         if (result && result.refused === true) {
             showToast('检测到拒绝回答，正在自动重试...');
-            retryMessage(lastIdx);
+            await autoRetryRefuse(chat, lastIdx, reuseWrapper).catch(() => {});
+            return true;
         }
     } catch (error) {}
+    return false;
+}
+
+async function autoRetryRefuse(chat, index, wrapper) {
+    if (!wrapper || !wrapper.isConnected) return;
+    // 移除被拒绝的 assistant 消息（保留之前的 user 消息），不移除气泡 DOM
+    chat.messages = chat.messages.slice(0, index);
+    saveState();
+
+    // 线性缩小原气泡到初始生成状态
+    wrapper.classList.remove('bubble-reenter');
+    wrapper.classList.add('bubble-resetting');
+
+    // 等待缩小动画结束
+    await new Promise(resolve => {
+        let done = false;
+        const onEnd = () => {
+            if (done) return;
+            done = true;
+            wrapper.removeEventListener('animationend', onEnd);
+            resolve();
+        };
+        wrapper.addEventListener('animationend', onEnd);
+        setTimeout(onEnd, 400);
+    });
+
+    // 复用同一个气泡继续请求（重新流式生成）
+    await executeChatRequest(chat, null, { reuseWrapper: wrapper });
 }
 
 async function generateTitle(chatId, text) {
