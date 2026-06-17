@@ -60,6 +60,8 @@ async function processQueue() {
         const text = messageQueue.shift();
         renderQueue();
 
+        await ensureAutoChecksBeforeSend(currentChat);
+
         const { messages: preparedMessages, trimmed, skippedRounds } = buildContextWithTrim(currentChat, text);
         if (trimmed && !currentChat.contextLimitWarned) {
             showToast(`上下文将超过 Token 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });

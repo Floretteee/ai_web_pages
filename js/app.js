@@ -155,6 +155,7 @@ async function translateAssistantEnglishTokens(index, options = {}) {
         } else if (typeof original === 'string') {
             msg.content = applyTranslationMap(original, map);
         }
+        msg.translated = true;
         msg._renderVersion = (msg._renderVersion || 0) + 1;
         saveState();
         renderMessages();
@@ -180,6 +181,44 @@ async function autoFixLastAssistantMessage(chat) {
     if (extractEnglishTokens(plain).length === 0) return;
     if (chat.id !== state.currentChatId) return;
     await translateAssistantEnglishTokens(lastIdx, { silent: true });
+}
+
+function assistantNeedsTranslation(msg) {
+    if (!msg || msg.role !== 'assistant') return false;
+    const plain = getMessagePlainText(msg);
+    if (!plain) return false;
+    if (calcChineseRatio(plain) < 0.85) return false;
+    return extractEnglishTokens(plain).length > 0;
+}
+
+async function ensureAutoChecksBeforeSend(chat) {
+    if (!chat) return;
+    if (!chat.autoFixEnglish && !chat.autoRetryOnRefuse) return;
+    let lastIdx = -1;
+    for (let i = chat.messages.length - 1; i >= 0; i--) {
+        if (chat.messages[i].role === 'assistant') { lastIdx = i; break; }
+    }
+    if (lastIdx < 0) return;
+    const msg = chat.messages[lastIdx];
+    if (!msg) return;
+
+    if (chat.autoFixEnglish && msg.translated !== true && assistantNeedsTranslation(msg)) {
+        try { await translateAssistantEnglishTokens(lastIdx, { silent: true }); } catch (e) {}
+    }
+
+    if (chat.autoRetryOnRefuse && msg.refuseChecked !== true) {
+        if (typeof detectRefuse === 'function') {
+            try {
+                const refused = await detectRefuse(msg);
+                if (refused === false) {
+                    msg.refuseChecked = true;
+                    msg._renderVersion = (msg._renderVersion || 0) + 1;
+                    saveState();
+                    renderMessages();
+                }
+            } catch (e) {}
+        }
+    }
 }
 
 function showMessageContextMenu(event, index) {
@@ -262,6 +301,38 @@ function createMessageDOM(msg, index, isNew = false) {
         <button class="action-icon" onclick="retryMessage(${index})" title="重试"><svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg></button>
         <button class="action-icon" onclick="deleteMessage(${index})" title="删除"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
     `;
+    if (msg.role === 'assistant') {
+        const spacer = document.createElement('span');
+        spacer.className = 'action-spacer';
+        actions.appendChild(spacer);
+
+        const needsTrans = assistantNeedsTranslation(msg);
+        const isTranslated = msg.translated === true;
+        const hasAnyEng = extractEnglishTokens(getMessagePlainText(msg)).length > 0;
+        const transBtn = document.createElement('button');
+        transBtn.className = 'action-icon status-icon status-translate';
+        if (isTranslated) transBtn.classList.add('translated');
+        if (!hasAnyEng && !isTranslated) transBtn.classList.add('no-need');
+        transBtn.title = isTranslated ? '已翻译（点击重新翻译）' : (hasAnyEng ? '点击翻译错误英文' : '无需翻译');
+        if (isTranslated) {
+            transBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+        } else {
+            transBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>';
+        }
+        transBtn.onclick = () => translateAssistantEnglishTokens(index);
+        actions.appendChild(transBtn);
+
+        const refuseBtn = document.createElement('button');
+        refuseBtn.className = 'action-icon status-icon status-refuse-check read-only';
+        const checked = msg.refuseChecked === true;
+        refuseBtn.classList.add(checked ? 'checked' : 'unchecked');
+        refuseBtn.title = checked ? '拒绝重试检测：通过' : '拒绝重试检测：未检测/未通过';
+        refuseBtn.innerHTML = checked
+            ? '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>'
+            : '<svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>';
+        refuseBtn.onclick = (e) => e.preventDefault();
+        actions.appendChild(refuseBtn);
+    }
     wrapper.appendChild(actions);
     return { wrapper, contentNode };
 }
@@ -593,6 +664,8 @@ async function sendMessage() {
 
     const currentChat = state.chats.find(c => c.id === state.currentChatId);
     const isFirstMessage = currentChat.messages.length === 0;
+
+    await ensureAutoChecksBeforeSend(currentChat);
 
     let userMessageContent = text;
     if (state.attachment) {

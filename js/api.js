@@ -438,18 +438,12 @@ function updateSendButton(isGenerating) {
     }
 }
 
-async function checkRefuseAndRetry(chat, reuseWrapper) {
-    if (chat.id !== state.currentChatId) return;
-    const lastIdx = chat.messages.length - 1;
-    if (lastIdx < 0) return;
-    const msg = chat.messages[lastIdx];
-    if (!msg || msg.role !== 'assistant') return;
-
+async function detectRefuse(msg) {
+    if (!msg || msg.role !== 'assistant') return null;
     const modelToUse = state.refuseModel || state.selectedModel;
-    if (!modelToUse || !state.apiKey) return;
-
+    if (!modelToUse || !state.apiKey) return null;
     const plain = getMessagePlainText(msg);
-    if (!plain) return;
+    if (!plain) return null;
 
     try {
         const prompt = `你是一个判断助手。请判断以下AI回复是否在拒绝回答用户的问题（例如：表示无法回答、不愿意回答、因安全策略拒绝、回避问题等）。\n\nAI回复内容：\n${plain}\n\n请以JSON格式回复，格式为：{"refused": true/false}`;
@@ -464,20 +458,39 @@ async function checkRefuseAndRetry(chat, reuseWrapper) {
                 response_format: { type: 'json_object' }
             })
         });
-        if (!response.ok) return false;
+        if (!response.ok) return null;
         const data = await response.json();
         let text = data.choices?.[0]?.message?.content?.trim() || '';
         text = text.replace(/^```(?:json)?\s*/i, '').replace(/```$/i, '').trim();
         const jsonMatch = text.match(/\{[\s\S]*\}/);
         if (jsonMatch) text = jsonMatch[0];
         let result;
-        try { result = JSON.parse(text); } catch (e) { return false; }
-        if (result && result.refused === true) {
-            showToast('检测到拒绝回答，正在自动重试...');
-            await autoRetryRefuse(chat, lastIdx, reuseWrapper).catch(() => {});
-            return true;
-        }
-    } catch (error) {}
+        try { result = JSON.parse(text); } catch (e) { return null; }
+        if (!result || typeof result.refused !== 'boolean') return null;
+        return result.refused;
+    } catch (error) {
+        return null;
+    }
+}
+
+async function checkRefuseAndRetry(chat, reuseWrapper) {
+    if (chat.id !== state.currentChatId) return false;
+    const lastIdx = chat.messages.length - 1;
+    if (lastIdx < 0) return false;
+    const msg = chat.messages[lastIdx];
+    if (!msg || msg.role !== 'assistant') return false;
+
+    const refused = await detectRefuse(msg);
+    if (refused === null) return false;
+    if (refused === true) {
+        showToast('检测到拒绝回答，正在自动重试...');
+        await autoRetryRefuse(chat, lastIdx, reuseWrapper).catch(() => {});
+        return true;
+    }
+    msg.refuseChecked = true;
+    msg._renderVersion = (msg._renderVersion || 0) + 1;
+    saveState();
+    renderMessages();
     return false;
 }
 

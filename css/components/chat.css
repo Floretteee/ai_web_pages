@@ -98,14 +98,24 @@
 }
 .message img { max-width: 100%; border-radius: 8px; margin-bottom: 10px; border: 1px solid rgba(255,255,255,0.2); }
 
-.message-actions { display: flex; gap: 6px; margin-top: 6px; opacity: 0; transition: opacity 0.2s; }
+.message-actions { display: flex; gap: 6px; margin-top: 6px; opacity: 0; transition: opacity 0.2s; align-items: center; }
 .message-wrapper:hover .message-actions { opacity: 1; }
+.message-wrapper.bot .message-actions { align-self: stretch; min-width: 280px; }
 .action-icon {
     width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
     background: transparent; border: 1px solid transparent; border-radius: 4px; cursor: pointer; color: var(--text-tertiary); transition: all 0.2s;
 }
 .action-icon:hover { background: var(--surface-hover); border-color: var(--border-soft); color: var(--text-primary); }
 .action-icon svg { width: 14px; height: 14px; fill: currentColor; }
+
+.message-actions .action-spacer { flex: 1; }
+.action-icon.status-icon.no-need { opacity: 0.5; }
+.action-icon.status-icon.read-only { cursor: default; }
+.action-icon.status-icon.read-only:hover { background: transparent; border-color: transparent; }
+.action-icon.status-translate.translated { color: #16a34a; }
+.action-icon.status-translate.translated:hover { color: #16a34a; }
+.action-icon.status-refuse-check.checked { color: #16a34a; }
+.action-icon.status-refuse-check.unchecked { color: var(--danger, #dc2626); }
 
 .message-wrapper:has(.edit-area) { max-width: 100%; width: 100%; }
 .edit-area { width: 100%; min-width: 600px; min-height: 240px; padding: 14px 16px; border: 1px solid var(--border-strong); border-radius: var(--radius-md); font-family: inherit; font-size: 15px; resize: vertical; margin-bottom: 10px; outline: none; background: var(--surface-1); color: var(--text-primary); line-height: 1.6; box-shadow: var(--shadow-soft); }
