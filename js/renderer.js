@@ -294,14 +294,13 @@ function renderContentWithThink(content, isStreaming) {
     let mainContent = content || '';
     let thinkHtml = '';
     const thinkSvg = `<svg class="think-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M9.55 17.05 4.9 12.4l1.42-1.42 3.23 3.23 8.13-8.13 1.42 1.42-9.55 9.55Z"/></svg>`;
-    const thinkAnimSvg = `<svg class="think-icon thinking" viewBox="0 0 24 24" width="16" height="16"><path d="M11.7 6.1c-.45-1.25-1.55-2.1-2.85-2.1A3.05 3.05 0 0 0 5.8 7.05v.18A3.15 3.15 0 0 0 4 10.05c0 1.02.48 1.92 1.23 2.5A3.28 3.28 0 0 0 8.45 16.5h.85v1.2a1.7 1.7 0 0 0 3.4 0V5.95c0-1.08-.88-1.95-1.95-1.95h-.4m1.35 6.05H9.4m3.3 3.15H9.05m3.25-6.1H9.9m2.4 8.75H9.3m3-9.75c.45-1.25 1.55-2.1 2.85-2.1a3.05 3.05 0 0 1 3.05 3.05v.18A3.15 3.15 0 0 1 20 10.05c0 1.02-.48 1.92-1.23 2.5a3.28 3.28 0 0 1-3.22 3.95h-.85v1.2a1.7 1.7 0 0 1-3.4 0V5.95c0-1.08.88-1.95 1.95-1.95h.4m-1.35 6.05h2.3m-3.3 3.15h3.65m-3.25-6.1h2.4m-2.4 8.75h3" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
     const thinkMatch = content && content.match(CLOSED_THINK_BLOCK_PATTERN);
     if (thinkMatch) {
         const remainingContent = content.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
         const thinkingNow = isStreaming && !remainingContent;
         thinkHtml = `<details class="think-block">
-            <summary class="think-summary">${thinkingNow ? thinkAnimSvg : thinkSvg} ${thinkingNow ? '思考中...' : '思考过程'}</summary>
+            <summary class="think-summary">${thinkingNow ? '' : thinkSvg} ${thinkingNow ? '思考中...' : '思考过程'}</summary>
             <div class="think-content markdown-body">${renderMarkdownToHtml(thinkMatch[1])}</div>
         </details>`;
         mainContent = remainingContent;
@@ -313,7 +312,7 @@ function renderContentWithThink(content, isStreaming) {
             const inThink = content.slice(thinkStart + openThinkMatch[0].length);
             if (inThink) {
                 thinkHtml = `<details class="think-block">
-                    <summary class="think-summary">${thinkAnimSvg} 思考中...</summary>
+                    <summary class="think-summary">思考中...</summary>
                     <div class="think-content markdown-body">${renderMarkdownToHtml(inThink)}</div>
                 </details>`;
             }

@@ -172,10 +172,6 @@ html { scrollbar-color: var(--border-mid) transparent; }
 }
 @keyframes toastEnter { from { opacity: 0; transform: translateY(-20px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes toastLeave { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-20px); } }
-@keyframes brainBlink {
-    0%, 100% { color: #111; fill: #111; stroke: #111; opacity: 1; }
-    50% { color: #8a8a8a; fill: #8a8a8a; stroke: #8a8a8a; opacity: 0.45; }
-}
 @keyframes slideDown {
     from {
         transform: translateY(-100%);

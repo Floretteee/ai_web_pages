@@ -97,9 +97,12 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     let streamThinkPointerHandled = false;
     function _toggleStreamThink(summary, event) {
         const thinkBlock = summary.closest('.think-block');
+        const msgEl = botDomObj.wrapper.querySelector('.message.bot');
+        const previousHeight = msgEl ? msgEl.getBoundingClientRect().height : 0;
         streamThinkOpen = thinkBlock ? !thinkBlock.open : !streamThinkOpen;
         if (thinkBlock) thinkBlock.open = streamThinkOpen;
         event.preventDefault();
+        _animateBubbleHeight(previousHeight);
     }
     botDomObj.contentNode.addEventListener('pointerdown', (event) => {
         const summary = event.target.closest('.think-summary');
@@ -193,7 +196,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
             const thinkingNow = !replyContent;
             const summary = existingThink.querySelector('.think-summary');
             const thinkContent = existingThink.querySelector('.think-content');
-            if (summary) summary.innerHTML = `${thinkingNow ? '<svg class="think-icon thinking" viewBox="0 0 24 24" width="16" height="16"><path d="M11.7 6.1c-.45-1.25-1.55-2.1-2.85-2.1A3.05 3.05 0 0 0 5.8 7.05v.18A3.15 3.15 0 0 0 4 10.05c0 1.02.48 1.92 1.23 2.5A3.28 3.28 0 0 0 8.45 16.5h.85v1.2a1.7 1.7 0 0 0 3.4 0V5.95c0-1.08-.88-1.95-1.95-1.95h-.4m1.35 6.05H9.4m3.3 3.15H9.05m3.25-6.1H9.9m2.4 8.75H9.3m3-9.75c.45-1.25 1.55-2.1 2.85-2.1a3.05 3.05 0 0 1 3.05 3.05v.18A3.15 3.15 0 0 1 20 10.05c0 1.02-.48 1.92-1.23 2.5a3.28 3.28 0 0 1-3.22 3.95h-.85v1.2a1.7 1.7 0 0 1-3.4 0V5.95c0-1.08.88-1.95 1.95-1.95h.4m-1.35 6.05h2.3m-3.3 3.15h3.65m-3.25-6.1h2.4m-2.4 8.75h3" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg class="think-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M9.55 17.05 4.9 12.4l1.42-1.42 3.23 3.23 8.13-8.13 1.42 1.42-9.55 9.55Z"/></svg>'} ${thinkingNow ? '思考中...' : '思考过程'}`;
+            if (summary) summary.innerHTML = `${thinkingNow ? '' : '<svg class="think-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M9.55 17.05 4.9 12.4l1.42-1.42 3.23 3.23 8.13-8.13 1.42 1.42-9.55 9.55Z"/></svg>'} ${thinkingNow ? '思考中...' : '思考过程'}`;
             if (thinkContent) thinkContent.innerHTML = renderMarkdownToHtml(thinkMatch[1]);
             existingThink.open = streamThinkOpen;
             if (replyContent) {
@@ -212,18 +215,18 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
         if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
     }
-    function _animateBubbleGrowth(previousHeight) {
+    function _animateBubbleHeight(previousHeight) {
         const msgEl = botDomObj.wrapper.querySelector('.message.bot');
         if (!msgEl || !previousHeight) return;
         const nextHeight = msgEl.getBoundingClientRect().height;
-        if (nextHeight <= previousHeight + 0.5) return;
+        if (Math.abs(nextHeight - previousHeight) < 0.5) return;
         if (_bubbleGrowthAnimation) _bubbleGrowthAnimation.cancel();
         msgEl.style.height = `${nextHeight}px`;
         msgEl.style.overflow = 'hidden';
         const animation = msgEl.animate([
             { height: `${previousHeight}px` },
             { height: `${nextHeight}px` }
-        ], { duration: 1000, easing: 'linear' });
+        ], { duration: 280, easing: 'linear' });
         _bubbleGrowthAnimation = animation;
         animation.onfinish = () => {
             if (_bubbleGrowthAnimation !== animation) return;
@@ -268,9 +271,9 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
             const previousHeight = msgEl ? msgEl.getBoundingClientRect().height : 0;
             _updateStreamContent(c);
             _triggerPopIn();
-            _animateBubbleGrowth(previousHeight);
+            _animateBubbleHeight(previousHeight);
             if (autoScroll) scrollToBottom();
-        }, 1000);
+        }, 300);
     }
 
     let botReply = '';

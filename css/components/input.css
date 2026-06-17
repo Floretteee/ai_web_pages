@@ -96,20 +96,12 @@
 
 .queue-panel {
     display: none;
-    position: absolute;
-    left: 40px;
-    right: 40px;
-    bottom: calc(100% + 10px);
-    margin: 0;
+    margin: 8px 40px 0;
     border: 1px solid var(--border-soft);
     border-radius: 12px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    box-shadow: var(--shadow-strong);
+    background: var(--surface-1);
     overflow: hidden;
-    z-index: 30;
-    max-height: min(280px, 42vh);
+    flex-shrink: 0;
 }
 .queue-header {
     display: flex;
