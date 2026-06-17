@@ -179,7 +179,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         const animation = msgEl.animate([
             { height: `${previousHeight}px` },
             { height: `${nextHeight}px` }
-        ], { duration: 2000, easing: 'linear' });
+        ], { duration: 1000, easing: 'linear' });
         _bubbleGrowthAnimation = animation;
         animation.onfinish = () => {
             if (_bubbleGrowthAnimation !== animation) return;
@@ -242,7 +242,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
             _triggerPopIn();
             _animateBubbleGrowth(previousHeight);
             if (autoScroll) scrollToBottom();
-        }, 2000);
+        }, 1000);
     }
 
     let botReply = '';
