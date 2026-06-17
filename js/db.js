@@ -1,6 +1,7 @@
 const DB_NAME = 'FimallChat';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'chats';
+const SETTINGS_STORE_NAME = 'settings';
 
 let _db = null;
 
@@ -12,6 +13,9 @@ function openDB() {
             const db = event.target.result;
             if (!db.objectStoreNames.contains(STORE_NAME)) {
                 db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+            if (!db.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
+                db.createObjectStore(SETTINGS_STORE_NAME, { keyPath: 'key' });
             }
         };
         request.onsuccess = () => {
@@ -65,6 +69,36 @@ async function clearAllChats() {
         const tx = db.transaction(STORE_NAME, 'readwrite');
         const store = tx.objectStore(STORE_NAME);
         store.clear();
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+async function getSettings() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(SETTINGS_STORE_NAME, 'readonly');
+        const store = tx.objectStore(SETTINGS_STORE_NAME);
+        const request = store.getAll();
+        request.onsuccess = () => {
+            const settings = {};
+            for (const item of request.result) {
+                settings[item.key] = item.value;
+            }
+            resolve(settings);
+        };
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function saveSettingsToDB(settings) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(SETTINGS_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(SETTINGS_STORE_NAME);
+        for (const [key, value] of Object.entries(settings)) {
+            store.put({ key, value });
+        }
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
     });

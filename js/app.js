@@ -709,7 +709,9 @@ function renameChat() {
 
 async function init() {
     initDOM();
+    await loadSettingsFromDB();
     await loadChatsFromDB();
+    clearLegacyStorage();
 
     DOM.apiKeyInput.value = state.apiKey;
     DOM.systemPromptInput.value = state.systemPrompt;

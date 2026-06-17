@@ -13,7 +13,7 @@ async function fetchModels() {
             DOM.modelSelect.innerHTML = ''; DOM.titleModelSelect.innerHTML = '<option value="">跟随对话模型</option>'; DOM.refuseModelSelect.innerHTML = '<option value="">跟随对话模型</option>';
             data.data.forEach(m => { DOM.modelSelect.add(new Option(m.id, m.id)); DOM.titleModelSelect.add(new Option(m.id, m.id)); DOM.refuseModelSelect.add(new Option(m.id, m.id)); });
             if (state.selectedModel && data.data.find(m => m.id === state.selectedModel)) DOM.modelSelect.value = state.selectedModel;
-            else { state.selectedModel = data.data[0].id; saveSettings(); }
+            else { state.selectedModel = data.data[0].id; DOM.modelSelect.value = state.selectedModel; persistSettings(); }
             if (state.titleModel && data.data.find(m => m.id === state.titleModel)) DOM.titleModelSelect.value = state.titleModel;
             if (state.refuseModel && data.data.find(m => m.id === state.refuseModel)) DOM.refuseModelSelect.value = state.refuseModel;
             refreshAllCustomSelects();

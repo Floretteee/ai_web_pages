@@ -180,7 +180,8 @@ function handlePresetChange() {
 }
 
 function setTheme(theme) {
-    localStorage.setItem('ai_theme', theme);
+    state.theme = theme;
+    saveSettingsToDB(getPersistedSettings()).catch(e => console.warn('IndexedDB settings save failed:', e));
     applyTheme(theme);
 }
 
@@ -204,11 +205,11 @@ function applyTheme(theme) {
 }
 
 function initTheme() {
-    const saved = localStorage.getItem('ai_theme') || 'system';
+    const saved = state.theme || 'system';
     if (DOM.themeSelect) DOM.themeSelect.value = saved;
     applyTheme(saved);
     window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-        if (localStorage.getItem('ai_theme') === 'system' || !localStorage.getItem('ai_theme')) {
+        if ((state.theme || 'system') === 'system') {
             applyTheme('system');
         }
     });
