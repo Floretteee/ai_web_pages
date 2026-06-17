@@ -94,13 +94,28 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         DOM.chatMessages.appendChild(botDomObj.wrapper);
     }
     let streamThinkOpen = false;
+    let streamThinkPointerHandled = false;
+    function _toggleStreamThink(summary, event) {
+        const thinkBlock = summary.closest('.think-block');
+        streamThinkOpen = thinkBlock ? !thinkBlock.open : !streamThinkOpen;
+        if (thinkBlock) thinkBlock.open = streamThinkOpen;
+        event.preventDefault();
+    }
     botDomObj.contentNode.addEventListener('pointerdown', (event) => {
         const summary = event.target.closest('.think-summary');
         if (!summary || !botDomObj.contentNode.contains(summary)) return;
-        event.preventDefault();
-        streamThinkOpen = !streamThinkOpen;
-        const thinkBlock = summary.closest('.think-block');
-        if (thinkBlock) thinkBlock.open = streamThinkOpen;
+        streamThinkPointerHandled = true;
+        _toggleStreamThink(summary, event);
+    });
+    botDomObj.contentNode.addEventListener('click', (event) => {
+        const summary = event.target.closest('.think-summary');
+        if (!summary || !botDomObj.contentNode.contains(summary)) return;
+        if (streamThinkPointerHandled) {
+            streamThinkPointerHandled = false;
+            event.preventDefault();
+            return;
+        }
+        _toggleStreamThink(summary, event);
     });
 
     let _streamTimer = null;
@@ -168,6 +183,35 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         const currentText = _markNewStreamText(target.element, previousText);
         _streamTextByTarget.set(target.key, currentText);
     }
+    function _updateStreamContent(c) {
+        const hasClosedThink = c && CLOSED_THINK_BLOCK_PATTERN.test(c);
+        const existingThink = botDomObj.contentNode.querySelector('.think-block');
+        const existingReply = botDomObj.contentNode.querySelector('.reply-content');
+        if (hasClosedThink && existingThink) {
+            const thinkMatch = c.match(CLOSED_THINK_BLOCK_PATTERN);
+            const replyContent = c.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
+            const thinkingNow = !replyContent;
+            const summary = existingThink.querySelector('.think-summary');
+            const thinkContent = existingThink.querySelector('.think-content');
+            if (summary) summary.innerHTML = `${thinkingNow ? '<svg class="think-icon thinking" viewBox="0 0 24 24" width="16" height="16"><path d="M11.7 6.1c-.45-1.25-1.55-2.1-2.85-2.1A3.05 3.05 0 0 0 5.8 7.05v.18A3.15 3.15 0 0 0 4 10.05c0 1.02.48 1.92 1.23 2.5A3.28 3.28 0 0 0 8.45 16.5h.85v1.2a1.7 1.7 0 0 0 3.4 0V5.95c0-1.08-.88-1.95-1.95-1.95h-.4m1.35 6.05H9.4m3.3 3.15H9.05m3.25-6.1H9.9m2.4 8.75H9.3m3-9.75c.45-1.25 1.55-2.1 2.85-2.1a3.05 3.05 0 0 1 3.05 3.05v.18A3.15 3.15 0 0 1 20 10.05c0 1.02-.48 1.92-1.23 2.5a3.28 3.28 0 0 1-3.22 3.95h-.85v1.2a1.7 1.7 0 0 1-3.4 0V5.95c0-1.08.88-1.95 1.95-1.95h.4m-1.35 6.05h2.3m-3.3 3.15h3.65m-3.25-6.1h2.4m-2.4 8.75h3" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>' : '<svg class="think-icon" viewBox="0 0 24 24" width="16" height="16"><path d="M9.55 17.05 4.9 12.4l1.42-1.42 3.23 3.23 8.13-8.13 1.42 1.42-9.55 9.55Z"/></svg>'} ${thinkingNow ? '思考中...' : '思考过程'}`;
+            if (thinkContent) thinkContent.innerHTML = renderMarkdownToHtml(thinkMatch[1]);
+            existingThink.open = streamThinkOpen;
+            if (replyContent) {
+                if (existingReply) existingReply.innerHTML = renderMarkdownToHtml(replyContent);
+                else botDomObj.contentNode.insertAdjacentHTML('beforeend', `<div class="reply-content">${renderMarkdownToHtml(replyContent)}</div>`);
+            }
+            if (shouldProcessMath(c)) renderMath(botDomObj.contentNode);
+            if (c.includes('<pre') || c.includes('```')) highlightCodeBlocks(botDomObj.contentNode);
+            _thinkRenderedOnce = true;
+            return;
+        }
+        _thinkRenderedOnce = !!hasClosedThink;
+        botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
+        if (shouldProcessMath(c)) renderMath(botDomObj.contentNode);
+        if (c && (c.includes('<pre') || c.includes('```'))) highlightCodeBlocks(botDomObj.contentNode);
+        const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
+        if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
+    }
     function _animateBubbleGrowth(previousHeight) {
         const msgEl = botDomObj.wrapper.querySelector('.message.bot');
         if (!msgEl || !previousHeight) return;
@@ -222,23 +266,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
                 }
             }
             const previousHeight = msgEl ? msgEl.getBoundingClientRect().height : 0;
-            const existingReply = botDomObj.contentNode.querySelector('.reply-content');
-            const hasClosedThink = c && CLOSED_THINK_BLOCK_PATTERN.test(c);
-        if (hasClosedThink && existingReply && _thinkRenderedOnce) {
-            const replyContent = c.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
-            existingReply.innerHTML = renderMarkdownToHtml(replyContent);
-            if (replyContent) {
-                if (shouldProcessMath(replyContent)) renderMath(existingReply);
-                if (replyContent.includes('<pre') || replyContent.includes('```')) highlightCodeBlocks(existingReply);
-            }
-        } else {
-            _thinkRenderedOnce = !!hasClosedThink;
-            botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
-            if (shouldProcessMath(c)) renderMath(botDomObj.contentNode);
-            if (c && (c.includes('<pre') || c.includes('```'))) highlightCodeBlocks(botDomObj.contentNode);
-            const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
-            if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
-        }
+            _updateStreamContent(c);
             _triggerPopIn();
             _animateBubbleGrowth(previousHeight);
             if (autoScroll) scrollToBottom();
@@ -316,22 +344,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
             if (_pendingStreamContent) {
                 const c = _pendingStreamContent;
                 _pendingStreamContent = '';
-                const existingReply = botDomObj.contentNode.querySelector('.reply-content');
-                const hasClosedThink = c && CLOSED_THINK_BLOCK_PATTERN.test(c);
-                if (hasClosedThink && existingReply) {
-                    const replyContent = c.replace(CLOSED_THINK_BLOCK_PATTERN, '').trim();
-                    if (replyContent) {
-                        existingReply.innerHTML = renderMarkdownToHtml(replyContent);
-                        if (shouldProcessMath(replyContent)) renderMath(existingReply);
-                        if (replyContent.includes('<pre') || replyContent.includes('```')) highlightCodeBlocks(existingReply);
-                    }
-                } else {
-                    botDomObj.contentNode.innerHTML = renderContentWithThink(c, true);
-                    if (shouldProcessMath(c)) renderMath(botDomObj.contentNode);
-                    if (c && (c.includes('<pre') || c.includes('```'))) highlightCodeBlocks(botDomObj.contentNode);
-                }
-                const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
-                if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
+                _updateStreamContent(c);
                 if (autoScroll) scrollToBottom();
             }
             const msgEl = botDomObj.wrapper.querySelector('.message.bot');
