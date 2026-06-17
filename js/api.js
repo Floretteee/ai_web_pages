@@ -107,6 +107,8 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     let _pendingStreamContent = '';
     let _thinkRenderedOnce = false;
     let _firstTokenArrived = false;
+    let _bubbleGrowthAnimation = null;
+    const _streamTextByTarget = new Map();
     function _ensureStreamingState() {
         if (_firstTokenArrived) return;
         _firstTokenArrived = true;
@@ -115,13 +117,80 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         const msgEl = botDomObj.wrapper.querySelector('.message.bot');
         if (msgEl) msgEl.classList.add('result-streaming');
     }
-    function _triggerPopIn(container) {
-        const targets = container.querySelectorAll('.markdown-body');
-        targets.forEach(el => {
-            el.classList.remove('text-pop-in');
-            void el.offsetWidth;
-            el.classList.add('text-pop-in');
+    function _getStreamTarget() {
+        const reply = botDomObj.contentNode.querySelector('.reply-content');
+        if (reply) return { key: 'reply', element: reply };
+        const thinkContent = botDomObj.contentNode.querySelector('.think-content');
+        if (thinkContent) return { key: 'think', element: thinkContent };
+        return { key: 'main', element: botDomObj.contentNode };
+    }
+    function _markNewStreamText(element, previousText) {
+        const currentText = element.textContent || '';
+        let start = 0;
+        const maxStart = Math.min(previousText.length, currentText.length);
+        while (start < maxStart && previousText[start] === currentText[start]) start++;
+        if (start >= currentText.length) return currentText;
+        const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+            acceptNode(node) {
+                if (!node.nodeValue) return NodeFilter.FILTER_REJECT;
+                if (node.parentElement && node.parentElement.closest('button, svg')) return NodeFilter.FILTER_REJECT;
+                return NodeFilter.FILTER_ACCEPT;
+            }
         });
+        const textNodes = [];
+        let node;
+        while ((node = walker.nextNode())) textNodes.push(node);
+        let offset = 0;
+        textNodes.forEach(textNode => {
+            const text = textNode.nodeValue;
+            const nextOffset = offset + text.length;
+            if (nextOffset <= start) {
+                offset = nextOffset;
+                return;
+            }
+            const localStart = Math.max(0, start - offset);
+            const span = document.createElement('span');
+            span.className = 'stream-new-chunk';
+            span.textContent = text.slice(localStart);
+            if (localStart === 0) {
+                textNode.parentNode.replaceChild(span, textNode);
+            } else {
+                textNode.nodeValue = text.slice(0, localStart);
+                textNode.parentNode.insertBefore(span, textNode.nextSibling);
+            }
+            offset = nextOffset;
+        });
+        return currentText;
+    }
+    function _triggerPopIn() {
+        const target = _getStreamTarget();
+        const previousText = _streamTextByTarget.get(target.key) || '';
+        const currentText = _markNewStreamText(target.element, previousText);
+        _streamTextByTarget.set(target.key, currentText);
+    }
+    function _animateBubbleGrowth(previousHeight) {
+        const msgEl = botDomObj.wrapper.querySelector('.message.bot');
+        if (!msgEl || !previousHeight) return;
+        const nextHeight = msgEl.getBoundingClientRect().height;
+        if (nextHeight <= previousHeight + 0.5) return;
+        if (_bubbleGrowthAnimation) _bubbleGrowthAnimation.cancel();
+        msgEl.style.height = `${nextHeight}px`;
+        msgEl.style.overflow = 'hidden';
+        const animation = msgEl.animate([
+            { height: `${previousHeight}px` },
+            { height: `${nextHeight}px` }
+        ], { duration: 2000, easing: 'linear' });
+        _bubbleGrowthAnimation = animation;
+        animation.onfinish = () => {
+            if (_bubbleGrowthAnimation !== animation) return;
+            msgEl.style.height = '';
+            msgEl.style.overflow = '';
+            _bubbleGrowthAnimation = null;
+        };
+        animation.oncancel = () => {
+            if (_bubbleGrowthAnimation !== animation) return;
+            _bubbleGrowthAnimation = null;
+        };
     }
     function scheduleStreamRender(content) {
         if (content === _pendingStreamContent) return;
@@ -143,6 +212,16 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
             const c = _pendingStreamContent;
             _pendingStreamContent = '';
             _ensureStreamingState();
+            const msgEl = botDomObj.wrapper.querySelector('.message.bot');
+            if (_bubbleGrowthAnimation) {
+                _bubbleGrowthAnimation.cancel();
+                _bubbleGrowthAnimation = null;
+                if (msgEl) {
+                    msgEl.style.height = '';
+                    msgEl.style.overflow = '';
+                }
+            }
+            const previousHeight = msgEl ? msgEl.getBoundingClientRect().height : 0;
             const existingReply = botDomObj.contentNode.querySelector('.reply-content');
             const hasClosedThink = c && CLOSED_THINK_BLOCK_PATTERN.test(c);
         if (hasClosedThink && existingReply && _thinkRenderedOnce) {
@@ -160,7 +239,8 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
             const nextThinkBlock = botDomObj.contentNode.querySelector('.think-block');
             if (nextThinkBlock) nextThinkBlock.open = streamThinkOpen;
         }
-            _triggerPopIn(botDomObj.contentNode);
+            _triggerPopIn();
+            _animateBubbleGrowth(previousHeight);
             if (autoScroll) scrollToBottom();
         }, 2000);
     }
@@ -255,7 +335,12 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
                 if (autoScroll) scrollToBottom();
             }
             const msgEl = botDomObj.wrapper.querySelector('.message.bot');
-            if (msgEl) msgEl.classList.remove('result-streaming');
+            if (_bubbleGrowthAnimation) _bubbleGrowthAnimation.cancel();
+            if (msgEl) {
+                msgEl.classList.remove('result-streaming');
+                msgEl.style.height = '';
+                msgEl.style.overflow = '';
+            }
             break;
         } catch (error) {
             if (error.name === 'AbortError') {
@@ -276,7 +361,12 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         saveState();
     }
     const msgEl = botDomObj.wrapper.querySelector('.message.bot');
-    if (msgEl) msgEl.classList.remove('result-streaming');
+    if (_bubbleGrowthAnimation) _bubbleGrowthAnimation.cancel();
+    if (msgEl) {
+        msgEl.classList.remove('result-streaming');
+        msgEl.style.height = '';
+        msgEl.style.overflow = '';
+    }
     botDomObj.wrapper.classList.remove('bubble-reenter');
 
     const isReuse = !!(options && options.reuseWrapper);
