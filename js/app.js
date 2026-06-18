@@ -95,12 +95,12 @@ function buildMessageContent(text) {
 
 function createNewChat(render = true) {
     if (render) closeSettings();
-    const newChat = { id: Date.now().toString(), title: "新对话", messages: [], maxTokens: 0, contextLimit: 131072, contextLimitWarned: false, temperature: 0.7, stream: true };
+    const newChat = { id: Date.now().toString(), title: "新对话", messages: [], maxTokens: 0, contextLimit: 131072, contextLimitWarned: false, temperature: 0.7, stream: true, systemPrompt: '', userPrefix: '', selectedPreset: 'custom' };
     state.chats.unshift(newChat); state.currentChatId = newChat.id; state.editingIndex = -1; saveState();
-    if (render) { renderChatList(); renderMessages(); updateTrimIndicator(); DOM.userInput.focus(); }
+    if (render) { renderChatList(); renderMessages(); updateTrimIndicator(); updatePrefixBadge(); DOM.userInput.focus(); }
 }
 
-function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; setVisibleCount(id, MESSAGE_PAGE_SIZE); autoScroll = true; saveState(); renderChatList(); renderMessages(); updateTrimIndicator(); closeSettings(); closeSidebar(); clearSearch(); }
+function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; setVisibleCount(id, MESSAGE_PAGE_SIZE); autoScroll = true; saveState(); renderChatList(); renderMessages(); updateTrimIndicator(); updatePrefixBadge(); closeSettings(); closeSidebar(); clearSearch(); }
 
 async function deleteChat(id, event) {
     event.stopPropagation();
@@ -522,7 +522,9 @@ function renderMessages() {
 
 function buildContextWithTrim(chat, newUserContent = null) {
     const limit = chat && chat.contextLimit ? chat.contextLimit : 0;
-    const systemMsg = state.systemPrompt ? { role: 'system', content: state.systemPrompt } : null;
+    const chatSystemPrompt = chat && chat.systemPrompt ? chat.systemPrompt : '';
+    const chatUserPrefix = chat && chat.userPrefix ? chat.userPrefix : '';
+    const systemMsg = chatSystemPrompt ? { role: 'system', content: chatSystemPrompt } : null;
     const newMsg = newUserContent !== null ? { role: 'user', content: newUserContent } : null;
 
     let conversationMsgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
@@ -541,7 +543,7 @@ function buildContextWithTrim(chat, newUserContent = null) {
 
     const msgTokens = (msg) => {
         const base = estimateTokens(msg.content) + 4;
-        return (msg.role === 'user' && state.userPrefix) ? base + estimateTokens(state.userPrefix) : base;
+        return (msg.role === 'user' && chatUserPrefix) ? base + estimateTokens(chatUserPrefix) : base;
     };
 
     let total = messages.reduce((sum, m) => sum + msgTokens(m), 0);
@@ -591,10 +593,10 @@ function updateTokenCounter() {
         newContent = buildMessageContent(text);
     }
     const allMsgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
-    let fullTokens = estimateMessagesTokens(allMsgs) + (state.systemPrompt ? estimateTokens(state.systemPrompt) + 4 : 0);
+    let fullTokens = estimateMessagesTokens(allMsgs) + (chat.systemPrompt ? estimateTokens(chat.systemPrompt) + 4 : 0);
     if (newContent) {
         fullTokens += estimateTokens(newContent) + 4;
-        if (typeof newContent === 'string' && state.userPrefix) fullTokens += estimateTokens(state.userPrefix);
+        if (typeof newContent === 'string' && chat.userPrefix) fullTokens += estimateTokens(chat.userPrefix);
     }
     const limit = chat.contextLimit || 0;
     DOM.chatTokenCounter.textContent = limit
@@ -858,23 +860,15 @@ async function init() {
     initDOM();
     await loadSettingsFromDB();
     await loadChatsFromDB();
+    await migratePromptsToChats();
     clearLegacyStorage();
 
     DOM.apiKeyInput.value = state.apiKey;
-    DOM.systemPromptInput.value = state.systemPrompt;
-    DOM.userPrefixInput.value = state.userPrefix;
     DOM.htmlStyleSelect.value = state.htmlStyle;
     DOM.filterModeSelect.value = state.filterMode;
     DOM.exportRoleSelect.value = state.exportRole;
 
-    DOM.presetSelect.innerHTML = '<option value="custom">自定义</option>';
-    for (const key in PROMPT_PRESETS) {
-        const opt = document.createElement('option');
-        opt.value = key;
-        opt.textContent = PROMPT_PRESETS[key].name;
-        DOM.presetSelect.appendChild(opt);
-    }
-    DOM.presetSelect.value = state.selectedPreset;
+    buildChatPresetOptions();
     initCustomSelects();
 
     if (state.chats.length === 0) createNewChat(false);

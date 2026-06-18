@@ -103,3 +103,16 @@ async function saveSettingsToDB(settings) {
         tx.onerror = () => reject(tx.error);
     });
 }
+
+async function deleteSettingsKeys(keys) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(SETTINGS_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(SETTINGS_STORE_NAME);
+        for (const key of keys) {
+            store.delete(key);
+        }
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}

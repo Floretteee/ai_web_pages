@@ -35,6 +35,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     if (autoScroll) scrollToBottom();
 
     let apiMessages;
+    const chatUserPrefix = (currentChat && currentChat.userPrefix) ? currentChat.userPrefix : '';
     if (preparedMessages && preparedMessages.length > 0) {
         apiMessages = preparedMessages.map(m => {
             if (m.role === 'assistant') {
@@ -42,13 +43,13 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
                 content = content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
                 return { role: m.role, content };
             }
-            if (m.role === 'user' && state.userPrefix) {
+            if (m.role === 'user' && chatUserPrefix) {
                 let contentCopy = JSON.parse(JSON.stringify(m.content));
                 if (typeof contentCopy === 'string') {
-                    contentCopy = state.userPrefix + contentCopy;
+                    contentCopy = chatUserPrefix + contentCopy;
                 } else if (Array.isArray(contentCopy)) {
                     let textPart = contentCopy.find(c => c.type === 'text');
-                    if (textPart) textPart.text = state.userPrefix + textPart.text;
+                    if (textPart) textPart.text = chatUserPrefix + textPart.text;
                 }
                 return { role: m.role, content: contentCopy };
             }
@@ -61,13 +62,13 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
                 content = content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '').trim();
                 return { role: m.role, content };
             }
-            if (m.role === 'user' && state.userPrefix) {
+            if (m.role === 'user' && chatUserPrefix) {
                 let contentCopy = JSON.parse(JSON.stringify(m.content));
                 if (typeof contentCopy === 'string') {
-                    contentCopy = state.userPrefix + contentCopy;
+                    contentCopy = chatUserPrefix + contentCopy;
                 } else if (Array.isArray(contentCopy)) {
                     let textPart = contentCopy.find(c => c.type === 'text');
-                    if (textPart) textPart.text = state.userPrefix + textPart.text;
+                    if (textPart) textPart.text = chatUserPrefix + textPart.text;
                 }
                 return { role: m.role, content: contentCopy };
             }

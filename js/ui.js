@@ -1,8 +1,10 @@
 function updatePrefixBadge() {
-    if (state.selectedPreset !== 'custom' && PROMPT_PRESETS[state.selectedPreset]) {
-        let badgeText = PROMPT_PRESETS[state.selectedPreset].name.replace(/\s*\(.*\)/, '');
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    const preset = chat && chat.selectedPreset;
+    if (preset && preset !== 'custom' && PROMPT_PRESETS[preset]) {
+        let badgeText = PROMPT_PRESETS[preset].name.replace(/\s*\(.*\)/, '');
         DOM.inputPrefixBadge.textContent = badgeText;
-        DOM.inputPrefixBadge.title = state.userPrefix;
+        DOM.inputPrefixBadge.title = chat.userPrefix || '';
         DOM.inputPrefixBadge.style.display = 'flex';
     } else {
         DOM.inputPrefixBadge.style.display = 'none';
@@ -114,6 +116,18 @@ function scrollToBottomClick() {
     enableAutoScroll();
 }
 
+function buildChatPresetOptions() {
+    if (!DOM.chatPresetSelect || DOM.chatPresetSelect.dataset.built === '1') return;
+    DOM.chatPresetSelect.innerHTML = '<option value="custom">自定义</option>';
+    for (const key in PROMPT_PRESETS) {
+        const opt = document.createElement('option');
+        opt.value = key;
+        opt.textContent = PROMPT_PRESETS[key].name;
+        DOM.chatPresetSelect.appendChild(opt);
+    }
+    DOM.chatPresetSelect.dataset.built = '1';
+}
+
 function openChatSettings() {
     DOM.contextMenu.style.display = 'none';
     const chat = state.chats.find(c => c.id === contextMenuChatId);
@@ -126,6 +140,12 @@ function openChatSettings() {
     DOM.chatTemperatureRange.value = chat.temperature !== undefined ? chat.temperature : 0.7;
     DOM.chatTemperatureDisplay.textContent = DOM.chatTemperatureRange.value;
     DOM.chatStreamToggle.checked = chat.stream !== false;
+
+    buildChatPresetOptions();
+    DOM.chatPresetSelect.value = chat.selectedPreset || 'custom';
+    refreshCustomSelect(DOM.chatPresetSelect);
+    DOM.chatSystemPromptInput.value = chat.systemPrompt || '';
+    DOM.chatUserPrefixInput.value = chat.userPrefix || '';
 
     DOM.chatSettingsBackdrop.classList.remove('exiting');
     DOM.chatSettingsContainer.classList.remove('exiting');
@@ -162,21 +182,24 @@ function saveChatSettings() {
     chat.contextLimit = newLimit;
     chat.temperature = parseFloat(DOM.chatTemperatureRange.value);
     chat.stream = DOM.chatStreamToggle.checked;
+    chat.selectedPreset = DOM.chatPresetSelect.value;
+    chat.systemPrompt = DOM.chatSystemPromptInput.value.trim();
+    chat.userPrefix = DOM.chatUserPrefixInput.value;
     saveState();
+    if (chat.id === state.currentChatId) updatePrefixBadge();
     updateTrimIndicator();
 }
 
-function handlePresetChange() {
-    const val = DOM.presetSelect.value;
+function handleChatPresetChange() {
+    const val = DOM.chatPresetSelect.value;
     if (PROMPT_PRESETS[val]) {
-        DOM.systemPromptInput.value = PROMPT_PRESETS[val].system;
-        DOM.userPrefixInput.value = PROMPT_PRESETS[val].userPrefix;
+        DOM.chatSystemPromptInput.value = PROMPT_PRESETS[val].system;
+        DOM.chatUserPrefixInput.value = PROMPT_PRESETS[val].userPrefix;
     } else if (val === 'custom') {
-        DOM.systemPromptInput.value = '';
-        DOM.userPrefixInput.value = '';
+        DOM.chatSystemPromptInput.value = '';
+        DOM.chatUserPrefixInput.value = '';
     }
-    saveSettings();
-    updateTrimIndicator();
+    saveChatSettings();
 }
 
 function setTheme(theme) {

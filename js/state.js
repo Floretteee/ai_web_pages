@@ -8,9 +8,6 @@ let state = {
     apiKey: '', selectedModel: '',
     titleModel: '',
     refuseModel: '',
-    systemPrompt: '',
-    userPrefix: '',
-    selectedPreset: 'custom',
     htmlStyle: 'autumn',
     filterMode: 'think',
     exportRole: 'both',
@@ -27,8 +24,7 @@ function initDOM() {
         userInput: document.getElementById('userInput'), apiKeyInput: document.getElementById('apiKeyInput'),
         modelSelect: document.getElementById('modelSelect'), titleModelSelect: document.getElementById('titleModelSelect'),
         refuseModelSelect: document.getElementById('refuseModelSelect'),
-        presetSelect: document.getElementById('presetSelect'), systemPromptInput: document.getElementById('systemPromptInput'),
-        userPrefixInput: document.getElementById('userPrefixInput'), sendBtn: document.getElementById('sendBtn'),
+        sendBtn: document.getElementById('sendBtn'),
         settingsContainer: document.getElementById('settingsContainer'),
         queueBtn: document.getElementById('queueBtn'),
         attachmentPreview: document.getElementById('attachmentPreview'), chatHeaderTitle: document.getElementById('chatHeaderTitle'),
@@ -40,6 +36,9 @@ function initDOM() {
         exportRoleSelect: document.getElementById('exportRoleSelect'),
         chatSettingsBackdrop: document.getElementById('chatSettingsBackdrop'),
         chatSettingsContainer: document.getElementById('chatSettingsContainer'),
+        chatPresetSelect: document.getElementById('chatPresetSelect'),
+        chatSystemPromptInput: document.getElementById('chatSystemPromptInput'),
+        chatUserPrefixInput: document.getElementById('chatUserPrefixInput'),
         chatMaxTokensInput: document.getElementById('chatMaxTokensInput'),
         chatContextLimitInput: document.getElementById('chatContextLimitInput'),
         chatTemperatureRange: document.getElementById('chatTemperatureRange'),
@@ -116,9 +115,6 @@ function applyLoadedSettings(settings) {
         selectedModel: settings.selectedModel || '',
         titleModel: settings.titleModel || '',
         refuseModel: settings.refuseModel || '',
-        systemPrompt: settings.systemPrompt || '',
-        userPrefix: settings.userPrefix || '',
-        selectedPreset: settings.selectedPreset || 'custom',
         htmlStyle: settings.htmlStyle || 'autumn',
         filterMode: settings.filterMode || 'think',
         exportRole: settings.exportRole || 'both',
@@ -141,9 +137,6 @@ function getLegacySettings() {
         selectedModel: localStorage.getItem('ai_selected_model') || '',
         titleModel: localStorage.getItem('ai_title_model') || '',
         refuseModel: localStorage.getItem('ai_refuse_model') || '',
-        systemPrompt: localStorage.getItem('ai_system_prompt') || '',
-        userPrefix: localStorage.getItem('ai_user_prefix') || '',
-        selectedPreset: localStorage.getItem('ai_selected_preset') || 'custom',
         htmlStyle: localStorage.getItem('ai_html_style') || 'autumn',
         filterMode,
         exportRole: localStorage.getItem('ai_export_role') || 'both',
@@ -178,15 +171,75 @@ async function loadSettingsFromDB() {
     }
 }
 
+// One-time migration: prompt settings moved from global to per-chat.
+// Reads the old global prompt values (from DB settings or legacy localStorage),
+// copies them into existing chats lacking the new fields, then strips the
+// global keys. Also backfills defaults for any chat missing the fields.
+async function migratePromptsToChats() {
+    let globalSystemPrompt = '';
+    let globalUserPrefix = '';
+    let globalSelectedPreset = 'custom';
+    let foundGlobal = false;
+
+    try {
+        const settings = await getSettings();
+        if (settings.systemPrompt !== undefined || settings.userPrefix !== undefined || settings.selectedPreset !== undefined) {
+            foundGlobal = true;
+            globalSystemPrompt = settings.systemPrompt || '';
+            globalUserPrefix = settings.userPrefix || '';
+            globalSelectedPreset = settings.selectedPreset || 'custom';
+        }
+    } catch (e) {
+        console.warn('Prompt migration: settings read failed:', e);
+    }
+
+    if (!foundGlobal) {
+        const lsSystem = localStorage.getItem('ai_system_prompt');
+        const lsPrefix = localStorage.getItem('ai_user_prefix');
+        const lsPreset = localStorage.getItem('ai_selected_preset');
+        if (lsSystem !== null || lsPrefix !== null || lsPreset !== null) {
+            foundGlobal = true;
+            globalSystemPrompt = lsSystem || '';
+            globalUserPrefix = lsPrefix || '';
+            globalSelectedPreset = lsPreset || 'custom';
+        }
+    }
+
+    let changed = false;
+    for (const chat of state.chats) {
+        if (chat.systemPrompt === undefined && chat.userPrefix === undefined && chat.selectedPreset === undefined) {
+            // Chat predates per-chat prompts: inherit the old global value (one-time).
+            chat.systemPrompt = foundGlobal ? globalSystemPrompt : '';
+            chat.userPrefix = foundGlobal ? globalUserPrefix : '';
+            chat.selectedPreset = foundGlobal ? globalSelectedPreset : 'custom';
+            changed = true;
+        } else {
+            // Partial/imported chat: backfill any missing field with blank defaults.
+            if (chat.systemPrompt === undefined) { chat.systemPrompt = ''; changed = true; }
+            if (chat.userPrefix === undefined) { chat.userPrefix = ''; changed = true; }
+            if (chat.selectedPreset === undefined) { chat.selectedPreset = 'custom'; changed = true; }
+        }
+    }
+
+    if (changed) {
+        _saveStateSync();
+    }
+
+    if (foundGlobal) {
+        try {
+            await deleteSettingsKeys(['systemPrompt', 'userPrefix', 'selectedPreset']);
+        } catch (e) {
+            console.warn('Prompt migration: settings cleanup failed:', e);
+        }
+    }
+}
+
 function getPersistedSettings() {
     return {
         apiKey: state.apiKey,
         selectedModel: state.selectedModel,
         titleModel: state.titleModel,
         refuseModel: state.refuseModel,
-        systemPrompt: state.systemPrompt,
-        userPrefix: state.userPrefix,
-        selectedPreset: state.selectedPreset,
         htmlStyle: state.htmlStyle,
         filterMode: state.filterMode,
         exportRole: state.exportRole,
@@ -211,9 +264,6 @@ function saveSettings() {
     state.apiKey = DOM.apiKeyInput.value.trim(); state.selectedModel = DOM.modelSelect.value;
     state.titleModel = DOM.titleModelSelect.value;
     state.refuseModel = DOM.refuseModelSelect.value;
-    state.systemPrompt = DOM.systemPromptInput.value.trim();
-    state.userPrefix = DOM.userPrefixInput.value;
-    state.selectedPreset = DOM.presetSelect.value;
     state.htmlStyle = DOM.htmlStyleSelect.value;
     state.filterMode = DOM.filterModeSelect.value;
     state.exportRole = DOM.exportRoleSelect.value;

@@ -14,8 +14,13 @@ function handleFileImport(e) {
             const parsed = JSON.parse(event.target.result);
             if (Array.isArray(parsed)) {
                 if (await showConfirm("导入将覆盖当前的全部聊天记录，是否继续？")) {
+                    parsed.forEach(c => {
+                        if (c.systemPrompt === undefined) c.systemPrompt = '';
+                        if (c.userPrefix === undefined) c.userPrefix = '';
+                        if (c.selectedPreset === undefined) c.selectedPreset = 'custom';
+                    });
                     state.chats = parsed; state.currentChatId = parsed[0]?.id || null;
-                    saveState(); renderChatList(); renderMessages(); showToast("历史记录导入成功！");
+                    saveState(); renderChatList(); renderMessages(); updatePrefixBadge(); showToast("历史记录导入成功！");
                 }
             } else { showToast("非法的记录格式"); }
         } catch (err) { showToast("JSON 文件解析失败，请检查文件"); }

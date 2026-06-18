@@ -130,18 +130,6 @@
             </div>
 
             <div class="settings-section">
-                <div class="settings-section-title">提示词</div>
-                <div class="settings-group">
-                    <label>提示词预设</label>
-                    <select id="presetSelect" onchange="handlePresetChange()">
-                        <option value="custom">自定义</option>
-                    </select>
-                </div>
-                <div class="settings-group"><label>系统提示词 (System)</label><textarea id="systemPromptInput" placeholder="定义 AI 的人设..." onchange="saveSettings()"></textarea></div>
-                <div class="settings-group"><label>用户提示词前缀 (User Prefix)</label><textarea id="userPrefixInput" placeholder="前缀将静默附加到发给AI的User消息前" onchange="saveSettings()" style="min-height: 72px;"></textarea></div>
-            </div>
-
-            <div class="settings-section">
                 <div class="settings-section-title">导出</div>
                 <div class="settings-grid">
                     <div class="settings-group">
@@ -218,6 +206,18 @@
             </div>
 
             <div class="settings-section">
+                <div class="settings-section-title">提示词</div>
+                <div class="settings-group">
+                    <label>提示词预设</label>
+                    <select id="chatPresetSelect" onchange="handleChatPresetChange()">
+                        <option value="custom">自定义</option>
+                    </select>
+                </div>
+                <div class="settings-group"><label>系统提示词 (System)</label><textarea id="chatSystemPromptInput" placeholder="定义 AI 的人设..." onchange="saveChatSettings()"></textarea></div>
+                <div class="settings-group"><label>用户提示词前缀 (User Prefix)</label><textarea id="chatUserPrefixInput" placeholder="前缀将静默附加到发给AI的User消息前" onchange="saveChatSettings()" style="min-height: 72px;"></textarea></div>
+            </div>
+
+            <div class="settings-section">
                 <div class="settings-section-title">输出模式</div>
                 <div class="toggle-container">
                     <input type="checkbox" id="chatStreamToggle" onchange="saveChatSettings()" checked>
@@ -289,13 +289,13 @@
     <script src="presets.js" defer></script>
     <script src="js/utils.js?v=8" defer></script>
     <script src="js/renderer.js?v=7" defer></script>
-    <script src="js/db.js?v=7" defer></script>
-    <script src="js/state.js?v=9" defer></script>
+    <script src="js/db.js?v=8" defer></script>
+    <script src="js/state.js?v=10" defer></script>
     <script src="js/components.js?v=8" defer></script>
-    <script src="js/ui.js?v=6" defer></script>
-    <script src="js/api.js?v=10" defer></script>
-    <script src="js/export.js?v=5" defer></script>
+    <script src="js/ui.js?v=7" defer></script>
+    <script src="js/api.js?v=11" defer></script>
+    <script src="js/export.js?v=6" defer></script>
     <script src="js/queue.js?v=5" defer></script>
-    <script src="js/app.js?v=11" defer></script>
+    <script src="js/app.js?v=12" defer></script>
 </body>
 </html>
