@@ -3,6 +3,11 @@
 .attachment-preview .img-wrap { position: relative; width: 60px; height: 60px; border-radius: 8px; border: 1px solid #ccc; overflow: hidden; animation: slideUpFade 0.3s forwards; }
 .attachment-preview img { width: 100%; height: 100%; object-fit: cover; }
 .attachment-preview .remove-btn { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.attachment-preview .file-tile { position: relative; display: flex; align-items: center; gap: 8px; max-width: 200px; height: 60px; padding: 0 14px 0 10px; border-radius: 8px; border: 1px solid var(--border-mid); background: var(--surface-1); animation: slideUpFade 0.3s forwards; }
+.attachment-preview .file-tile-icon { flex-shrink: 0; display: flex; }
+.attachment-preview .file-tile-icon svg { width: 26px; height: 26px; fill: var(--text-secondary); }
+.attachment-preview .file-tile-name { flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.attachment-preview .file-tile .remove-btn { position: absolute; top: -6px; right: -6px; }
 
 .input-area { padding: 20px 40px; display: flex; gap: 12px; align-items: flex-end; }
 .upload-btn { background: transparent; border: 1px solid var(--border-mid); width: 52px; height: 52px; border-radius: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition); flex-shrink: 0; }

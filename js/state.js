@@ -16,7 +16,7 @@ let state = {
     exportRole: 'both',
     theme: 'system',
     chats: [], currentChatId: null,
-    attachment: null, editingIndex: -1
+    attachments: [], editingIndex: -1
 };
 
 const DOM = {};

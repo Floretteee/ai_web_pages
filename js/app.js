@@ -1,19 +1,97 @@
-function handleFileUpload(event) {
-    const file = event.target.files[0]; if (!file) return;
-    if (file.type.startsWith('image/')) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            state.attachment = e.target.result;
-            DOM.attachmentPreview.innerHTML = `<div class="img-wrap"><img src="${e.target.result}"><button class="remove-btn" onclick="clearAttachment()">×</button></div>`;
-            DOM.attachmentPreview.style.display = 'flex';
-        }; reader.readAsDataURL(file);
-    } else {
-        const reader = new FileReader();
-        reader.onload = (e) => { DOM.userInput.value += (DOM.userInput.value ? '\n\n' : '') + `\`\`\`${file.name.split('.').pop()}\n${e.target.result}\n\`\`\`\n`; DOM.userInput.dispatchEvent(new Event('input')); };
-        reader.readAsText(file);
-    } event.target.value = '';
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // 5MB
+
+function isTextLikeFile(file) {
+    if (file.type.startsWith('text/')) return true;
+    const textExts = ['txt','md','markdown','json','js','mjs','cjs','ts','tsx','jsx','py','java','c','h','cpp','hpp','cc','cs','go','rs','rb','php','swift','kt','sql','sh','bash','zsh','yml','yaml','toml','ini','cfg','conf','xml','html','htm','css','scss','less','vue','svelte','csv','tsv','log','env','gitignore','dockerfile'];
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    return textExts.includes(ext);
 }
-function clearAttachment() { state.attachment = null; DOM.attachmentPreview.innerHTML = ''; DOM.attachmentPreview.style.display = 'none'; updateTrimIndicator(); }
+
+function escapeHtml(str) {
+    return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function addFiles(files) {
+    const list = Array.from(files || []);
+    if (!list.length) return;
+    list.forEach((file) => {
+        if (file.size > MAX_ATTACHMENT_BYTES) {
+            showToast(`文件「${file.name}」超过 5MB，已跳过`);
+            return;
+        }
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                state.attachments.push({ kind: 'image', name: file.name || 'image', data: e.target.result });
+                renderAttachments(); updateTrimIndicator();
+            };
+            reader.readAsDataURL(file);
+        } else if (isTextLikeFile(file)) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const ext = (file.name.split('.').pop() || '').toLowerCase();
+                state.attachments.push({ kind: 'file', name: file.name || 'file', ext, data: e.target.result });
+                renderAttachments(); updateTrimIndicator();
+            };
+            reader.readAsText(file);
+        } else {
+            showToast(`不支持的文件类型「${file.name}」`);
+        }
+    });
+}
+
+function handleFileUpload(event) {
+    addFiles(event.target.files);
+    event.target.value = '';
+}
+
+const FILE_TILE_ICON = '<svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>';
+
+function renderAttachments() {
+    if (!DOM.attachmentPreview) return;
+    if (!state.attachments.length) {
+        DOM.attachmentPreview.innerHTML = '';
+        DOM.attachmentPreview.style.display = 'none';
+        return;
+    }
+    DOM.attachmentPreview.innerHTML = state.attachments.map((att, i) => {
+        if (att.kind === 'image') {
+            return `<div class="img-wrap"><img src="${att.data}" alt="${escapeHtml(att.name)}"><button class="remove-btn" onclick="removeAttachment(${i})" title="移除">×</button></div>`;
+        }
+        return `<div class="file-tile" title="${escapeHtml(att.name)}"><span class="file-tile-icon">${FILE_TILE_ICON}</span><span class="file-tile-name">${escapeHtml(att.name)}</span><button class="remove-btn" onclick="removeAttachment(${i})" title="移除">×</button></div>`;
+    }).join('');
+    DOM.attachmentPreview.style.display = 'flex';
+}
+
+function removeAttachment(index) {
+    state.attachments.splice(index, 1);
+    renderAttachments();
+    updateTrimIndicator();
+}
+
+function clearAttachments() {
+    state.attachments = [];
+    renderAttachments();
+    updateTrimIndicator();
+}
+
+// 将当前文字与附件构建为消息 content。无附件时返回纯文本字符串。
+function buildMessageContent(text) {
+    if (!state.attachments.length) return text;
+    const parts = [];
+    const fileParts = state.attachments.filter(a => a.kind === 'file');
+    const imageParts = state.attachments.filter(a => a.kind === 'image');
+    let textBlock = text || '';
+    fileParts.forEach((f) => {
+        textBlock += (textBlock ? '\n\n' : '') + `文件: ${f.name}\n\`\`\`${f.ext || ''}\n${f.data}\n\`\`\``;
+    });
+    if (!textBlock && imageParts.length) textBlock = '分析这张图片';
+    parts.push({ type: 'text', text: textBlock });
+    imageParts.forEach((img) => {
+        parts.push({ type: 'image_url', image_url: { url: img.data } });
+    });
+    return parts;
+}
 
 function createNewChat(render = true) {
     if (render) closeSettings();
@@ -280,8 +358,9 @@ function createMessageDOM(msg, index, isNew = false) {
     let displayContent = msg.content;
     if (Array.isArray(msg.content)) {
         const textPart = msg.content.find(c => c.type === 'text')?.text || '';
-        const imgPart = msg.content.find(c => c.type === 'image_url')?.image_url?.url || '';
-        displayContent = imgPart ? `![上传图片](${imgPart})\n\n${textPart}` : textPart;
+        const imgParts = msg.content.filter(c => c.type === 'image_url').map(c => c.image_url?.url).filter(Boolean);
+        const imgMarkdown = imgParts.map(url => `![上传图片](${url})`).join('\n');
+        displayContent = imgMarkdown ? `${imgMarkdown}\n\n${textPart}` : textPart;
     }
 
     if (displayContent && THINK_TAG_PATTERN.test(displayContent)) {
@@ -508,10 +587,8 @@ function updateTokenCounter() {
 
     const text = DOM.userInput ? DOM.userInput.value.trim() : '';
     let newContent = null;
-    if (text || state.attachment) {
-        newContent = state.attachment
-            ? [{ type: 'text', text: text || '分析这张图片' }, { type: 'image_url', image_url: { url: state.attachment } }]
-            : text;
+    if (text || state.attachments.length) {
+        newContent = buildMessageContent(text);
     }
     const allMsgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
     let fullTokens = estimateMessagesTokens(allMsgs) + (state.systemPrompt ? estimateTokens(state.systemPrompt) + 4 : 0);
@@ -533,12 +610,10 @@ function updateTrimIndicator() {
 
     if (DOM.trimBadge) {
         const text = DOM.userInput.value.trim();
-        const checkContent = text || state.attachment ? (text || '') : null;
+        const hasContent = text || state.attachments.length;
         let newContent = null;
-        if (checkContent !== null) {
-            newContent = state.attachment
-                ? [{ type: 'text', text: checkContent || '分析这张图片' }, { type: 'image_url', image_url: { url: state.attachment } }]
-                : checkContent;
+        if (hasContent) {
+            newContent = buildMessageContent(text);
         }
 
         const { trimmed } = buildContextWithTrim(chat, newContent);
@@ -647,7 +722,7 @@ function handleSearch(query) {
 
 async function sendMessage() {
     const text = DOM.userInput.value.trim();
-    if ((!text && !state.attachment) || !state.apiKey || !state.selectedModel) {
+    if ((!text && !state.attachments.length) || !state.apiKey || !state.selectedModel) {
         if (!state.apiKey) showToast("请先在左侧设置中填写 API Key");
         return;
     }
@@ -667,10 +742,9 @@ async function sendMessage() {
 
     await ensureAutoChecksBeforeSend(currentChat);
 
-    let userMessageContent = text;
-    if (state.attachment) {
-        userMessageContent = [ { type: "text", text: text || "分析这张图片" }, { type: "image_url", image_url: { url: state.attachment } } ];
-        clearAttachment();
+    let userMessageContent = buildMessageContent(text);
+    if (state.attachments.length) {
+        clearAttachments();
     }
 
     const { messages: preparedMessages, trimmed, skippedRounds } = buildContextWithTrim(currentChat, userMessageContent);
@@ -834,6 +908,23 @@ async function init() {
         this.style.height = (this.scrollHeight) + 'px';
         if (this.value === '') this.style.height = '52px';
         updateTrimIndicator();
+    });
+
+    // 粘贴：剪贴板含文件时作为附件处理，纯文本走默认行为
+    DOM.userInput.addEventListener('paste', function(e) {
+        const items = e.clipboardData && e.clipboardData.items;
+        if (!items) return;
+        const files = [];
+        for (const item of items) {
+            if (item.kind === 'file') {
+                const f = item.getAsFile();
+                if (f) files.push(f);
+            }
+        }
+        if (files.length) {
+            e.preventDefault();
+            addFiles(files);
+        }
     });
 
     // 点击其他地方关闭右键菜单与聊天设置
