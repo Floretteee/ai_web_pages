@@ -905,7 +905,14 @@ async function init() {
     });
 
     // 粘贴：剪贴板含文件时作为附件处理，纯文本走默认行为
-    DOM.userInput.addEventListener('paste', function(e) {
+    // 监听 document 级别，确保不聚焦输入框时 Ctrl+V 也能粘贴附件
+    document.addEventListener('paste', function(e) {
+        // 在其他可编辑控件（如设置项输入框）中粘贴时不拦截
+        const activeEl = document.activeElement;
+        if (activeEl && activeEl !== DOM.userInput &&
+            (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable)) {
+            return;
+        }
         const items = e.clipboardData && e.clipboardData.items;
         if (!items) return;
         const files = [];
