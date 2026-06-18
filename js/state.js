@@ -1,6 +1,7 @@
 let abortController = null;
 let messageQueue = [];
 let isProcessingQueue = false;
+let queuePaused = false;
 let autoScroll = true;
 let contextMenuChatId = null;
 

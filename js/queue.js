@@ -23,15 +23,34 @@ function renderQueue() {
     const countEl = document.getElementById('queueCount');
     const listEl = document.getElementById('queueList');
     const panel = document.getElementById('queuePanel');
+    const statusEl = document.getElementById('queueStatus');
 
     countEl.textContent = messageQueue.length;
 
-    if (messageQueue.length === 0) {
+    // 暂停状态指示
+    if (statusEl) {
+        if (queuePaused) {
+            statusEl.textContent = '已暂停';
+            statusEl.style.display = 'inline-flex';
+        } else {
+            statusEl.style.display = 'none';
+        }
+    }
+    panel.classList.toggle('paused', queuePaused);
+
+    // 队列为空且未暂停时隐藏面板
+    if (messageQueue.length === 0 && !queuePaused) {
         panel.style.display = 'none';
         return;
     }
 
     panel.style.display = 'block';
+
+    if (messageQueue.length === 0) {
+        listEl.innerHTML = '<div class="queue-empty-hint">上一条消息发送失败，队列已暂停。点击重试或强制继续。</div>';
+        return;
+    }
+
     listEl.innerHTML = messageQueue.map((msg, i) => `
         <div class="queue-item">
             <span class="queue-item-num">${i + 1}</span>
@@ -51,12 +70,14 @@ function renderQueue() {
 }
 
 async function processQueue() {
-    if (isProcessingQueue || messageQueue.length === 0) return;
+    if (isProcessingQueue || queuePaused || messageQueue.length === 0) return;
 
     isProcessingQueue = true;
     const currentChat = state.chats.find(c => c.id === state.currentChatId);
 
     while (messageQueue.length > 0) {
+        if (queuePaused) break;
+
         const text = messageQueue.shift();
         renderQueue();
 
@@ -73,8 +94,40 @@ async function processQueue() {
         saveState();
         renderMessages();
 
-        await executeChatRequest(currentChat, preparedMessages);
+        const ok = await executeChatRequest(currentChat, preparedMessages);
+        // 本条消息发送失败：暂停队列，保留后续消息，等待重试或手动继续
+        if (!ok) {
+            break;
+        }
     }
 
     isProcessingQueue = false;
+    renderQueue();
+}
+
+// 强制继续队列：跳过对失败消息的重试，直接发送队列中的后续消息
+function forceContinueQueue() {
+    if (!queuePaused) return;
+    queuePaused = false;
+    updateSendButton(false);
+    renderQueue();
+    if (messageQueue.length > 0) {
+        processQueue();
+    }
+}
+
+// 重试上一条失败的消息，成功后自动继续队列
+async function retryLastAndResume() {
+    if (abortController) return;
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    if (!chat || chat.messages.length === 0) {
+        queuePaused = false;
+        updateSendButton(false);
+        renderQueue();
+        return;
+    }
+    queuePaused = false;
+    // retryMessage 会重新生成最后一条消息；成功后 executeChatRequest 尾部会自动继续队列
+    await retryMessage(chat.messages.length - 1);
+    renderQueue();
 }

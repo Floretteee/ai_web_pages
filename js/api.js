@@ -279,6 +279,8 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
 
     let botReply = '';
     let reasoningBuffer = '';
+    let requestFailed = false;
+    let requestAborted = false;
     const maxRetries = 3;
 
     for (let retry = 0; retry <= maxRetries; retry++) {
@@ -361,11 +363,13 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
             break;
         } catch (error) {
             if (error.name === 'AbortError') {
+                requestAborted = true;
                 break;
             }
             if (retry < maxRetries) {
                 await new Promise(r => setTimeout(r, retry * 3000));
             } else {
+                requestFailed = true;
                 const retryNote = botReply ? `\n\n已有部分回复，错误: ${error.message}` : `请求失败，已重试 ${maxRetries} 次。错误: ${error.message}`;
                 botDomObj.contentNode.innerHTML = `<div class="error-message"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/></svg><span>${retryNote}</span></div>`;
                 showToast("消息请求失败，请重试");
@@ -393,6 +397,12 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     }
 
     abortController = null;
+    // 请求失败时暂停队列：保留后续队列消息，等待重试成功或手动继续
+    if (requestFailed) {
+        queuePaused = true;
+    } else if (!requestAborted) {
+        queuePaused = false;
+    }
     updateSendButton(false);
     updateTrimIndicator();
     if (!isReuse) DOM.userInput.focus();
@@ -413,9 +423,12 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     }
 
     // 未重试时才检查队列（重试中由最内层非重试调用处理队列）
-    if (!refused && messageQueue.length > 0 && !isProcessingQueue) {
+    // 请求失败或被中止时不自动继续队列
+    if (!refused && !requestFailed && !requestAborted && messageQueue.length > 0 && !isProcessingQueue) {
         setTimeout(() => processQueue(), 500);
     }
+
+    return !requestFailed && !requestAborted;
 }
 
 function stopGeneration() {
@@ -425,18 +438,56 @@ function stopGeneration() {
     }
 }
 
+const SEND_BTN_TRIM_BADGE_HTML = '<span class="send-btn-trim-badge" id="trimBadge" title="将丢弃开头部分上下文以控制 Token 总量"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></span>';
+const SEND_BTN_ICON = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>';
+const STOP_BTN_ICON = '<svg class="stop-spinner" viewBox="0 0 24 24"><path d="M19.2 12a7.2 7.2 0 1 1-2.1-5.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M17.1 3.8v3.1h3.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+const RETRY_BTN_ICON = '<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
+const QUEUE_ADD_ICON = '<svg viewBox="0 0 24 24"><path d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg>';
+const QUEUE_CONTINUE_ICON = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+
+// 替换发送按钮内容时重新挂载并缓存 trim 角标，避免引用失效
+function _setSendBtnContent(iconHtml) {
+    DOM.sendBtn.innerHTML = iconHtml + SEND_BTN_TRIM_BADGE_HTML;
+    DOM.trimBadge = document.getElementById('trimBadge');
+}
+
 function updateSendButton(isGenerating) {
     if (isGenerating) {
-        DOM.sendBtn.innerHTML = '<svg class="stop-spinner" viewBox="0 0 24 24"><path d="M19.2 12a7.2 7.2 0 1 1-2.1-5.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><path d="M17.1 3.8v3.1h3.1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        _setSendBtnContent(STOP_BTN_ICON);
         DOM.sendBtn.onclick = stopGeneration;
         DOM.sendBtn.classList.add('stop-btn');
+        DOM.sendBtn.classList.remove('retry-btn');
+        DOM.sendBtn.title = '停止生成';
         DOM.queueBtn.classList.add('generating');
+        DOM.queueBtn.classList.remove('paused');
+        DOM.queueBtn.innerHTML = QUEUE_ADD_ICON;
+        DOM.queueBtn.onclick = addToQueue;
+        DOM.queueBtn.title = '加入队列';
+    } else if (queuePaused) {
+        // 暂停状态：发送按钮变为「重试上一条」，队列按钮变为「强制继续队列」
+        _setSendBtnContent(RETRY_BTN_ICON);
+        DOM.sendBtn.onclick = retryLastAndResume;
+        DOM.sendBtn.classList.remove('stop-btn');
+        DOM.sendBtn.classList.add('retry-btn');
+        DOM.sendBtn.title = '重试上一条消息';
+        DOM.queueBtn.classList.remove('generating');
+        DOM.queueBtn.classList.add('paused');
+        DOM.queueBtn.innerHTML = QUEUE_CONTINUE_ICON;
+        DOM.queueBtn.onclick = forceContinueQueue;
+        DOM.queueBtn.title = '强制继续队列（跳过重试）';
     } else {
-        DOM.sendBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"></path></svg>';
+        _setSendBtnContent(SEND_BTN_ICON);
         DOM.sendBtn.onclick = sendMessage;
         DOM.sendBtn.classList.remove('stop-btn');
+        DOM.sendBtn.classList.remove('retry-btn');
+        DOM.sendBtn.title = '发送';
         DOM.queueBtn.classList.remove('generating');
+        DOM.queueBtn.classList.remove('paused');
+        DOM.queueBtn.innerHTML = QUEUE_ADD_ICON;
+        DOM.queueBtn.onclick = addToQueue;
+        DOM.queueBtn.title = '加入队列';
     }
+    updateTrimIndicator();
 }
 
 async function detectRefuse(msg) {
