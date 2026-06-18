@@ -12,6 +12,7 @@ let state = {
     filterMode: 'think',
     exportRole: 'both',
     theme: 'system',
+    maxAttachmentMB: 5,
     chats: [], currentChatId: null,
     attachments: [], editingIndex: -1
 };
@@ -34,6 +35,7 @@ function initDOM() {
         settingsBackdrop: document.getElementById('settingsBackdrop'),
         contextMenu: document.getElementById('contextMenu'), filterModeSelect: document.getElementById('filterModeSelect'),
         exportRoleSelect: document.getElementById('exportRoleSelect'),
+        maxAttachmentMBInput: document.getElementById('maxAttachmentMBInput'),
         chatSettingsBackdrop: document.getElementById('chatSettingsBackdrop'),
         chatSettingsContainer: document.getElementById('chatSettingsContainer'),
         chatPresetSelect: document.getElementById('chatPresetSelect'),
@@ -119,6 +121,7 @@ function applyLoadedSettings(settings) {
         filterMode: settings.filterMode || 'think',
         exportRole: settings.exportRole || 'both',
         theme: settings.theme || 'system',
+        maxAttachmentMB: Number.isFinite(settings.maxAttachmentMB) && settings.maxAttachmentMB > 0 ? settings.maxAttachmentMB : 5,
         currentChatId: settings.currentChatId || null
     });
 }
@@ -244,6 +247,7 @@ function getPersistedSettings() {
         filterMode: state.filterMode,
         exportRole: state.exportRole,
         theme: state.theme,
+        maxAttachmentMB: state.maxAttachmentMB,
         currentChatId: state.currentChatId
     };
 }
@@ -267,6 +271,10 @@ function saveSettings() {
     state.htmlStyle = DOM.htmlStyleSelect.value;
     state.filterMode = DOM.filterModeSelect.value;
     state.exportRole = DOM.exportRoleSelect.value;
+    if (DOM.maxAttachmentMBInput) {
+        const v = parseFloat(DOM.maxAttachmentMBInput.value);
+        state.maxAttachmentMB = Number.isFinite(v) && v > 0 ? v : 5;
+    }
 
     persistSettings();
 }

@@ -1,4 +1,7 @@
-const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // 5MB
+function getMaxAttachmentBytes() {
+    const mb = Number.isFinite(state.maxAttachmentMB) && state.maxAttachmentMB > 0 ? state.maxAttachmentMB : 5;
+    return mb * 1024 * 1024;
+}
 
 function isTextLikeFile(file) {
     if (file.type.startsWith('text/')) return true;
@@ -14,9 +17,11 @@ function escapeHtml(str) {
 function addFiles(files) {
     const list = Array.from(files || []);
     if (!list.length) return;
+    const maxBytes = getMaxAttachmentBytes();
+    const mb = state.maxAttachmentMB || 5;
     list.forEach((file) => {
-        if (file.size > MAX_ATTACHMENT_BYTES) {
-            showToast(`文件「${file.name}」超过 5MB，已跳过`);
+        if (file.size > maxBytes) {
+            showToast(`文件「${file.name}」超过 ${mb}MB，已跳过`);
             return;
         }
         if (file.type.startsWith('image/')) {
@@ -867,6 +872,7 @@ async function init() {
     DOM.htmlStyleSelect.value = state.htmlStyle;
     DOM.filterModeSelect.value = state.filterMode;
     DOM.exportRoleSelect.value = state.exportRole;
+    if (DOM.maxAttachmentMBInput) DOM.maxAttachmentMBInput.value = state.maxAttachmentMB;
 
     buildChatPresetOptions();
     initCustomSelects();
