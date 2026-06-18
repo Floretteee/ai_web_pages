@@ -165,6 +165,19 @@ function saveEdit(index, newText) {
     state.editingIndex = -1; saveState(); renderMessages(); updateTrimIndicator(); showToast("修改已保存");
 }
 
+// 根据消息索引定位其对应的气泡 DOM（考虑被折叠的历史消息）
+function getWrapperForIndex(index) {
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    if (!chat) return null;
+    const msgs = chat.messages.filter(m => m.role !== 'system');
+    const visibleCount = Math.min(getVisibleCount(state.currentChatId), msgs.length);
+    const startIdx = Math.max(0, msgs.length - visibleCount);
+    const pos = index - startIdx;
+    if (pos < 0) return null;
+    const wrappers = DOM.chatMessages.querySelectorAll(':scope > .message-wrapper');
+    return wrappers[pos] || null;
+}
+
 async function retryMessage(index) {
     if (abortController) return showToast("请等待当前请求完成");
     const chat = state.chats.find(c => c.id === state.currentChatId);
@@ -177,15 +190,56 @@ async function retryMessage(index) {
         if (!(await showConfirm(confirmMsg))) return;
     }
 
+    // 复用的气泡：assistant 重试复用本气泡；user 重试复用其后的 assistant 气泡（若存在）
+    let reuseWrapper = null;
+    if (msg.role === 'assistant') {
+        const w = getWrapperForIndex(index);
+        if (w && w.classList.contains('bot') && w.isConnected) reuseWrapper = w;
+    } else if (msg.role === 'user') {
+        const next = chat.messages[index + 1];
+        if (next && next.role === 'assistant') {
+            const w = getWrapperForIndex(index + 1);
+            if (w && w.classList.contains('bot') && w.isConnected) reuseWrapper = w;
+        }
+    }
+
     // user消息保留当前消息，assistant消息移除当前消息
-    chat.messages = msg.role === 'user'
-        ? chat.messages.slice(0, index + 1)
-        : chat.messages.slice(0, index);
+    const sliceEnd = msg.role === 'user' ? index + 1 : index;
+    chat.messages = chat.messages.slice(0, sliceEnd);
 
     state.editingIndex = -1;
     saveState();
-    renderMessages();
-    await executeChatRequest(chat);
+
+    if (reuseWrapper) {
+        // 移除复用气泡之后的所有气泡 DOM（对应被裁剪的消息），保持 DOM 与状态同步
+        let sibling = reuseWrapper.nextElementSibling;
+        while (sibling) {
+            const toRemove = sibling;
+            sibling = sibling.nextElementSibling;
+            if (toRemove.classList.contains('message-wrapper')) toRemove.remove();
+        }
+
+        // 线性缩小原气泡到初始生成状态
+        reuseWrapper.classList.remove('bubble-reenter');
+        reuseWrapper.classList.add('bubble-resetting');
+        await new Promise(resolve => {
+            let done = false;
+            const onEnd = () => {
+                if (done) return;
+                done = true;
+                reuseWrapper.removeEventListener('animationend', onEnd);
+                resolve();
+            };
+            reuseWrapper.addEventListener('animationend', onEnd);
+            setTimeout(onEnd, 400);
+        });
+
+        await executeChatRequest(chat, null, { reuseWrapper });
+    } else {
+        // 无可复用气泡（重试末尾的 user 消息）：新气泡正常进入
+        renderMessages();
+        await executeChatRequest(chat);
+    }
 }
 
 async function translateAssistantEnglishTokens(index, options = {}) {
