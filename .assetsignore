@@ -1,0 +1,25 @@
+# 版本控制与构建工具
+.git
+.gitignore
+.wrangler
+.playwright-mcp
+.antigravitycli
+.assetsignore
+
+# 依赖
+node_modules
+
+# 构建脚本与配置
+scripts
+package.json
+package-lock.json
+wrangler.toml
+
+# 文档与计划
+*.md
+
+# 日志
+*.log
+
+# SW 模板源文件（构建后生成 sw.js）
+sw.template.js
