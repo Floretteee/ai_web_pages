@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node scripts/build-domd.mjs && node scripts/build-sw.mjs",
     "build:sw": "node scripts/build-sw.mjs",
-    "deploy": "node scripts/build-sw.mjs && wrangler deploy",
+    "deploy": "node scripts/build-sw.mjs && wrangler pages deploy . --project-name=fimall-ai-web",
     "release": "node scripts/bump-version.mjs && node scripts/build-sw.mjs"
   },
   "keywords": [],

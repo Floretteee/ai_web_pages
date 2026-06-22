@@ -4,7 +4,7 @@
 .wrangler
 .playwright-mcp
 .antigravitycli
-.assetsignore
+.pagesignore
 
 # 依赖
 node_modules

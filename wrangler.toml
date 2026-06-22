@@ -1,7 +1,3 @@
 name = "fimall-ai-web"
+pages_build_output_dir = "."
 compatibility_date = "2025-05-23"
-
-[assets]
-directory = "./"
-html_handling = "auto-trailing-slash"
-not_found_handling = "none"
