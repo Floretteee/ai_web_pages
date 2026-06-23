@@ -3,7 +3,7 @@
 ## 实施进度
 
 - [x] A1：motion token 调整
-- [ ] A2：替换高频元素的 `transition: all`
+- [x] A2：替换高频元素的 `transition: all`
 - [ ] A3：补充 active 态
 - [ ] A4：微交互提速与 hover 收敛
 - [ ] B2：消息入场动画微调

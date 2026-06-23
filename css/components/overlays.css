@@ -27,7 +27,7 @@
 .custom-modal p { margin-bottom: 24px; font-size: 15px; font-weight: 500; color: var(--text-primary); line-height: 1.5; }
 .custom-modal-actions { display: flex; gap: 12px; }
 .custom-modal-actions button {
-    flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s;
+    flex: 1; padding: 12px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: var(--transition-interactive);
 }
 .custom-modal-btn-cancel { background: var(--surface-1); border: 1px solid var(--border-mid); color: var(--text-primary); }
 .custom-modal-btn-cancel:hover { background: var(--surface-hover); border-color: var(--text-secondary); }
@@ -163,7 +163,7 @@
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: var(--transition-interactive);
 }
 
 .update-refresh-btn:hover {

@@ -17,7 +17,7 @@
 .chat-token-counter.over-limit { color: var(--danger); font-weight: 600; }
 .clear-chat-btn {
     background: transparent; border: 1px solid var(--border-mid); padding: 6px 12px; border-radius: 6px; cursor: pointer;
-    font-size: 12px; color: var(--text-primary); transition: var(--transition); display: flex; align-items: center; gap: 6px; font-weight: 500;
+    font-size: 12px; color: var(--text-primary); transition: var(--transition-interactive); display: flex; align-items: center; gap: 6px; font-weight: 500;
 }
 .clear-chat-btn:hover { background: var(--surface-hover); border-color: var(--text-primary); }
 .clear-chat-btn svg { width: 14px; height: 14px; fill: currentColor; }
@@ -82,7 +82,7 @@
     cursor: pointer;
     font-size: 13px;
     color: #555;
-    transition: all 0.2s;
+    transition: var(--transition-interactive);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
 }
@@ -103,7 +103,7 @@
 .message-wrapper.bot .message-actions { align-self: stretch; min-width: 280px; }
 .action-icon {
     width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
-    background: transparent; border: 1px solid transparent; border-radius: 4px; cursor: pointer; color: var(--text-tertiary); transition: all 0.2s;
+    background: transparent; border: 1px solid transparent; border-radius: 4px; cursor: pointer; color: var(--text-tertiary); transition: var(--transition-interactive);
 }
 .action-icon:hover { background: var(--surface-hover); border-color: var(--border-soft); color: var(--text-primary); }
 .action-icon svg { width: 14px; height: 14px; fill: currentColor; }
@@ -211,7 +211,7 @@
 .search-toggle-btn {
     background: transparent; border: none; cursor: pointer; padding: 6px;
     display: flex; align-items: center; justify-content: center;
-    border-radius: var(--radius-md); transition: var(--transition);
+    border-radius: var(--radius-md); transition: var(--transition-interactive);
 }
 .search-toggle-btn:hover { background: var(--surface-hover); }
 .search-toggle-btn svg { width: 18px; height: 18px; fill: var(--text-secondary); }

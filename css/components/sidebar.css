@@ -12,7 +12,7 @@
 .icon-btn {
     background: transparent; border: none; cursor: pointer; width: 32px; height: 32px;
     border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
-    transition: var(--transition);
+    transition: var(--transition-interactive);
 }
 .icon-btn:hover { background-color: var(--surface-active); transform: rotate(15deg); }
 .icon-btn svg { width: 20px; height: 20px; fill: var(--text-primary); }
@@ -20,7 +20,7 @@
 .new-chat-btn {
     background-color: var(--accent-color); color: var(--accent-text); border: 1px solid var(--accent-color);
     padding: 12px; border-radius: var(--radius-md); font-size: 15px; font-weight: 600;
-    cursor: pointer; transition: var(--transition); margin-bottom: 20px; flex-shrink: 0;
+    cursor: pointer; transition: var(--transition-interactive); margin-bottom: 20px; flex-shrink: 0;
     box-shadow: var(--shadow-soft);
 }
 .new-chat-btn:hover { background-color: var(--accent-hover); transform: translateY(-2px); box-shadow: var(--shadow-mid); }
@@ -29,12 +29,12 @@
 
 .chat-item {
     padding: 10px 30px 10px 12px; border-radius: var(--radius-md); cursor: pointer;
-    transition: var(--transition); font-size: 14px; white-space: nowrap; overflow: hidden;
+    transition: var(--transition-interactive); font-size: 14px; white-space: nowrap; overflow: hidden;
     text-overflow: ellipsis; color: var(--text-secondary); border: 1px solid transparent; position: relative;
 }
 .chat-item::before {
     content: ''; position: absolute; left: 0; top: 50%; transform: translateY(-50%) scaleY(0);
-    width: 3px; height: 60%; background: var(--accent-color); border-radius: 0 4px 4px 0; transition: var(--transition);
+    width: 3px; height: 60%; background: var(--accent-color); border-radius: 0 4px 4px 0; transition: transform var(--duration-micro) var(--ease-standard);
 }
 .chat-item:hover { background-color: var(--surface-hover); }
 .chat-item.active { background-color: var(--surface-1); color: var(--text-primary); font-weight: 600; border-color: var(--border-mid); box-shadow: var(--shadow-soft); }
