@@ -54,8 +54,8 @@
 .chat-settings-panel.show {
     opacity: 1; transform: translateY(0) scale(1);
     visibility: visible; pointer-events: auto;
-    transition: opacity var(--duration-enter) var(--ease-out-expo),
-                transform var(--duration-enter) var(--ease-out-back),
+    transition: opacity var(--duration-enter) var(--ease-standard),
+                transform var(--duration-enter) var(--ease-standard),
                 visibility var(--duration-enter);
 }
 .chat-settings-panel .settings-section:last-child { margin-bottom: 28px; }
@@ -98,8 +98,8 @@
 .settings-panel.show {
     opacity: 1; transform: translateY(0) scale(1);
     visibility: visible; pointer-events: auto;
-    transition: opacity var(--duration-enter) var(--ease-out-expo),
-                transform var(--duration-enter) var(--ease-out-back),
+    transition: opacity var(--duration-enter) var(--ease-standard),
+                transform var(--duration-enter) var(--ease-standard),
                 visibility var(--duration-enter);
 }
 
