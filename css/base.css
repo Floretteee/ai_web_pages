@@ -51,10 +51,12 @@
     --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 
     /* Motion Design Tokens */
+    --duration-press: 90ms;
     --duration-micro: 150ms;
-    --duration-enter: 280ms;
+    --duration-enter: 260ms;
     --duration-exit: 180ms;
-    --duration-stagger: 35ms;
+    --duration-stagger: 32ms;
+    --ease-standard: cubic-bezier(0.32, 0.72, 0, 1);
     --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
     --ease-in-expo: cubic-bezier(0.7, 0, 0.84, 0);
     --ease-out-back: cubic-bezier(0.34, 1.56, 0.64, 1);
