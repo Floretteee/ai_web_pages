@@ -15,6 +15,7 @@
     transition: var(--transition-interactive);
 }
 .icon-btn:hover { background-color: var(--surface-active); transform: rotate(15deg); }
+.icon-btn:active { transform: scale(0.92); transition-duration: var(--duration-press); }
 .icon-btn svg { width: 20px; height: 20px; fill: var(--text-primary); }
 
 .new-chat-btn {
@@ -24,6 +25,7 @@
     box-shadow: var(--shadow-soft);
 }
 .new-chat-btn:hover { background-color: var(--accent-hover); transform: translateY(-2px); box-shadow: var(--shadow-mid); }
+.new-chat-btn:active { transform: translateY(0) scale(0.97); transition-duration: var(--duration-press); }
 
 .chat-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
 
@@ -37,6 +39,7 @@
     width: 3px; height: 60%; background: var(--accent-color); border-radius: 0 4px 4px 0; transition: transform var(--duration-micro) var(--ease-standard);
 }
 .chat-item:hover { background-color: var(--surface-hover); }
+.chat-item:active { transform: scale(0.985); transition-duration: var(--duration-press); }
 .chat-item.active { background-color: var(--surface-1); color: var(--text-primary); font-weight: 600; border-color: var(--border-mid); box-shadow: var(--shadow-soft); }
 .chat-item.active::before { transform: translateY(-50%) scaleY(1); }
 

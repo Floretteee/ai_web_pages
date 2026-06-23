@@ -12,6 +12,7 @@
 .input-area { padding: 20px 40px; display: flex; gap: 12px; align-items: flex-end; }
 .upload-btn { background: transparent; border: 1px solid var(--border-mid); width: 52px; height: 52px; border-radius: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition-interactive); flex-shrink: 0; }
 .upload-btn:hover { background: var(--surface-hover); border-color: var(--text-secondary); transform: translateY(-2px); }
+.upload-btn:active { transform: translateY(0) scale(0.96); transition-duration: var(--duration-press); }
 .upload-btn svg { width: 22px; height: 22px; fill: var(--text-secondary); transition: fill var(--duration-micro) var(--ease-standard); }
 .upload-btn:hover svg { fill: var(--text-primary); }
 
@@ -48,11 +49,13 @@
 .send-btn-trim-badge svg { width: 12px; height: 12px; fill: currentColor; }
 @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
 .send-btn:hover { background-color: var(--accent-hover); transform: translateY(-2px) scale(1.02); box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+.send-btn:active:not(:disabled) { transform: translateY(0) scale(0.96); transition-duration: var(--duration-press); }
 .send-btn:disabled { background-color: var(--border-mid); cursor: not-allowed; transform: none; box-shadow: none; }
 .send-btn svg { fill: white; width: 20px; height: 20px; margin-left: 2px; }
 
 .stop-btn { background-color: var(--surface-1) !important; color: var(--text-primary); border: 1px solid var(--border-mid); box-shadow: none; }
 .stop-btn:hover { background-color: var(--surface-hover) !important; border-color: var(--text-secondary); color: var(--text-primary); transform: translateY(-2px) scale(1.02); }
+.stop-btn:active { transform: translateY(0) scale(0.96); transition-duration: var(--duration-press); }
 .stop-btn svg { margin-left: 0; width: 20px; height: 20px; fill: currentColor; }
 .stop-spinner { animation: rotate 1s linear infinite; }
 .generating-text {
@@ -93,6 +96,7 @@
 .send-btn.retry-btn { background-color: var(--surface-1) !important; color: var(--text-primary); border: 1px solid var(--accent-color); box-shadow: none; }
 .send-btn.retry-btn svg { fill: var(--accent-color); margin-left: 0; }
 .send-btn.retry-btn:hover { background-color: var(--surface-hover) !important; transform: translateY(-2px) scale(1.02); }
+.send-btn.retry-btn:active { transform: translateY(0) scale(0.96); transition-duration: var(--duration-press); }
 .queue-status {
     margin-left: 8px;
     padding: 1px 8px;
@@ -117,6 +121,10 @@
     background: var(--surface-hover);
     border-color: var(--text-secondary);
     transform: translateY(-2px);
+}
+.queue-btn:active {
+    transform: translateY(0) scale(0.96);
+    transition-duration: var(--duration-press);
 }
 .queue-btn svg {
     width: 20px;

@@ -33,6 +33,7 @@
 .custom-modal-btn-cancel:hover { background: var(--surface-hover); border-color: var(--text-secondary); }
 .custom-modal-btn-confirm { background: var(--accent-color); border: 1px solid var(--accent-color); color: var(--accent-text); }
 .custom-modal-btn-confirm:hover { background: var(--accent-hover); }
+.custom-modal-actions button:active { transform: scale(0.96); transition-duration: var(--duration-press); }
 
 
 .context-menu {

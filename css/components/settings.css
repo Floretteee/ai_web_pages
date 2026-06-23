@@ -112,6 +112,7 @@
 .settings-panel-header h2 { font-size: 32px; line-height: 1; letter-spacing: -1px; }
 .settings-close-btn { width: 38px; height: 38px; border: 1px solid var(--border-mid); border-radius: 50%; background: var(--surface-1); cursor: pointer; transition: var(--transition-interactive); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .settings-close-btn:hover { background: var(--accent-color); border-color: var(--accent-color); transform: rotate(90deg); }
+.settings-close-btn:active { transform: rotate(90deg) scale(0.92); transition-duration: var(--duration-press); }
 .settings-close-btn svg { width: 17px; height: 17px; fill: var(--text-primary); transition: fill var(--duration-micro) var(--ease-standard); }
 .settings-close-btn:hover svg { fill: var(--accent-text); }
 
@@ -153,10 +154,18 @@
     background: transparent; cursor: pointer; transition: var(--transition-interactive); color: var(--accent-color); font-weight: 600;
 }
 .btn-outline:hover { background: var(--accent-color); color: var(--accent-text); }
+.btn-outline:active { transform: scale(0.97); transition-duration: var(--duration-press); }
+.btn-outline:active { transform: scale(0.97); transition-duration: var(--duration-press); }
+.btn-outline:active { transform: scale(0.97); transition-duration: var(--duration-press); }
+.btn-outline:active { transform: scale(0.97); transition-duration: var(--duration-press); }
 
 .data-actions { display: flex; gap: 8px; margin-top: 5px; }
 .data-actions button { flex: 1; padding: 8px; font-size: 12px; border: 1px solid var(--border-mid); border-radius: var(--radius-md); background: var(--surface-1); color: var(--text-primary); cursor: pointer; transition: var(--transition-interactive); font-weight: 500; }
 .data-actions button:hover { background: var(--surface-hover); border-color: var(--text-secondary); }
+.data-actions button:active { transform: scale(0.97); transition-duration: var(--duration-press); }
+.data-actions button:active { transform: scale(0.97); transition-duration: var(--duration-press); }
+.data-actions button:active { transform: scale(0.97); transition-duration: var(--duration-press); }
+.data-actions button:active { transform: scale(0.97); transition-duration: var(--duration-press); }
 
 
 .toggle-container {
