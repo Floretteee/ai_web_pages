@@ -14,7 +14,7 @@
     border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center;
     transition: var(--transition-interactive);
 }
-.icon-btn:hover { background-color: var(--surface-active); transform: rotate(15deg); }
+.icon-btn:hover { background-color: var(--surface-active); transform: rotate(8deg); }
 .icon-btn:active { transform: scale(0.92); transition-duration: var(--duration-press); }
 .icon-btn svg { width: 20px; height: 20px; fill: var(--text-primary); }
 
