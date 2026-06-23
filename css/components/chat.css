@@ -69,7 +69,7 @@
 }
 .message-wrapper.animate-enter {
     will-change: transform, opacity;
-    animation: msgFadeIn var(--duration-enter) var(--ease-out-expo) both;
+    animation: msgFadeIn var(--duration-enter) var(--ease-standard) both;
 }
 .message-wrapper.user { align-self: flex-end; align-items: flex-end; }
 .message-wrapper.bot { align-self: flex-start; align-items: flex-start; }
