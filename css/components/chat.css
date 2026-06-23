@@ -28,6 +28,10 @@
     display: flex; flex-direction: column; gap: 24px;
     position: relative; overflow-x: hidden; -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
 }
+.chat-messages.switching-out {
+    opacity: 0.92;
+    transition: opacity 100ms var(--ease-standard);
+}
 
 .scroll-bottom-btn {
     position: absolute;

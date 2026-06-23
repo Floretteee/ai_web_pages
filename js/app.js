@@ -105,7 +105,28 @@ function createNewChat(render = true) {
     if (render) { renderChatList(); renderMessages(); updateTrimIndicator(); updatePrefixBadge(); DOM.userInput.focus(); }
 }
 
-function switchChat(id) { state.currentChatId = id; state.editingIndex = -1; setVisibleCount(id, MESSAGE_PAGE_SIZE); autoScroll = true; saveState(); renderChatList(); renderMessages(); updateTrimIndicator(); updatePrefixBadge(); closeSettings(); closeSidebar(); clearSearch(); }
+function applySwitchChat(id) {
+    state.currentChatId = id; state.editingIndex = -1; setVisibleCount(id, MESSAGE_PAGE_SIZE); autoScroll = true; saveState(); renderChatList(); renderMessages(); updateTrimIndicator(); updatePrefixBadge(); closeSettings(); closeSidebar(); clearSearch();
+}
+
+let _switchChatToken = 0;
+function switchChat(id) {
+    if (id === state.currentChatId) return;
+    const el = DOM.chatMessages;
+    const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const hasContent = el && el.querySelector(':scope > .message-wrapper');
+    if (prefersReduced || !el || !hasContent) {
+        applySwitchChat(id);
+        return;
+    }
+    const token = ++_switchChatToken;
+    el.classList.add('switching-out');
+    setTimeout(() => {
+        if (token !== _switchChatToken) return;
+        el.classList.remove('switching-out');
+        applySwitchChat(id);
+    }, 100);
+}
 
 async function deleteChat(id, event) {
     event.stopPropagation();
