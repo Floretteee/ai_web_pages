@@ -72,65 +72,111 @@ function isSafeExportUrl(url) {
     return value;
 }
 
-function estimateTokens(content) {
+function stripThinkBlocks(content) {
+    if (typeof content !== 'string') return content;
+    let result = content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '');
+    const openMatch = result.match(/<\s*think(?:ing)?\b[^>]*>/i);
+    if (openMatch) result = result.slice(0, openMatch.index);
+    return result;
+}
+
+function estimateTokens(content, options) {
+    options = options || {};
     if (!content) return 0;
     if (Array.isArray(content)) {
         return content.reduce((sum, part) => {
-            if (part.type === 'text') return sum + estimateTokens(part.text);
+            if (part.type === 'text') return sum + estimateTokens(part.text, options);
             if (part.type === 'image_url') return sum + 512;
             return sum;
         }, 0);
     }
-    const str = String(content);
+    let str = String(content);
+    if (!str) return 0;
+    if (options.includeThink !== true) str = stripThinkBlocks(str);
     if (!str) return 0;
 
-    let cjk = 0;          // 常用汉字/全角符号 ≈ 1.5 token
-    let cjkRare = 0;      // CJK 扩展区/罕用字 ≈ 3 token
-    let ascii = 0;        // 英文/数字/常见标点
-    let codeAscii = 0;    // 出现在代码块中的 ASCII（≈ 4.5 char/token）
-    let other = 0;        // 其他 Unicode 字符（≈ 2 token）
-
-    let inCode = 0;
-    const codeFenceRe = /```/g;
-    const fences = [];
-    let m;
-    while ((m = codeFenceRe.exec(str)) !== null) fences.push(m.index);
     const codeRanges = [];
-    for (let i = 0; i + 1 < fences.length; i += 2) codeRanges.push([fences[i], fences[i + 1] + 3]);
+    const fenceRe = /(^|\n)[ \t]{0,3}(`{3,}|~{3,})[^\n]*/g;
+    let fm;
+    let openFence = null;
+    while ((fm = fenceRe.exec(str)) !== null) {
+        const startInFull = fm.index + fm[1].length;
+        const endInFull = fm.index + fm[0].length;
+        const marker = fm[2];
+        if (!openFence) {
+            openFence = { contentStart: endInFull, markerChar: marker[0], markerLen: marker.length };
+        } else if (marker[0] === openFence.markerChar && marker.length >= openFence.markerLen) {
+            codeRanges.push([openFence.contentStart, startInFull]);
+            openFence = null;
+        }
+    }
+    if (openFence) codeRanges.push([openFence.contentStart, str.length]);
+
+    let ascii = 0;        // ASCII 字母/标点 ≈ 4 char/token
+    let digit = 0;        // 数字 ≈ 2.5 char/token（BPE 常按 2-3 位分组）
+    let space = 0;        // 空白 ≈ 6 char/token（常合并到相邻 token）
+    let codeAscii = 0;    // 代码块 ASCII ≈ 3.5 char/token（符号密集）
+    let codeDigit = 0;    // 代码块数字 ≈ 2.5 char/token
+    let cjk = 0;          // 常用 CJK 每字 ≈ 1.5 token
+    let cjkRare = 0;      // 罕用/扩展 CJK 每字 ≈ 3 token
+    let other = 0;        // 其他 Unicode 每字 ≈ 2 token
+    let lineBreaks = 0;   // 换行 ≈ 0.5 token
 
     let inInlineCode = false;
+    let rangeIdx = 0;
+
     for (let i = 0; i < str.length; i++) {
+        while (rangeIdx < codeRanges.length && i >= codeRanges[rangeIdx][1]) rangeIdx++;
+        const inFenced = rangeIdx < codeRanges.length && i >= codeRanges[rangeIdx][0];
+
+        const ch = str[i];
         const code = str.charCodeAt(i);
 
-        let inFenced = false;
-        for (const [s, e] of codeRanges) { if (i >= s && i < e) { inFenced = true; break; } }
-        if (str[i] === '`' && !inFenced) inInlineCode = !inInlineCode;
+        if (ch === '\n') {
+            inInlineCode = false;
+            lineBreaks++;
+            continue;
+        }
+        if (!inFenced && ch === '`') {
+            inInlineCode = !inInlineCode;
+        }
         const isCode = inFenced || inInlineCode;
 
         if (code <= 127) {
-            if (isCode) codeAscii++; else ascii++;
-        } else if (code >= 0x4E00 && code <= 0x9FFF) {
-            cjk++;
-        } else if (code >= 0x3000 && code <= 0x33FF) {
-            cjk++;
-        } else if (code >= 0xFF00 && code <= 0xFFEF) {
+            if (code === 32 || code === 9) space++;
+            else if (code >= 48 && code <= 57) { if (isCode) codeDigit++; else digit++; }
+            else { if (isCode) codeAscii++; else ascii++; }
+        } else if ((code >= 0x4E00 && code <= 0x9FFF) ||
+                   (code >= 0x3000 && code <= 0x33FF) ||
+                   (code >= 0xFF00 && code <= 0xFFEF)) {
             cjk++;
         } else if (code >= 0xD800 && code <= 0xDBFF) {
             cjkRare++;
             i++;
-        } else if ((code >= 0x3400 && code <= 0x4DBF) || (code >= 0xF900 && code <= 0xFAFF)) {
+        } else if ((code >= 0x3400 && code <= 0x4DBF) ||
+                   (code >= 0xF900 && code <= 0xFAFF)) {
             cjkRare++;
         } else {
             other++;
         }
     }
 
-    const tokens = ascii / 4 + codeAscii / 4.5 + cjk * 1.5 + cjkRare * 3 + other / 2;
+    const tokens =
+        ascii / 4 +
+        digit / 2.5 +
+        space / 6 +
+        codeAscii / 3.5 +
+        codeDigit / 2.5 +
+        cjk * 1.5 +
+        cjkRare * 3 +
+        other / 2 +
+        lineBreaks * 0.5;
+
     return Math.max(1, Math.ceil(tokens));
 }
 
-function estimateMessagesTokens(messages) {
-    return messages.reduce((sum, m) => sum + estimateTokens(m.content) + 4, 0);
+function estimateMessagesTokens(messages, options) {
+    return messages.reduce((sum, m) => sum + estimateTokens(m.content, options) + 4, 0);
 }
 
 function getMessagePlainText(msg) {
@@ -140,7 +186,7 @@ function getMessagePlainText(msg) {
         content = content.find(c => c.type === 'text')?.text || '';
     }
     if (typeof content !== 'string') return '';
-    return content.replace(CLOSED_THINK_BLOCK_PATTERN_GLOBAL, '');
+    return stripThinkBlocks(content);
 }
 
 function calcChineseRatio(text) {

@@ -601,7 +601,8 @@ function buildContextWithTrim(chat, newUserContent = null) {
     if (!limit) return { messages, trimmed: dropped20 > 0, skippedRounds: 0, dropped20 };
 
     const msgTokens = (msg) => {
-        const base = estimateTokens(msg.content) + 4;
+        const content = msg.role === 'assistant' ? stripThinkBlocks(msg.content) : msg.content;
+        const base = estimateTokens(content) + 4;
         return (msg.role === 'user' && chatUserPrefix) ? base + estimateTokens(chatUserPrefix) : base;
     };
 
@@ -651,7 +652,10 @@ function updateTokenCounter() {
     if (text || state.attachments.length) {
         newContent = buildMessageContent(text);
     }
-    const allMsgs = chat.messages.map(m => ({ role: m.role, content: m.content }));
+    const allMsgs = chat.messages.map(m => ({
+        role: m.role,
+        content: m.role === 'assistant' ? stripThinkBlocks(m.content) : m.content
+    }));
     let fullTokens = estimateMessagesTokens(allMsgs) + (chat.systemPrompt ? estimateTokens(chat.systemPrompt) + 4 : 0);
     if (newContent) {
         fullTokens += estimateTokens(newContent) + 4;
