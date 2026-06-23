@@ -33,7 +33,6 @@
     position: absolute;
     top: 50%;
     right: 18px;
-    transform: translateY(-50%);
     width: 40px;
     height: 40px;
     background: var(--surface-1);
@@ -46,17 +45,28 @@
     box-shadow: var(--shadow-mid);
     opacity: 0;
     visibility: hidden;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    transform: translateY(-50%) scale(0.9);
+    transition:
+        opacity var(--duration-micro) var(--ease-standard),
+        transform var(--duration-micro) var(--ease-standard),
+        background-color var(--duration-micro) var(--ease-standard),
+        box-shadow var(--duration-micro) var(--ease-standard),
+        visibility var(--duration-micro);
     z-index: 10;
 }
 .scroll-bottom-btn.show {
     opacity: 1;
     visibility: visible;
+    transform: translateY(-50%) scale(1);
 }
-.scroll-bottom-btn:hover {
+.scroll-bottom-btn.show:hover {
     background: var(--surface-3);
-    transform: translateY(calc(-50% - 2px));
+    transform: translateY(calc(-50% - 1px)) scale(1);
     box-shadow: var(--shadow-strong);
+}
+.scroll-bottom-btn.show:active {
+    transform: translateY(-50%) scale(0.94);
+    transition-duration: var(--duration-press);
 }
 .scroll-bottom-btn svg {
     width: 20px;
