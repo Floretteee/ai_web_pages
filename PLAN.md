@@ -12,7 +12,7 @@
 - [x] B1：消息列表 stagger
 - [x] B5：滚动到底部按钮优化
 - [x] C1：弹窗去回弹
-- [ ] C2：spinner 优化
+- [x] C2：spinner 优化
 - [ ] C3：图标 hover 收敛
 - [ ] C4：会话切换 crossfade
 - [ ] D/E：性能、可访问性、浏览器验收

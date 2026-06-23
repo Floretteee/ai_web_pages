@@ -57,7 +57,7 @@
 .stop-btn:hover { background-color: var(--surface-hover) !important; border-color: var(--text-secondary); color: var(--text-primary); transform: translateY(-1px); }
 .stop-btn:active { transform: translateY(0) scale(0.96); transition-duration: var(--duration-press); }
 .stop-btn svg { margin-left: 0; width: 20px; height: 20px; fill: currentColor; }
-.stop-spinner { animation: rotate 1s linear infinite; }
+.stop-spinner { animation: rotate 0.8s linear infinite; transform-origin: center; }
 .generating-text {
     background: linear-gradient(90deg, var(--text-primary) 0%, var(--text-secondary) 35%, var(--surface-1) 50%, var(--text-secondary) 65%, var(--text-primary) 100%);
     background-size: 220% 100%;
