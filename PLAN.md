@@ -5,7 +5,7 @@
 - [x] A1：motion token 调整
 - [x] A2：替换高频元素的 `transition: all`
 - [x] A3：补充 active 态
-- [ ] A4：微交互提速与 hover 收敛
+- [x] A4：微交互提速与 hover 收敛
 - [ ] B2：消息入场动画微调
 - [ ] B3：流式输出动画修复
 - [ ] B4：点击回到底部平滑滚动
