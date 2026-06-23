@@ -113,7 +113,15 @@ function updateScrollButton() {
 }
 
 function scrollToBottomClick() {
-    enableAutoScroll();
+    autoScroll = true;
+    const el = DOM.chatMessages;
+    const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReduced) {
+        el.scrollTop = el.scrollHeight;
+    } else {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }
+    updateScrollButton();
 }
 
 function buildChatPresetOptions() {
