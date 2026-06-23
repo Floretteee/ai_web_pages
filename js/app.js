@@ -560,10 +560,24 @@ function renderMessages() {
         }
         const sameChatFull = _lastRenderChatId === state.currentChatId;
         const newCountThreshold = sameChatFull ? _lastRenderMsgCount : msgs.length;
+        // 仅在切换会话 / 首次渲染当前会话时启用 stagger 入场（非编辑、非末尾追加）
+        const useStagger = !sameChatFull && state.editingIndex === -1;
+        let staggerCount = 0;
         visibleMsgs.forEach((msg, i) => {
             const realIdx = startIdx + i;
             const isNew = sameChatFull && realIdx >= newCountThreshold;
             const domObj = createMessageDOM(msg, realIdx, isNew);
+            if (useStagger && !isNew) {
+                domObj.wrapper.classList.add('stagger-enter');
+                domObj.wrapper.style.setProperty('--stagger-index', staggerCount);
+                staggerCount++;
+                const onDone = () => {
+                    domObj.wrapper.classList.remove('stagger-enter');
+                    domObj.wrapper.style.removeProperty('--stagger-index');
+                    domObj.wrapper.style.willChange = '';
+                };
+                domObj.wrapper.addEventListener('animationend', onDone, { once: true });
+            }
             DOM.chatMessages.appendChild(domObj.wrapper);
             if (msg._renderVersion === undefined) msg._renderVersion = 0;
             msg._lastRenderedVersion = msg._renderVersion;

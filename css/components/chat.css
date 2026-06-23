@@ -71,6 +71,11 @@
     will-change: transform, opacity;
     animation: msgFadeIn var(--duration-enter) var(--ease-standard) both;
 }
+.message-wrapper.stagger-enter {
+    will-change: transform, opacity;
+    animation: msgFadeIn var(--duration-enter) var(--ease-standard) both;
+    animation-delay: calc(min(var(--stagger-index, 0), 8) * var(--duration-stagger));
+}
 .message-wrapper.user { align-self: flex-end; align-items: flex-end; }
 .message-wrapper.bot { align-self: flex-start; align-items: flex-start; }
 
