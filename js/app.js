@@ -1040,32 +1040,14 @@ async function init() {
 function registerServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
 
-    // 监听 Service Worker 更新
+    // 新 Service Worker 接管后自动重载，确保 HTML 与其引用的 JS/CSS 版本一致。
+    // 首次安装时（此前无 controller）claim 也会触发 controllerchange，此时不应重载。
     let refreshing = false;
+    const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (refreshing) return;
+        if (refreshing || !hadController) return;
         refreshing = true;
-
-        // 提示用户新版本可用
-        const updateBanner = document.createElement('div');
-        updateBanner.className = 'update-banner';
-        updateBanner.innerHTML = `
-            <span>新版本可用</span>
-            <button class="update-refresh-btn">点击刷新</button>
-            <button class="update-dismiss-btn">×</button>
-        `;
-        document.body.appendChild(updateBanner);
-
-        const refreshBtn = updateBanner.querySelector('.update-refresh-btn');
-        const dismissBtn = updateBanner.querySelector('.update-dismiss-btn');
-
-        refreshBtn.addEventListener('click', () => {
-            window.location.reload();
-        });
-
-        dismissBtn.addEventListener('click', () => {
-            updateBanner.remove();
-        });
+        window.location.reload();
     });
 
     window.addEventListener('load', () => {
