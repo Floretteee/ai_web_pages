@@ -407,13 +407,13 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     updateTrimIndicator();
     if (!isReuse) DOM.userInput.focus();
 
-    if (currentChat.autoFixEnglish && botReply) {
-        autoFixLastAssistantMessage(currentChat).catch(() => {});
-    }
-
     let refused = false;
     if (currentChat.autoRetryOnRefuse && botReply) {
-        refused = await checkRefuseAndRetry(currentChat, botDomObj.wrapper).catch(() => false);
+        refused = await checkRefuseAndRetry(currentChat, botDomObj.wrapper, { suppressQueueAutoProcess: options.suppressQueueAutoProcess }).catch(() => false);
+    }
+
+    if (!refused && currentChat.autoFixEnglish && botReply) {
+        await autoFixLastAssistantMessage(currentChat).catch(() => {});
     }
 
     // 重试复用气泡：若未触发再次重试，则最终同步渲染以恢复操作按钮与版本戳
@@ -424,7 +424,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
 
     // 未重试时才检查队列（重试中由最内层非重试调用处理队列）
     // 请求失败或被中止时不自动继续队列
-    if (!refused && !requestFailed && !requestAborted && messageQueue.length > 0 && !isProcessingQueue) {
+    if (!options.suppressQueueAutoProcess && !refused && !requestFailed && !requestAborted && messageQueue.length > 0 && !isProcessingQueue) {
         setTimeout(() => processQueue(), 500);
     }
 
@@ -525,7 +525,7 @@ async function detectRefuse(msg) {
     }
 }
 
-async function checkRefuseAndRetry(chat, reuseWrapper) {
+async function checkRefuseAndRetry(chat, reuseWrapper, options = {}) {
     if (chat.id !== state.currentChatId) return false;
     const lastIdx = chat.messages.length - 1;
     if (lastIdx < 0) return false;
@@ -536,7 +536,7 @@ async function checkRefuseAndRetry(chat, reuseWrapper) {
     if (refused === null) return false;
     if (refused === true) {
         showToast('检测到拒绝回答，正在自动重试...');
-        await autoRetryRefuse(chat, lastIdx, reuseWrapper).catch(() => {});
+        await autoRetryRefuse(chat, lastIdx, reuseWrapper, options).catch(() => {});
         return true;
     }
     msg.refuseChecked = true;
@@ -546,7 +546,7 @@ async function checkRefuseAndRetry(chat, reuseWrapper) {
     return false;
 }
 
-async function autoRetryRefuse(chat, index, wrapper) {
+async function autoRetryRefuse(chat, index, wrapper, options = {}) {
     if (!wrapper || !wrapper.isConnected) return;
     // 移除被拒绝的 assistant 消息（保留之前的 user 消息），不移除气泡 DOM
     chat.messages = chat.messages.slice(0, index);
@@ -570,7 +570,7 @@ async function autoRetryRefuse(chat, index, wrapper) {
     });
 
     // 复用同一个气泡继续请求（重新流式生成）
-    await executeChatRequest(chat, null, { reuseWrapper: wrapper });
+    await executeChatRequest(chat, null, { reuseWrapper: wrapper, suppressQueueAutoProcess: options.suppressQueueAutoProcess });
 }
 
 async function generateTitle(chatId, text) {

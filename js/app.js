@@ -199,34 +199,80 @@ function getWrapperForIndex(index) {
     return wrappers[pos] || null;
 }
 
-async function retryMessage(index) {
-    if (abortController) return showToast("请等待当前请求完成");
-    const chat = state.chats.find(c => c.id === state.currentChatId);
-    const msg = chat.messages[index];
+let isSerialUserRetrying = false;
+
+function cloneMessageContent(content) {
+    if (typeof content === 'string') return content;
+    return JSON.parse(JSON.stringify(content));
+}
+
+async function retryUserMessagesFrom(chat, index) {
+    const replayContents = chat.messages
+        .slice(index)
+        .filter(m => m.role === 'user')
+        .map(m => cloneMessageContent(m.content));
+
+    if (!replayContents.length) return;
 
     if (index < chat.messages.length - 1) {
-        const confirmMsg = msg.role === 'user'
-            ? "重试将保留此消息并删除之后的所有消息，确定吗？"
-            : "重试将删除此条消息及之后的所有消息，确定吗？";
+        const confirmMsg = `重试将从此用户消息开始，删除后续消息，并按原顺序串行重放 ${replayContents.length} 条用户消息，确定吗？`;
         if (!(await showConfirm(confirmMsg))) return;
     }
 
-    // 复用的气泡：assistant 重试复用本气泡；user 重试复用其后的 assistant 气泡（若存在）
-    let reuseWrapper = null;
-    if (msg.role === 'assistant') {
-        const w = getWrapperForIndex(index);
-        if (w && w.classList.contains('bot') && w.isConnected) reuseWrapper = w;
-    } else if (msg.role === 'user') {
-        const next = chat.messages[index + 1];
-        if (next && next.role === 'assistant') {
-            const w = getWrapperForIndex(index + 1);
-            if (w && w.classList.contains('bot') && w.isConnected) reuseWrapper = w;
+    isSerialUserRetrying = true;
+    state.editingIndex = -1;
+    chat.messages = chat.messages.slice(0, index);
+    saveState();
+    renderMessages();
+    showToast(replayContents.length > 1 ? `开始串行重试 ${replayContents.length} 条用户消息` : '开始重试用户消息');
+
+    try {
+        for (let i = 0; i < replayContents.length; i++) {
+            if (chat.id !== state.currentChatId) {
+                showToast('已切换对话，串行重试已停止');
+                break;
+            }
+
+            await ensureAutoChecksBeforeSend(chat);
+
+            const userContent = cloneMessageContent(replayContents[i]);
+            const preparedContent = cloneMessageContent(replayContents[i]);
+            const { messages: preparedMessages, trimmed, skippedRounds } = buildContextWithTrim(chat, preparedContent);
+            if (trimmed && !chat.contextLimitWarned) {
+                showToast(`上下文已达 80% 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });
+                chat.contextLimitWarned = true;
+                saveState();
+            }
+
+            chat.messages.push({ role: 'user', content: userContent });
+            saveState();
+            renderMessages();
+
+            const ok = await executeChatRequest(chat, preparedMessages, { suppressQueueAutoProcess: true });
+            if (!ok) {
+                showToast('串行重试已暂停：当前消息请求失败');
+                break;
+            }
         }
+    } finally {
+        isSerialUserRetrying = false;
+        updateSendButton(false);
+        renderQueue();
+    }
+}
+
+async function retryAssistantMessage(chat, index) {
+    const msg = chat.messages[index];
+
+    if (index < chat.messages.length - 1) {
+        if (!(await showConfirm("重试将删除此条消息及之后的所有消息，确定吗？"))) return;
     }
 
-    // user消息保留当前消息，assistant消息移除当前消息
-    const sliceEnd = msg.role === 'user' ? index + 1 : index;
-    chat.messages = chat.messages.slice(0, sliceEnd);
+    let reuseWrapper = null;
+    const w = getWrapperForIndex(index);
+    if (w && w.classList.contains('bot') && w.isConnected) reuseWrapper = w;
+
+    chat.messages = chat.messages.slice(0, index);
 
     state.editingIndex = -1;
     saveState();
@@ -257,10 +303,45 @@ async function retryMessage(index) {
 
         await executeChatRequest(chat, null, { reuseWrapper });
     } else {
-        // 无可复用气泡（重试末尾的 user 消息）：新气泡正常进入
         renderMessages();
         await executeChatRequest(chat);
     }
+}
+
+async function retryMessage(index) {
+    if (abortController || isSerialUserRetrying) return showToast("请等待当前请求完成");
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    const msg = chat.messages[index];
+    if (!msg) return;
+
+    if (msg.role === 'user') return retryUserMessagesFrom(chat, index);
+    return retryAssistantMessage(chat, index);
+}
+
+async function retryChatSerialFromStart(chat) {
+    if (abortController || isSerialUserRetrying || isProcessingQueue) return showToast("请等待当前请求完成");
+    if (!state.apiKey || !state.selectedModel) return showToast("请先配置 API Key 和模型");
+    if (!chat) return showToast("未找到对话");
+
+    const firstUserIndex = chat.messages.findIndex(m => m.role === 'user');
+    if (firstUserIndex < 0) return showToast("当前对话没有可重试的用户消息");
+
+    await retryUserMessagesFrom(chat, firstUserIndex);
+}
+
+async function retryCurrentChatSerialFromStart() {
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    await retryChatSerialFromStart(chat);
+}
+
+async function retryContextMenuChatSerialFromStart() {
+    if (DOM.contextMenu) DOM.contextMenu.style.display = 'none';
+    const chatId = contextMenuChatId || state.currentChatId;
+    const chat = state.chats.find(c => c.id === chatId);
+    if (chat && chat.id !== state.currentChatId) {
+        applySwitchChat(chat.id);
+    }
+    await retryChatSerialFromStart(chat);
 }
 
 async function translateAssistantEnglishTokens(index, options = {}) {
@@ -828,7 +909,7 @@ async function sendMessage() {
     }
 
     // 如果AI正在回复或队列正在处理/暂停，将消息加入队列
-    if (abortController || isProcessingQueue || queuePaused || messageQueue.length > 0) {
+    if (abortController || isSerialUserRetrying || isProcessingQueue || queuePaused || messageQueue.length > 0) {
         messageQueue.push(text);
         DOM.userInput.value = '';
         DOM.userInput.style.height = '52px';
