@@ -199,14 +199,18 @@ function getWrapperForIndex(index) {
     return wrappers[pos] || null;
 }
 
-let isSerialUserRetrying = false;
-
 function cloneMessageContent(content) {
     if (typeof content === 'string') return content;
     return JSON.parse(JSON.stringify(content));
 }
 
+// 串行重试改造为「全部入队」：从指定 index 起截断消息，把剩余 user 消息按原顺序
+// 推入 messageQueue，交由 processQueue 统一处理。失败时由队列暂停机制
+// （retryLastAndResume / forceContinueQueue）接管，不再走独立的串行重试循环。
 async function retryUserMessagesFrom(chat, index) {
+    if (abortController) return showToast("请等待当前请求完成");
+    if (isProcessingQueue) return showToast("队列正在处理，请稍候");
+
     const replayContents = chat.messages
         .slice(index)
         .filter(m => m.role === 'user')
@@ -215,101 +219,104 @@ async function retryUserMessagesFrom(chat, index) {
     if (!replayContents.length) return;
 
     if (index < chat.messages.length - 1) {
-        const confirmMsg = `重试将从此用户消息开始，删除后续消息，并按原顺序串行重放 ${replayContents.length} 条用户消息，确定吗？`;
+        const confirmMsg = `重试将从此用户消息开始，删除后续消息，并把 ${replayContents.length} 条用户消息按原顺序加入队列，确定吗？`;
         if (!(await showConfirm(confirmMsg))) return;
     }
 
-    isSerialUserRetrying = true;
     state.editingIndex = -1;
     chat.messages = chat.messages.slice(0, index);
+    // 丢弃前先清空旧队列，避免新旧行为混杂
+    messageQueue.length = 0;
+    for (const content of replayContents) {
+        messageQueue.push(content);
+    }
+    // 若处于失败暂停，重置为待发送，交由 processQueue 重新驱动
+    queuePaused = false;
     saveState();
     renderMessages();
-    showToast(replayContents.length > 1 ? `开始串行重试 ${replayContents.length} 条用户消息` : '开始重试用户消息');
+    renderQueue();
+    showToast(replayContents.length > 1 ? `已加入队列 ${replayContents.length} 条，开始重放` : '开始重试用户消息');
 
-    try {
-        for (let i = 0; i < replayContents.length; i++) {
-            if (chat.id !== state.currentChatId) {
-                showToast('已切换对话，串行重试已停止');
-                break;
-            }
-
-            await ensureAutoChecksBeforeSend(chat);
-
-            const userContent = cloneMessageContent(replayContents[i]);
-            const preparedContent = cloneMessageContent(replayContents[i]);
-            const { messages: preparedMessages, trimmed, skippedRounds } = buildContextWithTrim(chat, preparedContent);
-            if (trimmed && !chat.contextLimitWarned) {
-                showToast(`上下文已达 80% 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });
-                chat.contextLimitWarned = true;
-                saveState();
-            }
-
-            chat.messages.push({ role: 'user', content: userContent });
-            saveState();
-            renderMessages();
-
-            const ok = await executeChatRequest(chat, preparedMessages, { suppressQueueAutoProcess: true });
-            if (!ok) {
-                showToast('串行重试已暂停：当前消息请求失败');
-                break;
-            }
-        }
-    } finally {
-        isSerialUserRetrying = false;
-        updateSendButton(false);
-        renderQueue();
-    }
+    updateSendButton(false);
+    processQueue();
 }
 
+// 工具栏「重试」改造：不再就地重新生成，而是询问用户是否将该消息之后的所有
+// user 消息按原顺序加入队列重放。
+//   - user 消息：截断到该消息（含）之前 + 把该消息及其后的所有 user 消息入队
+//   - assistant 消息：保留该 assistant 消息 + 截断其后所有消息 + 把其后所有
+//     user 消息入队
 async function retryAssistantMessage(chat, index) {
     const msg = chat.messages[index];
+    if (!msg) return;
 
-    if (index < chat.messages.length - 1) {
-        if (!(await showConfirm("重试将删除此条消息及之后的所有消息，确定吗？"))) return;
-    }
+    const enrollFromIndex = index + 1;
+    const replayContents = chat.messages
+        .slice(enrollFromIndex)
+        .filter(m => m.role === 'user')
+        .map(m => cloneMessageContent(m.content));
 
-    let reuseWrapper = null;
-    const w = getWrapperForIndex(index);
-    if (w && w.classList.contains('bot') && w.isConnected) reuseWrapper = w;
+    const confirmMsg = replayContents.length > 0
+        ? `是否将此条消息之后的 ${replayContents.length} 条用户消息加入队列重放？`
+        : '此条消息之后没有可重放的用户消息，是否仍重新生成该 assistant 回复？';
 
-    chat.messages = chat.messages.slice(0, index);
+    if (!(await showConfirm(confirmMsg))) return;
 
-    state.editingIndex = -1;
-    saveState();
-
-    if (reuseWrapper) {
-        // 移除复用气泡之后的所有气泡 DOM（对应被裁剪的消息），保持 DOM 与状态同步
-        let sibling = reuseWrapper.nextElementSibling;
-        while (sibling) {
-            const toRemove = sibling;
-            sibling = sibling.nextElementSibling;
-            if (toRemove.classList.contains('message-wrapper')) toRemove.remove();
+    if (replayContents.length === 0) {
+        // 退化路径：没有后续 user 消息，就只重生成这一条 assistant（就地复用气泡）
+        let reuseWrapper = null;
+        const w = getWrapperForIndex(index);
+        if (w && w.classList.contains('bot') && w.isConnected) reuseWrapper = w;
+        chat.messages = chat.messages.slice(0, index);
+        state.editingIndex = -1;
+        saveState();
+        if (reuseWrapper) {
+            let sibling = reuseWrapper.nextElementSibling;
+            while (sibling) {
+                const toRemove = sibling;
+                sibling = sibling.nextElementSibling;
+                if (toRemove.classList.contains('message-wrapper')) toRemove.remove();
+            }
+            reuseWrapper.classList.remove('bubble-reenter');
+            reuseWrapper.classList.add('bubble-resetting');
+            await new Promise(resolve => {
+                let done = false;
+                const onEnd = () => {
+                    if (done) return;
+                    done = true;
+                    reuseWrapper.removeEventListener('animationend', onEnd);
+                    resolve();
+                };
+                reuseWrapper.addEventListener('animationend', onEnd);
+                setTimeout(onEnd, 400);
+            });
+            await executeChatRequest(chat, null, { reuseWrapper });
+        } else {
+            renderMessages();
+            await executeChatRequest(chat);
         }
-
-        // 线性缩小原气泡到初始生成状态
-        reuseWrapper.classList.remove('bubble-reenter');
-        reuseWrapper.classList.add('bubble-resetting');
-        await new Promise(resolve => {
-            let done = false;
-            const onEnd = () => {
-                if (done) return;
-                done = true;
-                reuseWrapper.removeEventListener('animationend', onEnd);
-                resolve();
-            };
-            reuseWrapper.addEventListener('animationend', onEnd);
-            setTimeout(onEnd, 400);
-        });
-
-        await executeChatRequest(chat, null, { reuseWrapper });
-    } else {
-        renderMessages();
-        await executeChatRequest(chat);
+        return;
     }
+
+    // 主路径：保留到该 assistant 消息为止，把其后的所有 user 消息入队
+    if (isProcessingQueue) return showToast("队列正在处理，请稍候");
+    state.editingIndex = -1;
+    chat.messages = chat.messages.slice(0, enrollFromIndex);
+    messageQueue.length = 0;
+    for (const content of replayContents) {
+        messageQueue.push(content);
+    }
+    queuePaused = false;
+    saveState();
+    renderMessages();
+    renderQueue();
+    showToast(`已加入队列 ${replayContents.length} 条，开始重放`);
+    updateSendButton(false);
+    processQueue();
 }
 
 async function retryMessage(index) {
-    if (abortController || isSerialUserRetrying) return showToast("请等待当前请求完成");
+    if (abortController) return showToast("请等待当前请求完成");
     const chat = state.chats.find(c => c.id === state.currentChatId);
     const msg = chat.messages[index];
     if (!msg) return;
@@ -319,7 +326,7 @@ async function retryMessage(index) {
 }
 
 async function retryChatSerialFromStart(chat) {
-    if (abortController || isSerialUserRetrying || isProcessingQueue) return showToast("请等待当前请求完成");
+    if (abortController) return showToast("请等待当前请求完成");
     if (!state.apiKey || !state.selectedModel) return showToast("请先配置 API Key 和模型");
     if (!chat) return showToast("未找到对话");
 
@@ -909,7 +916,7 @@ async function sendMessage() {
     }
 
     // 如果AI正在回复或队列正在处理/暂停，将消息加入队列
-    if (abortController || isSerialUserRetrying || isProcessingQueue || queuePaused || messageQueue.length > 0) {
+    if (abortController || isProcessingQueue || queuePaused || messageQueue.length > 0) {
         messageQueue.push(text);
         DOM.userInput.value = '';
         DOM.userInput.style.height = '52px';
