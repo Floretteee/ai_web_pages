@@ -219,16 +219,15 @@ async function retryUserMessagesFrom(chat, index) {
     if (!replayContents.length) return;
 
     if (index < chat.messages.length - 1) {
-        const confirmMsg = `重试将从此用户消息开始，删除后续消息，并把 ${replayContents.length} 条用户消息按原顺序加入队列，确定吗？`;
+        const confirmMsg = `重试将从此用户消息开始，删除后续消息，并把 ${replayContents.length} 条用户消息按原顺序插入队列最前方，确定吗？`;
         if (!(await showConfirm(confirmMsg))) return;
     }
 
     state.editingIndex = -1;
     chat.messages = chat.messages.slice(0, index);
-    // 丢弃前先清空旧队列，避免新旧行为混杂
-    messageQueue.length = 0;
-    for (const content of replayContents) {
-        messageQueue.push(content);
+    // 插入队列最前方，避免覆盖已有队列消息
+    for (let i = replayContents.length - 1; i >= 0; i--) {
+        messageQueue.unshift(replayContents[i]);
     }
     // 若处于失败暂停，重置为待发送，交由 processQueue 重新驱动
     queuePaused = false;
@@ -257,7 +256,7 @@ async function retryAssistantMessage(chat, index) {
         .map(m => cloneMessageContent(m.content));
 
     const confirmMsg = replayContents.length > 0
-        ? `是否将此条消息之后的 ${replayContents.length} 条用户消息加入队列重放？`
+        ? `是否将此条消息之后的 ${replayContents.length} 条用户消息插入队列最前方重放？`
         : '此条消息之后没有可重放的用户消息，是否仍重新生成该 assistant 回复？';
 
     if (!(await showConfirm(confirmMsg))) return;
@@ -298,13 +297,12 @@ async function retryAssistantMessage(chat, index) {
         return;
     }
 
-    // 主路径：保留到该 assistant 消息为止，把其后的所有 user 消息入队
+    // 主路径：保留到该 assistant 消息为止，把其后的所有 user 消息插入队列最前方
     if (isProcessingQueue) return showToast("队列正在处理，请稍候");
     state.editingIndex = -1;
     chat.messages = chat.messages.slice(0, enrollFromIndex);
-    messageQueue.length = 0;
-    for (const content of replayContents) {
-        messageQueue.push(content);
+    for (let i = replayContents.length - 1; i >= 0; i--) {
+        messageQueue.unshift(replayContents[i]);
     }
     queuePaused = false;
     saveState();
