@@ -171,6 +171,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
             const span = document.createElement('span');
             span.className = 'stream-new-chunk';
             span.textContent = text.slice(localStart);
+            if (typeof TextAnim !== 'undefined') TextAnim.revealChunk(span);
             if (localStart === 0) {
                 textNode.parentNode.replaceChild(span, textNode);
             } else {
