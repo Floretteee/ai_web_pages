@@ -434,7 +434,10 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
 function stopGeneration() {
     if (abortController) {
         abortController.abort();
-        showToast("已停止生成");
+        queuePaused = true;
+        updateSendButton(false);
+        renderQueue();
+        showToast("已停止生成，队列已暂停");
     }
 }
 

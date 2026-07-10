@@ -313,14 +313,64 @@ async function retryAssistantMessage(chat, index) {
     processQueue();
 }
 
+// 单条消息重试：无弹窗、不加入队列，直接截断该消息及后续消息后重新生成
+// 串行重试（header 按钮）走 retryUserMessagesFrom，保留原有的弹窗+入队逻辑
 async function retryMessage(index) {
     if (abortController) return showToast("请等待当前请求完成");
+    if (isProcessingQueue) return showToast("队列正在处理，请稍候");
+
     const chat = state.chats.find(c => c.id === state.currentChatId);
     const msg = chat.messages[index];
     if (!msg) return;
 
-    if (msg.role === 'user') return retryUserMessagesFrom(chat, index);
-    return retryAssistantMessage(chat, index);
+    state.editingIndex = -1;
+
+    if (msg.role === 'user') {
+        // 用户消息：截断该消息及后续所有消息，重新发送这一条
+        const content = cloneMessageContent(msg.content);
+        chat.messages = chat.messages.slice(0, index);
+        saveState();
+        renderMessages();
+
+        chat.messages.push({ role: 'user', content });
+        saveState();
+        renderMessages();
+        showToast("正在重试...");
+        await executeChatRequest(chat);
+    } else {
+        // assistant 消息：截断该消息及后续，复用气泡重新生成
+        const reuseWrapper = getWrapperForIndex(index);
+        chat.messages = chat.messages.slice(0, index);
+        saveState();
+
+        if (reuseWrapper && reuseWrapper.classList.contains('bot') && reuseWrapper.isConnected) {
+            let sibling = reuseWrapper.nextElementSibling;
+            while (sibling) {
+                const toRemove = sibling;
+                sibling = sibling.nextElementSibling;
+                if (toRemove.classList.contains('message-wrapper')) toRemove.remove();
+            }
+            reuseWrapper.classList.remove('bubble-reenter');
+            reuseWrapper.classList.add('bubble-resetting');
+            await new Promise(resolve => {
+                let done = false;
+                const onEnd = () => {
+                    if (done) return;
+                    done = true;
+                    reuseWrapper.removeEventListener('animationend', onEnd);
+                    resolve();
+                };
+                reuseWrapper.addEventListener('animationend', onEnd);
+                setTimeout(onEnd, 400);
+            });
+            showToast("正在重试...");
+            await executeChatRequest(chat, null, { reuseWrapper });
+        } else {
+            renderMessages();
+            showToast("正在重试...");
+            await executeChatRequest(chat);
+        }
+    }
 }
 
 async function retryChatSerialFromStart(chat) {
