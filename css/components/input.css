@@ -1,63 +1,242 @@
-.input-wrapper { background: var(--bg-color); border-top: 1px solid var(--glass-border); display: flex; flex-direction: column; position: relative; z-index: 20; flex-shrink: 0; padding-bottom: env(safe-area-inset-bottom); }
-.attachment-preview { display: none; padding: 15px 40px 0; gap: 10px; flex-wrap: wrap; align-items: center; }
-.attachment-preview .img-wrap { position: relative; width: 60px; height: 60px; border-radius: 8px; border: 1px solid #ccc; overflow: hidden; animation: slideUpFade 0.3s forwards; }
+/* ──────────────────────────────────────────────────────────────
+   Input area — textarea, upload, send / stop / retry, queue panel
+   Designed to feel like one cohesive glass instrument at the bottom
+   ────────────────────────────────────────────────────────────── */
+
+.input-wrapper {
+    position: relative;
+    z-index: 20;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    padding-bottom: env(safe-area-inset-bottom);
+    /* Glass surface so the bar reads as floating above messages, not stuck to them */
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-top: 1px solid transparent;
+}
+/* Subtle hairline + accent wash along the top edge of the input bar */
+.input-wrapper::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--glass-border) 12%, var(--glass-border) 88%, transparent);
+    pointer-events: none;
+}
+.input-wrapper::after {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 80px;
+    background: radial-gradient(120% 100% at 50% 0%, var(--accent-faint), transparent 70%);
+    pointer-events: none; z-index: -1;
+}
+
+/* ── Attachment preview row ── */
+.attachment-preview {
+    display: none;
+    padding: 14px var(--chat-padding-x) 0;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    animation: slideUpFade var(--duration-enter) var(--ease-out-expo) both;
+}
+.attachment-preview .img-wrap {
+    position: relative;
+    width: 60px; height: 60px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-soft);
+    overflow: hidden;
+    box-shadow: var(--shadow-soft);
+    animation: slideUpFade var(--duration-enter) var(--ease-out-expo) both;
+    transition: var(--transition-interactive);
+}
+.attachment-preview .img-wrap:hover { border-color: var(--border-mid); transform: translateY(-1px); box-shadow: var(--shadow-mid); }
 .attachment-preview img { width: 100%; height: 100%; object-fit: cover; }
-.attachment-preview .remove-btn { position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.6); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 10px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-.attachment-preview .file-tile { position: relative; display: flex; align-items: center; gap: 8px; max-width: 200px; height: 60px; padding: 0 14px 0 10px; border-radius: 8px; border: 1px solid var(--border-mid); background: var(--surface-1); animation: slideUpFade 0.3s forwards; }
+.attachment-preview .remove-btn {
+    position: absolute; top: 3px; right: 3px;
+    background: rgba(0, 0, 0, 0.55);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 999px;
+    width: 22px; height: 22px;
+    font-size: 14px; line-height: 1; font-weight: 700;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    transition: var(--transition-interactive);
+}
+.attachment-preview .remove-btn:hover { background: var(--danger); border-color: var(--danger-strong); transform: scale(1.08); }
+.attachment-preview .remove-btn:active { transform: scale(0.92); transition-duration: var(--duration-press); }
+.attachment-preview .file-tile {
+    position: relative;
+    display: flex; align-items: center; gap: 10px;
+    max-width: 220px; height: 56px;
+    padding: 0 16px 0 12px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-soft);
+    background: var(--surface-1);
+    box-shadow: var(--shadow-soft);
+    animation: slideUpFade var(--duration-enter) var(--ease-out-expo) both;
+    transition: var(--transition-interactive);
+}
+.attachment-preview .file-tile:hover { border-color: var(--border-mid); transform: translateY(-1px); box-shadow: var(--shadow-mid); }
 .attachment-preview .file-tile-icon { flex-shrink: 0; display: flex; }
-.attachment-preview .file-tile-icon svg { width: 26px; height: 26px; fill: var(--text-secondary); }
-.attachment-preview .file-tile-name { flex: 1; min-width: 0; font-size: 13px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.attachment-preview .file-tile-icon svg { width: 24px; height: 24px; fill: var(--text-tertiary); }
+.attachment-preview .file-tile-name {
+    flex: 1; min-width: 0;
+    font-size: 13px; font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .attachment-preview .file-tile .remove-btn { position: absolute; top: -6px; right: -6px; }
 
-.input-area { padding: 20px 40px; display: flex; gap: 12px; align-items: flex-end; }
-.upload-btn { background: transparent; border: 1px solid var(--border-mid); width: 52px; height: 52px; border-radius: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition-interactive); flex-shrink: 0; }
-.upload-btn:hover { background: var(--surface-hover); border-color: var(--text-secondary); transform: translateY(-2px); }
-.upload-btn:active { transform: translateY(0) scale(0.96); transition-duration: var(--duration-press); }
+/* ── The main input row: [upload] [textarea] [queue] [send] ── */
+.input-area {
+    padding: 18px var(--chat-padding-x);
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+}
+
+/* ── Upload button (pill, outline, quiet) ── */
+.upload-btn {
+    background: var(--surface-1);
+    border: 1px solid var(--border-mid);
+    width: var(--control-size);
+    height: var(--control-size);
+    border-radius: 999px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition-interactive);
+    flex-shrink: 0;
+    box-shadow: var(--shadow-soft);
+}
+.upload-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--text-secondary);
+    color: var(--text-primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-mid);
+}
+.upload-btn:active { transform: translateY(0) scale(0.95); transition-duration: var(--duration-press); }
 .upload-btn svg { width: 22px; height: 22px; fill: var(--text-secondary); transition: fill var(--duration-micro) var(--ease-standard); }
 .upload-btn:hover svg { fill: var(--text-primary); }
 
+/* ── Textarea container — the centerpiece ── */
 .textarea-container {
-    flex: 1; display: flex; align-items: stretch;
-    border: 1px solid var(--border-mid); border-radius: 24px; background: var(--surface-1);
-    transition: var(--transition-interactive); overflow: hidden;
+    flex: 1;
+    display: flex; align-items: stretch;
+    border: 1px solid var(--border-mid);
+    border-radius: 999px;
+    background: var(--surface-1);
+    box-shadow: var(--shadow-soft);
+    transition: var(--transition-interactive);
+    overflow: hidden;
 }
+.textarea-container:hover { border-color: var(--text-tertiary); }
 .textarea-container:focus-within {
-    border-color: var(--accent-color); box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    border-color: var(--accent-color);
+    box-shadow: var(--shadow-input-focus);
 }
 .input-prefix-badge {
-    display: none; background-color: var(--surface-active); color: var(--accent-text);
-    padding: 0 16px; font-size: 14px; font-weight: 600;
-    white-space: nowrap; align-items: center; justify-content: center;
-    user-select: none; border-right: 1px solid var(--border-soft);
+    display: none;
+    background: var(--accent-soft);
+    color: var(--text-primary);
+    padding: 0 16px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.1px;
+    white-space: nowrap;
+    align-items: center; justify-content: center;
+    user-select: none;
+    border-right: 1px solid var(--border-soft);
 }
 .input-area textarea {
-    flex: 1; padding: 14px 20px; border: none; font-size: 15px;
-    font-family: inherit; resize: none; outline: none; background: transparent;
-    height: 52px; max-height: 200px; line-height: 1.5;
+    flex: 1;
+    padding: 15px 22px;
+    border: none;
+    font-size: 15px;
+    font-family: var(--font-body);
+    resize: none;
+    outline: none;
+    background: transparent;
+    color: var(--text-primary);
+    height: var(--control-size);
+    max-height: 200px;
+    line-height: 1.55;
 }
+.input-area textarea::placeholder { color: var(--text-muted); }
 
-.send-btn { background-color: var(--accent-color); color: white; border: none; width: 52px; height: 52px; border-radius: 26px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: var(--transition-interactive); flex-shrink: 0; position: relative; }
+/* ── Send button — three states: send / stop / retry ── */
+.send-btn {
+    position: relative;
+    background-color: var(--accent-color);
+    color: var(--accent-text);
+    border: 1px solid var(--accent-color);
+    width: var(--control-size);
+    height: var(--control-size);
+    border-radius: 999px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: var(--transition-interactive);
+    flex-shrink: 0;
+    box-shadow: var(--shadow-soft);
+    overflow: visible;
+}
+.send-btn:hover:not(:disabled):not(.stop-btn):not(.retry-btn) {
+    background-color: var(--accent-hover);
+    border-color: var(--accent-hover);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-soft-accent);
+}
+.send-btn:active:not(:disabled) { transform: translateY(0) scale(0.95); transition-duration: var(--duration-press); }
+.send-btn:disabled {
+    background-color: var(--border-mid);
+    border-color: var(--border-mid);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
+    opacity: 0.7;
+}
+.send-btn svg { fill: currentColor; width: 20px; height: 20px; margin-left: 2px; transition: fill var(--duration-micro) var(--ease-standard); }
+
+/* Trim badge — small red dot in the corner of the send button signaling context trimming */
 .send-btn-trim-badge {
-    position: absolute; right: -2px; bottom: -2px;
-    width: 22px; height: 22px; border-radius: 50%;
-    background: #e74c3c; color: #fff; border: 2px solid #fff;
-    display: none; align-items: center; justify-content: center;
-    box-shadow: 0 2px 6px rgba(0,0,0,0.25); pointer-events: none;
-    animation: scaleIn 0.2s ease;
+    position: absolute;
+    right: -3px; bottom: -3px;
+    width: 20px; height: 20px;
+    border-radius: 999px;
+    background: var(--danger-strong);
+    color: #fff;
+    border: 2px solid var(--surface-1);
+    display: none;
+    align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    pointer-events: none;
+    animation: scaleIn var(--duration-micro) var(--ease-out-back) both;
 }
 .send-btn-trim-badge.show { display: flex; }
-.send-btn-trim-badge svg { width: 12px; height: 12px; fill: currentColor; }
+.send-btn-trim-badge svg { width: 11px; height: 11px; fill: currentColor; }
 @keyframes scaleIn { from { transform: scale(0); } to { transform: scale(1); } }
-.send-btn:hover { background-color: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-mid); }
-.send-btn:active:not(:disabled) { transform: translateY(0) scale(0.96); transition-duration: var(--duration-press); }
-.send-btn:disabled { background-color: var(--border-mid); cursor: not-allowed; transform: none; box-shadow: none; }
-.send-btn svg { fill: white; width: 20px; height: 20px; margin-left: 2px; }
 
-.stop-btn { background-color: var(--surface-1) !important; color: var(--text-primary); border: 1px solid var(--border-mid); box-shadow: none; }
-.stop-btn:hover { background-color: var(--surface-hover) !important; border-color: var(--text-secondary); color: var(--text-primary); transform: translateY(-1px); }
-.stop-btn:active { transform: translateY(0) scale(0.96); transition-duration: var(--duration-press); }
-.stop-btn svg { margin-left: 0; width: 20px; height: 20px; fill: currentColor; }
-.stop-spinner { animation: rotate 0.8s linear infinite; transform-origin: center; }
+/* ── Stop button — sends while generating, with a quietly spinning ring ── */
+.send-btn.stop-btn {
+    background-color: var(--surface-1) !important;
+    color: var(--text-primary);
+    border: 1px solid var(--border-mid);
+    box-shadow: var(--shadow-soft);
+    animation: softPulseRing 1.8s var(--ease-in-out) infinite;
+}
+.send-btn.stop-btn:hover {
+    background-color: var(--surface-hover) !important;
+    border-color: var(--text-secondary);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-mid);
+}
+.send-btn.stop-btn svg { margin-left: 0; width: 20px; height: 20px; fill: currentColor; }
+.send-btn.stop-btn .stop-spinner { animation: rotate 0.9s linear infinite; transform-origin: center; }
+
+/* Sweeping gradient text for the rare "generating…" label (kept for completeness) */
 .generating-text {
     background: linear-gradient(90deg, var(--text-primary) 0%, var(--text-secondary) 35%, var(--surface-1) 50%, var(--text-secondary) 65%, var(--text-primary) 100%);
     background-size: 220% 100%;
@@ -76,71 +255,70 @@
     background-clip: text;
 }
 
+/* ── Retry button — when queue is paused ── */
+.send-btn.retry-btn {
+    background-color: var(--surface-1) !important;
+    color: var(--text-primary);
+    border: 1px solid var(--accent-color);
+    box-shadow: var(--shadow-soft);
+    animation: none;
+}
+.send-btn.retry-btn svg { fill: var(--text-primary); margin-left: 0; }
+.send-btn.retry-btn:hover {
+    background-color: var(--surface-hover) !important;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-mid);
+}
 
+/* ── Queue button — secondary action, mirrors upload shape ── */
 .queue-btn {
-    background: transparent;
+    background: var(--surface-1);
     border: 1px solid var(--border-mid);
-    width: 52px;
-    height: 52px;
-    border-radius: 26px;
+    width: var(--control-size);
+    height: var(--control-size);
+    border-radius: 999px;
     cursor: pointer;
     display: none;
-    align-items: center;
-    justify-content: center;
+    align-items: center; justify-content: center;
     transition: var(--transition-interactive);
     flex-shrink: 0;
+    box-shadow: var(--shadow-soft);
 }
 .queue-btn.generating { display: flex; }
-.queue-btn.paused { display: flex; border-color: var(--accent-color); }
-.queue-btn.paused svg { fill: var(--accent-color); }
-.send-btn.retry-btn { background-color: var(--surface-1) !important; color: var(--text-primary); border: 1px solid var(--accent-color); box-shadow: none; }
-.send-btn.retry-btn svg { fill: var(--accent-color); margin-left: 0; }
-.send-btn.retry-btn:hover { background-color: var(--surface-hover) !important; transform: translateY(-1px); }
-.send-btn.retry-btn:active { transform: translateY(0) scale(0.96); transition-duration: var(--duration-press); }
-.queue-status {
-    margin-left: 8px;
-    padding: 1px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: 700;
-    background: #e74c3c;
-    color: #fff;
-    display: inline-flex;
-    align-items: center;
-}
-.queue-empty-hint {
-    padding: 12px 16px;
-    font-size: 12px;
-    color: var(--text-secondary);
-    line-height: 1.5;
-}
-.queue-panel.paused {
+.queue-btn.paused {
+    display: flex;
     border-color: var(--accent-color);
+    box-shadow: 0 0 0 3px var(--accent-faint), var(--shadow-soft);
 }
+.queue-btn.paused svg { fill: var(--accent-color); }
 .queue-btn:hover {
     background: var(--surface-hover);
     border-color: var(--text-secondary);
     transform: translateY(-2px);
+    box-shadow: var(--shadow-mid);
 }
-.queue-btn:active {
-    transform: translateY(0) scale(0.96);
-    transition-duration: var(--duration-press);
-}
-.queue-btn svg {
-    width: 20px;
-    height: 20px;
-    fill: var(--text-secondary);
-}
+.queue-btn:active { transform: translateY(0) scale(0.95); transition-duration: var(--duration-press); }
+.queue-btn svg { width: 20px; height: 20px; fill: var(--text-secondary); transition: fill var(--duration-micro) var(--ease-standard); }
+.queue-btn:hover svg { fill: var(--text-primary); }
 
+/* ── Queue panel — collapsible list, integrated below the input ── */
 .queue-panel {
     display: none;
-    margin: 8px 40px 0;
+    margin: 0 var(--chat-padding-x) 10px;
     border: 1px solid var(--border-soft);
-    border-radius: 12px;
+    border-radius: var(--radius-md);
     background: var(--surface-1);
     overflow: hidden;
     flex-shrink: 0;
+    box-shadow: var(--shadow-soft);
+    transform-origin: top;
 }
+.queue-panel:not(.collapsed) { animation: queueDrawerOpen var(--duration-enter) var(--ease-out-expo) both; }
+.queue-panel.paused {
+    border-color: var(--danger);
+    background: linear-gradient(180deg, var(--danger-faint), var(--surface-1) 40%);
+}
+
 .queue-header {
     display: flex;
     justify-content: space-between;
@@ -151,51 +329,50 @@
     font-weight: 600;
     color: var(--text-secondary);
     user-select: none;
+    transition: background var(--duration-micro) var(--ease-standard), color var(--duration-micro) var(--ease-standard);
+    border-bottom: 1px solid transparent;
 }
-.queue-header:hover {
-    background: var(--surface-hover);
-}
+.queue-header:hover { background: var(--surface-hover); color: var(--text-primary); }
+.queue-panel:not(.collapsed) .queue-header { border-bottom-color: var(--border-soft); }
 .queue-arrow {
-    width: 18px;
-    height: 18px;
+    width: 18px; height: 18px;
     fill: var(--text-muted);
-    transition: transform 0.2s;
+    transition: transform var(--duration-micro) var(--ease-standard);
 }
-.queue-panel.collapsed .queue-arrow {
-    transform: rotate(180deg);
-}
-.queue-panel.collapsed .queue-list {
-    display: none;
-}
+.queue-panel.collapsed .queue-arrow { transform: rotate(180deg); }
+.queue-panel.collapsed .queue-list { display: none; }
+
 .queue-list {
-    padding: 8px 12px 16px;
+    padding: 8px 12px 14px;
     max-height: 220px;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
 }
+
 .queue-item {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 8px 12px;
-    background: var(--surface-1);
+    background: var(--surface-2);
     border: 1px solid var(--border-soft);
-    border-radius: 8px;
+    border-radius: var(--radius-sm);
     margin-top: 8px;
     font-size: 13px;
+    line-height: 1.45;
+    transition: border-color var(--duration-micro) var(--ease-standard), background var(--duration-micro) var(--ease-standard), transform var(--duration-micro) var(--ease-standard);
+    animation: queueItemEnter var(--duration-enter) var(--ease-out-expo) both;
 }
+.queue-item:hover { border-color: var(--border-mid); background: var(--surface-1); }
 .queue-item-num {
     background: var(--accent-color);
     color: var(--accent-text);
-    width: 22px;
-    height: 22px;
-    border-radius: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    font-weight: 600;
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 700;
     flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
 }
 .queue-item-text {
     flex: 1;
@@ -203,24 +380,54 @@
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    word-break: break-all;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
 }
 .queue-item-remove {
     background: transparent;
     border: none;
     cursor: pointer;
-    padding: 2px;
-    border-radius: 4px;
-    transition: background 0.15s;
+    padding: 4px;
+    border-radius: 6px;
     flex-shrink: 0;
+    display: flex;
+    transition: background var(--duration-micro) var(--ease-standard);
 }
-.queue-item-remove:hover {
-    background: rgba(231, 76, 60, 0.12);
+.queue-item-remove:hover { background: var(--danger-soft); }
+.queue-item-remove:active { transform: scale(0.88); transition-duration: var(--duration-press); }
+.queue-item-remove svg { width: 16px; height: 16px; fill: var(--text-muted); transition: fill var(--duration-micro) var(--ease-standard); }
+.queue-item-remove:hover svg { fill: var(--danger-strong); }
+
+/* The paused-state hint shown inside the queue list when empty */
+.queue-empty-hint {
+    padding: 12px 14px;
+    margin-top: 8px;
+    font-size: 12.5px;
+    color: var(--danger-strong);
+    line-height: 1.55;
+    background: var(--danger-faint);
+    border: 1px dashed color-mix(in srgb, var(--danger) 50%, transparent);
+    border-radius: var(--radius-sm);
 }
-.queue-item-remove svg {
-    width: 16px;
-    height: 16px;
-    fill: var(--text-muted);
+
+/* The small red pill badge next to the queue count */
+.queue-status {
+    margin-left: 8px;
+    padding: 2px 9px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    background: var(--danger);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    line-height: 1;
+    box-shadow: 0 1px 4px color-mix(in srgb, var(--danger) 40%, transparent);
+    animation: queuePausedPulse 2.4s var(--ease-in-out) infinite;
 }
-.queue-item-remove:hover svg {
-    fill: var(--danger-strong);
+@keyframes queuePausedPulse {
+    0%, 100% { box-shadow: 0 1px 4px color-mix(in srgb, var(--danger) 30%, transparent); }
+    50% { box-shadow: 0 1px 10px color-mix(in srgb, var(--danger) 60%, transparent); }
 }

@@ -1,18 +1,16 @@
+/* ──────────────────────────────────────────────────────────────
+   Responsive — 768 / 480 / 360 / landscape
+   Keep new typography & spacing tokens coherent at every breakpoint
+   ────────────────────────────────────────────────────────────── */
+
+/* Two-column settings grid collapses on tablet */
 @media screen and (max-width: 768px) {
     .settings-grid { grid-template-columns: 1fr; }
 }
 
+/* Desktop: centered, max-width settings panel */
 @media screen and (min-width: 769px) {
-    .settings-panel {
-        top: 48px; bottom: 48px;
-        left: 0; right: 0;
-        width: 90%; max-width: 920px;
-        margin: 0 auto;
-        border-radius: 22px;
-    }
-}
-
-@media screen and (min-width: 769px) {
+    .settings-panel,
     .chat-settings-panel {
         top: 48px; bottom: 48px;
         left: 0; right: 0;
@@ -22,23 +20,25 @@
     }
 }
 
+/* ───── Tablet & below (768px) ───── */
 @media screen and (max-width: 768px) {
     :root {
         --sidebar-width: 100%;
+        --header-padding-x: 16px;
+        --chat-padding-x: 16px;
     }
 
     body { flex-direction: column; }
 
     .sidebar {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
         transform: translateX(-100%);
         will-change: transform;
         transition: transform var(--duration-enter) var(--ease-out-expo);
         padding: 16px;
+        z-index: 30;
     }
     .sidebar.open { transform: translateX(0); }
     .sidebar.exiting {
@@ -51,9 +51,9 @@
     .new-chat-btn { margin-bottom: 12px; }
     .chat-list { margin-bottom: 8px; }
 
-    .settings-panel-header { padding: 20px 20px 10px; margin-bottom: 16px; }
+    .settings-panel-header { padding: 22px 22px 12px; margin-bottom: 16px; }
+    .settings-panel-header h2 { font-size: 26px; }
     .settings-section { margin: 0 20px 14px; }
-    .settings-section:last-child { margin-bottom: 20px; }
 
     .mobile-header {
         display: flex;
@@ -66,13 +66,13 @@
         background: transparent;
         border: none;
         cursor: pointer;
-        width: 40px;
-        height: 40px;
-        align-items: center;
-        justify-content: center;
-        border-radius: 8px;
+        width: 40px; height: 40px;
+        align-items: center; justify-content: center;
+        border-radius: 999px;
+        transition: var(--transition-interactive);
     }
     .menu-btn:hover { background-color: var(--surface-active); }
+    .menu-btn:active { transform: scale(0.92); transition-duration: var(--duration-press); }
     .menu-btn svg { width: 24px; height: 24px; fill: var(--text-primary); }
 
     .main-chat { width: 100%; }
@@ -83,49 +83,43 @@
     .chat-header h3 { font-size: 14px; padding: 0 10px; }
     .chat-token-counter { font-size: 10px; }
     .clear-chat-btn {
-        padding: 4px 8px;
+        padding: 6px 11px;
         font-size: 11px;
     }
     .clear-chat-btn span { display: none; }
     .clear-chat-btn svg { width: 16px; height: 16px; }
 
-    .search-bar { padding: 8px 16px; }
+    .search-bar { padding: 9px 16px; gap: 10px; }
+    .search-bar-icon { margin-left: 2px; }
 
     .chat-messages {
-        padding: 20px 64px 20px 16px;
+        padding: 20px 60px 20px 16px;
         gap: 16px;
     }
 
     .message-wrapper { max-width: 94%; }
     .message { padding: 12px 16px; font-size: 14px; }
 
-    .input-area { padding: 12px 16px; gap: 8px; }
-    .upload-btn, .queue-btn {
-        width: 44px;
-        height: 44px;
-        border-radius: 22px;
+    .input-area { padding: 14px 16px; gap: 8px; }
+    .upload-btn, .queue-btn, .send-btn {
+        width: 46px; height: 46px;
+        border-radius: 999px;
     }
-    .upload-btn svg, .queue-btn svg { width: 20px; height: 20px; }
-    .textarea-container { border-radius: 22px; }
+    .upload-btn svg, .queue-btn svg, .send-btn svg { width: 20px; height: 20px; }
+    .textarea-container { border-radius: 999px; }
     .input-area textarea {
-        padding: 12px 16px;
-        height: 44px;
+        padding: 12px 18px;
+        height: 46px;
         max-height: 140px;
         font-size: 15px;
     }
-    .send-btn {
-        width: 44px;
-        height: 44px;
-        border-radius: 22px;
-    }
-    .send-btn svg { width: 18px; height: 18px; }
 
-    .queue-panel {
-        margin: 8px 16px 0;
-    }
+    .queue-panel { margin: 0 16px 10px; }
     .queue-list { max-height: 190px; }
 
-    .attachment-preview { padding: 12px 16px 0; }
+    .attachment-preview { padding: 12px 16px 0; gap: 10px; }
+    .attachment-preview .img-wrap { width: 52px; height: 52px; }
+    .attachment-preview .file-tile { height: 52px; max-width: 200px; }
 
     .input-prefix-badge { padding: 0 12px; font-size: 12px; }
 
@@ -134,103 +128,103 @@
     .edit-area { min-width: 100%; }
 }
 
-
+/* ───── Phone (480px) ───── */
 @media screen and (max-width: 480px) {
     .sidebar { padding: 12px; }
     .sidebar-header { margin-bottom: 12px; }
     .sidebar-header h2 { font-size: 15px; }
-    .new-chat-btn { padding: 10px; font-size: 14px; }
+    .new-chat-btn { padding: 10px 12px; font-size: 14px; }
     .chat-item { padding: 8px 28px 8px 10px; font-size: 13px; }
 
-    .settings-panel { top: 12px; left: 12px; right: 12px; bottom: 12px; border-radius: 16px; }
+    .settings-panel,
+    .chat-settings-panel {
+        top: 12px; left: 12px; right: 12px; bottom: 12px;
+        border-radius: 16px;
+        padding: 0;
+    }
     .settings-panel-header { padding: 18px 16px 10px; margin-bottom: 14px; }
-    .settings-panel-header h2 { font-size: 24px; }
-    .settings-section { margin: 0 16px 12px; padding: 12px; border-radius: 14px; gap: 10px; }
+    .settings-panel-header h2 { font-size: 22px; }
+    .settings-eyebrow { font-size: 10px; letter-spacing: 1.8px; }
+    .settings-section { margin: 0 14px 12px; padding: 14px; border-radius: 14px; gap: 11px; }
     .settings-section:last-child { margin-bottom: 18px; }
     .settings-group { gap: 8px; }
-    .settings-group label { font-size: 11px; }
-    .settings-group input, .settings-group textarea, .custom-select-trigger, .custom-select-option { font-size: 12px; }
-    .settings-group input, .settings-group textarea, .custom-select-trigger { padding: 8px 10px; }
-    .settings-group textarea { min-height: 50px; }
+    .settings-group label { font-size: 11px; letter-spacing: 0.6px; }
+    .settings-group input, .settings-group textarea, .custom-select-trigger, .custom-select-option { font-size: 12.5px; }
+    .settings-group input, .settings-group textarea, .custom-select-trigger { padding: 9px 11px; border-radius: 10px; }
+    .settings-group textarea { min-height: 56px; }
 
-    .chat-header {
-        padding: 10px 12px;
-    }
+    .chat-header { padding: 10px 12px; }
     .chat-header h3 { font-size: 13px; padding: 0 8px; }
     .chat-token-counter { font-size: 9px; }
-    .clear-chat-btn { padding: 4px 6px; }
+    .clear-chat-btn { padding: 5px 9px; }
     .clear-chat-btn svg { width: 14px; height: 14px; }
 
-    .search-bar { padding: 6px 10px; }
+    .search-bar { padding: 8px 12px; }
 
     .chat-messages {
-        padding: 12px 56px 12px 10px;
+        padding: 14px 52px 14px 10px;
         gap: 12px;
     }
+    .chat-messages:empty::before { font-size: 16px; padding: 32px 18px; }
 
     .message-wrapper { max-width: 96%; }
     .message {
-        padding: 10px 12px;
+        padding: 10px 13px;
         font-size: 13px;
         line-height: 1.5;
     }
-    .message img { max-width: 100%; border-radius: 6px; }
+    .message img { max-width: 100%; border-radius: 8px; }
     .markdown-body { font-size: 13px; }
     .markdown-body pre { padding: 10px; font-size: 12px; }
     .markdown-body table { font-size: 12px; }
     .markdown-body th, .markdown-body td { padding: 6px 8px; }
 
     .input-area {
-        padding: 8px 8px;
-        gap: 4px;
+        padding: 10px 10px;
+        gap: 6px;
     }
-    .upload-btn, .queue-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 18px;
+    .upload-btn, .queue-btn, .send-btn {
+        width: 38px; height: 38px;
+        border-radius: 999px;
     }
-    .upload-btn svg, .queue-btn svg { width: 16px; height: 16px; }
-    .textarea-container { border-radius: 20px; }
+    .upload-btn svg, .queue-btn svg, .send-btn svg { width: 17px; height: 17px; }
+    .textarea-container { border-radius: 999px; }
     .input-area textarea {
-        padding: 10px 12px;
+        padding: 10px 14px;
         height: 38px;
         max-height: 120px;
         font-size: 14px;
     }
-    .send-btn {
-        width: 36px;
-        height: 36px;
-        border-radius: 18px;
-    }
-    .send-btn svg { width: 16px; height: 16px; }
 
-    .queue-panel {
-        margin: 6px 10px 0;
-        border-radius: 10px;
-    }
-    .queue-header { padding: 9px 12px; }
+    .queue-panel { margin: 0 10px 8px; border-radius: 12px; }
+    .queue-header { padding: 9px 12px; font-size: 12.5px; }
     .queue-list { max-height: 170px; padding: 6px 10px 12px; }
-    .queue-item { padding: 7px 10px; gap: 8px; font-size: 12px; }
+    .queue-item { padding: 7px 10px; gap: 8px; font-size: 12px; border-radius: 8px; }
+    .queue-item-num { width: 20px; height: 20px; font-size: 10.5px; }
+    .queue-item-remove svg { width: 14px; height: 14px; }
+    .queue-empty-hint { font-size: 12px; padding: 10px 12px; }
 
-    .attachment-preview { padding: 8px 10px 0; gap: 8px; }
-    .attachment-preview .img-wrap { width: 50px; height: 50px; }
+    .attachment-preview { padding: 10px 10px 0; gap: 8px; }
+    .attachment-preview .img-wrap { width: 48px; height: 48px; }
+    .attachment-preview .file-tile { height: 48px; padding: 0 12px 0 10px; max-width: 180px; }
 
     .input-prefix-badge { font-size: 11px; padding: 0 8px; }
 
-    .action-icon { width: 24px; height: 24px; }
-    .action-icon svg { width: 12px; height: 12px; }
+    .action-icon { width: 26px; height: 26px; border-radius: 7px; }
+    .action-icon svg { width: 13px; height: 13px; }
 
-    .edit-area { min-width: 100%; padding: 10px; font-size: 13px; }
+    .edit-area { min-width: 100%; padding: 10px; font-size: 13px; border-radius: var(--radius-md); }
 
-    .custom-modal { width: 280px; padding: 20px; }
-    .custom-modal p { font-size: 14px; margin-bottom: 16px; }
-    .custom-modal-actions button { padding: 10px; font-size: 13px; }
+    .custom-modal { width: 280px; padding: 24px; min-width: 0; }
+    .custom-modal p { font-size: 14px; margin-bottom: 18px; }
+    .custom-modal-actions { gap: 10px; }
+    .custom-modal-actions button { padding: 10px 14px; font-size: 13px; }
 
-    .toast-container { top: 12px; width: 90%; }
-    .toast { padding: 10px 16px; font-size: 13px; border-radius: 20px; }
+    .toast-container { top: 12px; width: auto; max-width: 96vw; }
+    .toast { padding: 9px 16px; font-size: 13px; white-space: normal; }
 }
 
-
+/* ───── Landscape phone / short viewport ───── */
 @media screen and (max-height: 500px) and (orientation: landscape) {
     .chat-header { padding: 8px 20px; }
     .chat-messages { padding: 12px 64px 12px 20px; gap: 12px; }
@@ -238,24 +232,35 @@
     .input-area { padding: 10px 20px; }
     .input-area textarea { height: 40px; }
     .upload-btn, .queue-btn, .send-btn { width: 40px; height: 40px; }
-    .settings-panel { top: 8px; left: 8px; right: 8px; bottom: 8px; border-radius: 16px; }
+    .settings-panel,
+    .chat-settings-panel { top: 8px; left: 8px; right: 8px; bottom: 8px; border-radius: 16px; }
     .settings-panel-header { padding: 16px 20px 8px; margin-bottom: 12px; }
+    .settings-panel-header h2 { font-size: 22px; }
     .settings-section { margin: 0 20px 10px; }
     .settings-section:last-child { margin-bottom: 16px; }
 }
 
-
+/* ───── Very narrow phone (360px) ───── */
 @media screen and (max-width: 360px) {
     .chat-header h3 { font-size: 12px; }
-    .message { padding: 8px 10px; font-size: 12px; }
-    .input-area textarea { font-size: 13px; }
-    .textarea-container { border-radius: 16px; }
-    .upload-btn, .queue-btn, .send-btn { width: 32px; height: 32px; border-radius: 16px; }
-    .upload-btn svg, .queue-btn svg { width: 14px; height: 14px; }
-    .send-btn svg { width: 14px; height: 14px; }
-    .input-area textarea { height: 34px; padding: 8px 10px; }
+    .chat-token-counter { font-size: 8.5px; }
+    .message { padding: 9px 11px; font-size: 12.5px; line-height: 1.5; }
+    .markdown-body { font-size: 12.5px; }
+    .input-area {
+        padding: 8px 8px;
+        gap: 5px;
+    }
+    .input-area textarea { font-size: 13px; padding: 9px 12px; height: 36px; }
+    .textarea-container { border-radius: 999px; }
+    .upload-btn, .queue-btn, .send-btn { width: 34px; height: 34px; border-radius: 999px; }
+    .upload-btn svg, .queue-btn svg, .send-btn svg { width: 15px; height: 15px; }
+    .new-chat-btn { font-size: 13.5px; padding: 10px; }
+    .chat-item { font-size: 12.5px; padding: 8px 26px 8px 10px; }
+    .queue-status { font-size: 10px; padding: 1px 7px; }
+    .attachment-preview .img-wrap { width: 44px; height: 44px; }
 }
 
+/* ───── Desktop: hide mobile-only controls ───── */
 @media screen and (min-width: 769px) {
     .menu-btn { display: none !important; }
     .mobile-header { display: none !important; }

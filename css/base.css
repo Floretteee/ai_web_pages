@@ -61,6 +61,11 @@
     --radius-md: 10px;
     --radius-sm: 6px;
     --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    --danger-soft: rgba(211, 51, 51, 0.10);
+    --danger-faint: rgba(211, 51, 51, 0.05);
+    --shadow-input-focus: 0 0 0 4px var(--accent-faint), 0 6px 18px rgba(12,18,28,0.10);
+    --shadow-soft-accent: 0 2px 8px rgba(12,14,21,0.10), 0 10px 26px rgba(12,14,21,0.14);
+    --overlay-hairline: 0 0 0 1px rgba(255, 255, 255, 0.10) inset;
 
     /* Typography tokens */
     --font-display: "Space Grotesk", -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
@@ -150,6 +155,12 @@ html[data-theme="dark"] {
     --backdrop-overlay: rgba(0,0,0,0.55);
     --backdrop-modal: rgba(0,0,0,0.65);
 
+    --danger-soft: rgba(255, 99, 99, 0.12);
+    --danger-faint: rgba(255, 99, 99, 0.06);
+    --shadow-input-focus: 0 0 0 4px var(--accent-faint), 0 6px 18px rgba(0,0,0,0.40);
+    --shadow-soft-accent: 0 2px 8px rgba(0,0,0,0.40), 0 10px 26px rgba(0,0,0,0.48);
+    --overlay-hairline: 0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+
     --danger: #ff6363;
     --danger-strong: #ff5050;
     --success: #22c55e;
@@ -187,7 +198,15 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: var(--border-mid); background-clip: padding-box; border: 2px solid transparent; }
 html { scrollbar-color: var(--border-mid) transparent; scrollbar-width: thin; }
 
-:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: 2px; }
+:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; border-radius: 4px; }
+button:focus-visible, [role="menuitem"]:focus-visible { outline-offset: 1px; outline-width: 2px; }
+/* custom svg-heavy buttons with transparent backgrounds get a soft ring instead of a crisp outline */
+.icon-btn:focus-visible, .upload-btn:focus-visible, .queue-btn:focus-visible,
+.send-btn:focus-visible, .action-icon:focus-visible, .context-menu-item:focus-visible {
+    outline: none; box-shadow: var(--ring-focus);
+    border-radius: var(--radius-md);
+}
+.context-menu-item:focus-visible { border-radius: 7px; }
 
 h1, h2, h3, .font-display {
     font-family: var(--font-display);
@@ -249,6 +268,27 @@ h1, h2, h3, .font-display {
 @keyframes fadeScaleIn {
     from { opacity: 0; transform: scale(0.94); }
     to { opacity: 1; transform: scale(1); }
+}
+@keyframes queueDrawerOpen {
+    from { opacity: 0; transform: translateY(-6px) scaleY(0.92); }
+    to { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+@keyframes queueItemEnter {
+    from { opacity: 0; transform: translateX(-10px) scale(0.96); }
+    to { opacity: 1; transform: translateX(0) scale(1); }
+}
+@keyframes softPulseRing {
+    0%, 100% { box-shadow: 0 0 0 0 var(--danger-soft); }
+    50% { box-shadow: 0 0 0 6px transparent; }
+}
+@keyframes toastBounce {
+    0% { opacity: 0; transform: translateY(-18px) scale(0.92); }
+    60% { opacity: 1; transform: translateY(2px) scale(1.01); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes shimmerSweep {
+    from { background-position: 200% 0; }
+    to { background-position: -200% 0; }
 }
 
 @media (prefers-reduced-motion: reduce) {

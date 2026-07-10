@@ -1,42 +1,87 @@
 .toast-container {
     position: fixed; top: 28px; left: 50%; transform: translateX(-50%);
     z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+    max-width: 90vw;
 }
 .toast {
-    background: var(--glass-bg); backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
-    color: var(--text-primary); border: 1px solid var(--glass-border);
-    padding: 11px 22px; border-radius: 999px; font-size: 14px; font-weight: 600; letter-spacing: 0.1px;
-    box-shadow: var(--shadow-mid);
-    animation: toastEnter 0.4s var(--ease-out-expo) forwards;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%); -webkit-backdrop-filter: blur(20px) saturate(180%);
+    color: var(--text-primary);
+    border: 1px solid var(--glass-border);
+    padding: 11px 22px;
+    border-radius: 999px;
+    font-size: 14px; font-weight: 600; letter-spacing: 0.1px;
+    box-shadow: var(--shadow-mid), var(--overlay-hairline);
+    animation: toastBounce 0.45s var(--ease-out-back) forwards;
     pointer-events: auto;
+    white-space: nowrap;
+    transition: opacity var(--duration-exit) var(--ease-in-expo), transform var(--duration-exit) var(--ease-in-expo);
 }
+/* Stagger: each subsequent toast enters a touch later for a soft stacking feel */
+.toast:nth-child(2) { animation-delay: 40ms; }
+.toast:nth-child(3) { animation-delay: 80ms; }
+.toast:nth-child(4) { animation-delay: 120ms; }
+.toast:nth-child(n+5) { animation-delay: 160ms; }
 
 
 .custom-modal-overlay {
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: var(--backdrop-modal); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    background: var(--backdrop-modal);
+    backdrop-filter: blur(10px) saturate(140%); -webkit-backdrop-filter: blur(10px) saturate(140%);
     display: flex; align-items: center; justify-content: center;
     z-index: 10000; opacity: 0; visibility: hidden;
     transition: opacity var(--duration-enter) var(--ease-out-expo), visibility var(--duration-enter);
 }
 .custom-modal {
-    background: var(--surface-1); border: 1px solid var(--border-soft); border-radius: 20px;
-    padding: 32px; min-width: 340px; max-width: 88vw; text-align: center;
-    box-shadow: var(--shadow-strong);
-    transform: scale(0.94) translateY(8px);
+    background: var(--glass-bg);
+    backdrop-filter: blur(28px) saturate(180%); -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 32px;
+    min-width: 340px; max-width: 88vw; text-align: center;
+    box-shadow: var(--shadow-strong), var(--overlay-hairline);
+    transform: scale(0.94) translateY(12px);
     transition: transform var(--duration-enter) var(--ease-out-expo);
 }
 .custom-modal-overlay.active { opacity: 1; visibility: visible; }
-.custom-modal-overlay.active .custom-modal { transform: scale(1) translateY(0); }
-.custom-modal p { margin-bottom: 24px; font-size: 15px; font-weight: 500; color: var(--text-primary); line-height: 1.55; }
+.custom-modal-overlay.active .custom-modal {
+    transform: scale(1) translateY(0);
+    animation: modalEnter var(--duration-enter) var(--ease-out-expo) both;
+}
+@keyframes modalEnter {
+    from { opacity: 0; transform: scale(0.94) translateY(12px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.custom-modal p {
+    margin-bottom: 24px;
+    font-size: 15px; font-weight: 500;
+    color: var(--text-primary);
+    line-height: 1.55;
+    font-family: var(--font-body);
+}
 .custom-modal-actions { display: flex; gap: 12px; }
 .custom-modal-actions button {
-    flex: 1; padding: 12px 16px; border-radius: var(--radius-md); cursor: pointer; font-size: 14px; font-weight: 600; transition: var(--transition-interactive);
+    flex: 1; padding: 12px 16px;
+    border-radius: 999px;
+    cursor: pointer;
+    font-size: 14px; font-weight: 600;
+    letter-spacing: 0.1px;
+    transition: var(--transition-interactive);
 }
-.custom-modal-btn-cancel { background: var(--surface-1); border: 1px solid var(--border-mid); color: var(--text-primary); }
-.custom-modal-btn-cancel:hover { background: var(--surface-hover); border-color: var(--text-secondary); }
-.custom-modal-btn-confirm { background: var(--accent-color); border: 1px solid var(--accent-color); color: var(--accent-text); }
-.custom-modal-btn-confirm:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-soft); }
+.custom-modal-btn-cancel {
+    background: var(--surface-1);
+    border: 1px solid var(--border-mid);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-soft);
+}
+.custom-modal-btn-cancel:hover { background: var(--surface-hover); border-color: var(--text-secondary); transform: translateY(-1px); box-shadow: var(--shadow-mid); }
+.custom-modal-btn-confirm {
+    background: var(--accent-color);
+    border: 1px solid var(--accent-color);
+    color: var(--accent-text);
+    box-shadow: var(--shadow-soft);
+}
+.custom-modal-btn-confirm:hover { background: var(--accent-hover); transform: translateY(-1px); box-shadow: var(--shadow-soft-accent); }
 .custom-modal-actions button:active { transform: scale(0.96); transition-duration: var(--duration-press); }
 
 
@@ -48,11 +93,15 @@
     -webkit-backdrop-filter: blur(20px) saturate(180%);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-strong);
+    box-shadow: var(--shadow-strong), var(--overlay-hairline);
     padding: 6px;
     z-index: 10001;
     min-width: 200px;
     transform-origin: top left;
+}
+.context-menu[style*="display: block"],
+.context-menu[style*="display:block"] {
+    animation: menuEnter var(--duration-enter) var(--ease-out-expo) both;
 }
 .context-menu[style*="display: block"],
 .context-menu[style*="display:block"] {
@@ -106,18 +155,19 @@
     padding-bottom: 4px;
 }
 .think-summary {
-    padding: 9px 14px;
+    padding: 10px 14px;
+    font-family: var(--font-display);
     font-size: 13px;
     font-weight: 600;
+    letter-spacing: 0.1px;
     color: var(--think-summary);
     cursor: pointer;
     user-select: none;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    transition: background-color var(--duration-micro) var(--ease-standard);
+    display: flex; align-items: center; gap: 8px;
+    transition: background-color var(--duration-micro) var(--ease-standard), color var(--duration-micro) var(--ease-standard);
     border-radius: inherit;
 }
+.think-block[open] .think-summary { color: var(--text-secondary); }
 .think-summary:hover { background: var(--accent-faint); }
 .think-summary::-webkit-details-marker {
     display: none;

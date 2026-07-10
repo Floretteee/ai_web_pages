@@ -39,6 +39,21 @@
     opacity: 0.92;
     transition: opacity 100ms var(--ease-standard);
 }
+/* Empty-state welcome shown when no messages exist (CSS-only since chat list/messenging are JS-driven) */
+.chat-messages:empty::before {
+    content: '开始一段新对话';
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.3px;
+    color: var(--text-muted);
+    text-align: center;
+    margin: auto;
+    padding: 40px 20px;
+    opacity: 0.75;
+    display: block;
+    user-select: none;
+}
 
 .scroll-bottom-btn {
     position: absolute;
@@ -46,22 +61,25 @@
     right: 18px;
     width: 42px;
     height: 42px;
-    background: var(--surface-1);
-    border: 1px solid var(--border-soft);
-    border-radius: 50%;
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: 999px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-mid);
+    box-shadow: var(--shadow-mid), var(--overlay-hairline);
     opacity: 0;
     visibility: hidden;
-    transform: translateY(-50%) scale(0.9);
+    transform: translateY(-50%) scale(0.85);
     transition:
         opacity var(--duration-micro) var(--ease-standard),
         transform var(--duration-micro) var(--ease-standard),
         background-color var(--duration-micro) var(--ease-standard),
         box-shadow var(--duration-micro) var(--ease-standard),
+        border-color var(--duration-micro) var(--ease-standard),
         visibility var(--duration-micro);
     z-index: 10;
 }
@@ -69,11 +87,16 @@
     opacity: 1;
     visibility: visible;
     transform: translateY(-50%) scale(1);
+    animation: scrollBtnFadeIn var(--duration-enter) var(--ease-out-expo) both;
+}
+@keyframes scrollBtnFadeIn {
+    from { opacity: 0; transform: translateY(-50%) scale(0.85); }
+    to { opacity: 1; transform: translateY(-50%) scale(1); }
 }
 .scroll-bottom-btn.show:hover {
     background: var(--surface-3);
-    transform: translateY(calc(-50% - 1px)) scale(1);
-    box-shadow: var(--shadow-strong);
+    transform: translateY(calc(-50% - 1px)) scale(1.04);
+    box-shadow: var(--shadow-strong), var(--overlay-hairline);
     border-color: var(--border-mid);
 }
 .scroll-bottom-btn.show:active {
@@ -84,6 +107,7 @@
     width: 20px;
     height: 20px;
     fill: var(--text-secondary);
+    transition: fill var(--duration-micro) var(--ease-standard);
 }
 .scroll-bottom-btn.show:hover svg { fill: var(--text-primary); }
 
@@ -111,18 +135,20 @@
 .load-more-history-btn {
     align-self: center;
     padding: 8px 18px;
-    background: var(--glass-bg, rgba(255,255,255,0.6));
-    border: 1px solid var(--glass-border, #e0e0e0);
+    background: var(--glass-bg);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid var(--glass-border);
     border-radius: 999px;
     cursor: pointer;
-    font-size: 13px;
-    font-weight: 600;
+    font-size: 13px; font-weight: 600;
     color: var(--text-secondary);
+    letter-spacing: 0.1px;
     transition: var(--transition-interactive);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
+    box-shadow: var(--shadow-soft), var(--overlay-hairline);
+    animation: fadeScaleIn var(--duration-enter) var(--ease-out-expo) both;
 }
-.load-more-history-btn:hover { background: var(--surface-hover); border-color: var(--border-mid); color: var(--text-primary); transform: translateY(-1px); }
+.load-more-history-btn:hover { background: var(--surface-hover); border-color: var(--border-mid); color: var(--text-primary); transform: translateY(-1px); box-shadow: var(--shadow-mid), var(--overlay-hairline); }
 .load-more-history-btn:active { transform: translateY(0) scale(0.97); transition-duration: var(--duration-press); }
 .load-more-history-btn:focus-visible { outline: 2px solid var(--accent-color); outline-offset: 2px; }
 
@@ -263,7 +289,8 @@
     color: var(--danger-strong);
     font-size: 14px;
     line-height: 1.55;
-    box-shadow: 0 1px 0 color-mix(in srgb, var(--danger) 4%, transparent);
+    box-shadow: 0 1px 0 color-mix(in srgb, var(--danger) 4%, transparent), var(--shadow-soft);
+    animation: slideUpFade var(--duration-enter) var(--ease-out-expo) both;
 }
 .error-message svg { flex-shrink: 0; margin-top: 1px; fill: var(--danger); }
 .error-message span { word-break: break-word; }
