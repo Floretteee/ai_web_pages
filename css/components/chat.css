@@ -173,7 +173,7 @@
     box-shadow: var(--message-bot-shadow);
 }
 .message.bot.result-streaming .stream-new-chunk {
-    animation: textPopIn 300ms var(--ease-standard) both;
+    animation: textPopIn 280ms var(--ease-standard) both;
 }
 .message img { max-width: 100%; border-radius: 10px; margin-bottom: 10px; border: 1px solid var(--message-bot-border); }
 .message.user img { border-color: rgba(255,255,255,0.18); }

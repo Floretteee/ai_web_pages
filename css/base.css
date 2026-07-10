@@ -250,8 +250,8 @@ h1, h2, h3, .font-display {
     to { transform: translateY(0); opacity: 1; }
 }
 @keyframes textPopIn {
-    from { opacity: 0; transform: translateY(2px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; transform: translateY(4px) scale(0.96); filter: blur(2px); }
+    to { opacity: 1; transform: translateY(0) scale(1); filter: blur(0px); }
 }
 @keyframes bubbleResetShrink {
     from { transform: scale(1); opacity: 1; }
