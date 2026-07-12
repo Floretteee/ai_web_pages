@@ -176,6 +176,46 @@ const TTS = (() => {
         });
     }
 
+    // Split long text into chunks the endpoint can synthesize reliably.
+    // A single request tends to fail / stall on very long input, so we break on
+    // sentence boundaries and cap each chunk near MAX_CHUNK characters.
+    const MAX_CHUNK = 900;
+    function splitText(text) {
+        const normalized = String(text).replace(/\r\n/g, '\n').trim();
+        if (normalized.length <= MAX_CHUNK) return normalized ? [normalized] : [];
+
+        // Break after sentence-ending punctuation (CJK + latin) and newlines,
+        // keeping the delimiter attached to the preceding sentence.
+        const pieces = normalized.match(/[^。！？!?\n]*[。！？!?\n]+|[^。！？!?\n]+$/g) || [normalized];
+
+        const chunks = [];
+        let buf = '';
+        for (let piece of pieces) {
+            // A single sentence longer than the cap: hard-split on commas/spaces.
+            while (piece.length > MAX_CHUNK) {
+                const slice = piece.slice(0, MAX_CHUNK);
+                let cut = Math.max(
+                    slice.lastIndexOf('，'), slice.lastIndexOf('、'),
+                    slice.lastIndexOf(','), slice.lastIndexOf(' ')
+                );
+                if (cut < MAX_CHUNK * 0.5) cut = MAX_CHUNK; // no good break point
+                else cut += 1;
+                const head = piece.slice(0, cut);
+                if (buf) { chunks.push(buf); buf = ''; }
+                chunks.push(head.trim());
+                piece = piece.slice(cut);
+            }
+            if ((buf + piece).length > MAX_CHUNK) {
+                if (buf) chunks.push(buf);
+                buf = piece;
+            } else {
+                buf += piece;
+            }
+        }
+        if (buf.trim()) chunks.push(buf.trim());
+        return chunks.filter(c => c.trim().length > 0);
+    }
+
     // --- Web Speech fallback ------------------------------------------------
 
     function pickWebSpeechVoice(voice) {
@@ -220,36 +260,62 @@ const TTS = (() => {
         const voice = options.voice || 'zh-CN-XiaoxiaoNeural';
         const preferEdge = options.preferEdge !== false;
 
+        const chunks = splitText(clean);
+        if (!chunks.length) return;
+
         if (preferEdge) {
-            // Provisional active state so the button reflects "working" immediately.
-            let cancelled = false;
-            active = {
+            const session = {
                 index,
                 source: 'edge',
+                audio: null,
+                url: null,
+                cancelled: false,
                 stop() {
-                    cancelled = true;
+                    this.cancelled = true;
                     if (this.audio) { try { this.audio.pause(); } catch (e) {} }
                     if (this.url) { try { URL.revokeObjectURL(this.url); } catch (e) {} }
                     if (synthesizeEdge._lastWs) { try { synthesizeEdge._lastWs.close(); } catch (e) {} }
                 }
             };
-            const session = active;
+            active = session;
             emit();
 
+            // Play chunks in order. Prefetch the next chunk's blob while the
+            // current one plays so audio is continuous.
+            // Attach a swallowing handler alongside the awaited one so an
+            // in-flight prefetch that rejects after cancel doesn't surface as
+            // an unhandled promise rejection.
+            const prefetch = (chunk) => {
+                const p = synthesizeEdge(chunk, voice);
+                p.catch(() => {});
+                return p;
+            };
+            let nextBlobPromise = prefetch(chunks[0]);
             try {
-                const blob = await synthesizeEdge(clean, voice);
-                if (cancelled || active !== session) return;
-                const url = URL.createObjectURL(blob);
-                const audio = new Audio(url);
-                session.audio = audio;
-                session.url = url;
-                audio.onended = () => { if (active === session) stop(); };
-                audio.onerror = () => { if (active === session) stop(); };
-                await audio.play();
+                for (let i = 0; i < chunks.length; i++) {
+                    const blob = await nextBlobPromise;
+                    if (session.cancelled || active !== session) return;
+                    // Kick off synthesis of the next chunk before playing this one.
+                    nextBlobPromise = (i + 1 < chunks.length) ? prefetch(chunks[i + 1]) : null;
+
+                    const url = URL.createObjectURL(blob);
+                    const audio = new Audio(url);
+                    session.audio = audio;
+                    session.url = url;
+
+                    await new Promise((res, rej) => {
+                        audio.onended = res;
+                        audio.onerror = () => rej(new Error('audio playback error'));
+                        audio.play().catch(rej);
+                    });
+                    try { URL.revokeObjectURL(url); } catch (e) {}
+                    if (session.cancelled || active !== session) return;
+                }
+                if (active === session) stop();
                 return;
             } catch (e) {
                 console.warn('[TTS] Edge path failed, falling back to Web Speech:', e && e.message);
-                if (cancelled || active !== session) return;
+                if (session.cancelled || active !== session) return;
                 active = null; // clear before fallback claims it
             }
         }
