@@ -463,6 +463,135 @@ async function translateAssistantEnglishTokens(index, options = {}) {
     }
 }
 
+async function polishAssistantMessage(index, options = {}) {
+    const silent = !!options.silent;
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    if (!chat) return false;
+    const msg = chat.messages[index];
+    if (!msg || msg.role !== 'assistant') return false;
+    if (!state.apiKey) {
+        if (!silent) showToast("请先配置 API Key");
+        return false;
+    }
+
+    const modelToUse = state.polishModel || state.selectedModel;
+    if (!modelToUse) {
+        if (!silent) showToast("请先配置润色模型");
+        return false;
+    }
+
+    const plainText = getMessagePlainText(msg);
+    if (!plainText || plainText.trim().length < 10) {
+        if (!silent) showToast("消息内容过短，无需润色");
+        return false;
+    }
+
+    if (!silent) showToast(`润色「${chat.title || '新对话'}」...`);
+    try {
+        const prompt = `你是一个文本润色助手。请润色以下文本，使其表达更流畅、更自然、更专业。保持原意不变，不要添加额外信息。只返回润色后的完整文本，不要任何解释。\n\n原始文本：\n${plainText}`;
+        const body = {
+            model: modelToUse,
+            messages: [{ role: 'user', content: prompt }],
+            stream: false,
+            temperature: 0.3
+        };
+        if (chat.maxTokens) body.max_tokens = chat.maxTokens;
+        const response = await fetch(`${API_BASE}/chat/completions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
+            body: JSON.stringify(body)
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const data = await response.json();
+        let polished = data.choices?.[0]?.message?.content?.trim() || '';
+        if (!polished) throw new Error('润色结果为空');
+
+        // 如果差异太小（比如模型直接返回原文本），跳过替换
+        if (polished === plainText) {
+            msg.polished = true;
+            msg._renderVersion = (msg._renderVersion || 0) + 1;
+            saveState(); renderMessages();
+            if (!silent) showToast(`「${chat.title || '新对话'}」润色完成（文本无需改动）`);
+            return true;
+        }
+
+        // Backup original content before replacing
+        if (!msg._prePolishContent) {
+            msg._prePolishContent = JSON.parse(JSON.stringify(msg.content));
+        }
+
+        // Replace entire message content
+        if (typeof msg.content === 'string') {
+            msg.content = polished;
+        } else if (Array.isArray(msg.content)) {
+            const part = msg.content.find(c => c.type === 'text');
+            if (part) part.text = polished;
+        }
+        msg.polished = true;
+        msg._renderVersion = (msg._renderVersion || 0) + 1;
+        saveState();
+        renderMessages();
+        if (!silent) showToast(`「${chat.title || '新对话'}」润色完成`);
+        return true;
+    } catch (error) {
+        if (!silent) showToast("润色失败：" + (error.message || ''));
+        return false;
+    }
+}
+
+function undoPolishMessage(index) {
+    const chat = state.chats.find(c => c.id === state.currentChatId);
+    if (!chat) return;
+    const msg = chat.messages[index];
+    if (!msg || !msg._prePolishContent) { showToast("没有可撤销的润色记录"); return; }
+
+    msg.content = JSON.parse(JSON.stringify(msg._prePolishContent));
+    delete msg._prePolishContent;
+    msg.polished = false;
+    msg._renderVersion = (msg._renderVersion || 0) + 1;
+    saveState();
+    renderMessages();
+    showToast("已撤销润色");
+}
+
+async function autoPolishLastAssistantMessage(chat) {
+    if (!chat || !chat.autoPolish) return;
+    const lastIdx = chat.messages.length - 1;
+    if (lastIdx < 0) return;
+    const msg = chat.messages[lastIdx];
+    if (!msg || msg.role !== 'assistant') return;
+    if (msg.polished) return;
+    const plain = getMessagePlainText(msg);
+    if (!plain || plain.trim().length < 10) return;
+    if (chat.id !== state.currentChatId) return;
+    await polishAssistantMessage(lastIdx, { silent: true });
+}
+
+async function polishAllAssistantMessages() {
+    DOM.contextMenu.style.display = 'none';
+    const chat = state.chats.find(c => c.id === (contextMenuChatId || state.currentChatId));
+    if (!chat) return;
+    if (!state.apiKey) { showToast("请先配置 API Key"); return; }
+    if (!(state.polishModel || state.selectedModel)) { showToast("请先配置润色模型"); return; }
+
+    const assistantIndices = [];
+    chat.messages.forEach((m, i) => {
+        if (m.role === 'assistant' && !m.polished) assistantIndices.push(i);
+    });
+    if (assistantIndices.length === 0) {
+        showToast("没有需要润色的消息");
+        return;
+    }
+
+    showToast(`「${chat.title || '新对话'}」开始润色 ${assistantIndices.length} 条消息...`);
+    let done = 0;
+    for (const idx of assistantIndices) {
+        await polishAssistantMessage(idx, { silent: true });
+        done++;
+    }
+    showToast(`「${chat.title || '新对话'}」润色完成：${done} 条消息`);
+}
+
 async function autoFixLastAssistantMessage(chat) {
     if (!chat || !chat.autoFixEnglish) return;
     const lastIdx = chat.messages.length - 1;
@@ -487,7 +616,7 @@ function assistantNeedsTranslation(msg) {
 
 async function ensureAutoChecksBeforeSend(chat) {
     if (!chat) return;
-    if (!chat.autoFixEnglish && !chat.autoRetryOnRefuse) return;
+    if (!chat.autoFixEnglish && !chat.autoRetryOnRefuse && !chat.autoPolish) return;
     let lastIdx = -1;
     for (let i = chat.messages.length - 1; i >= 0; i--) {
         if (chat.messages[i].role === 'assistant') { lastIdx = i; break; }
@@ -512,6 +641,10 @@ async function ensureAutoChecksBeforeSend(chat) {
                 }
             } catch (e) {}
         }
+    }
+
+    if (chat.autoPolish && msg.polished !== true) {
+        try { await polishAssistantMessage(lastIdx, { silent: true }); } catch (e) {}
     }
 }
 
@@ -601,6 +734,31 @@ function createMessageDOM(msg, index, isNew = false) {
         spacer.className = 'action-spacer';
         actions.appendChild(spacer);
 
+        if (state.ttsEnabled) {
+            const ttsBtn = document.createElement('button');
+            ttsBtn.className = 'action-icon status-icon status-tts';
+            const syncTtsBtn = () => {
+                const speaking = typeof TTS !== 'undefined' && TTS.isSpeaking(index);
+                ttsBtn.classList.toggle('speaking', speaking);
+                ttsBtn.title = speaking ? '停止朗读' : '朗读';
+                ttsBtn.innerHTML = speaking
+                    ? '<svg viewBox="0 0 24 24"><path d="M6 6h12v12H6z"/></svg>'
+                    : '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>';
+            };
+            syncTtsBtn();
+            if (typeof TTS !== 'undefined') {
+                const unsub = TTS.onStateChange(() => {
+                    if (!ttsBtn.isConnected) { unsub(); return; }
+                    syncTtsBtn();
+                });
+            }
+            ttsBtn.onclick = () => {
+                if (typeof TTS === 'undefined') return;
+                TTS.toggle(index, getMessagePlainText(msg), { voice: state.ttsVoice });
+            };
+            actions.appendChild(ttsBtn);
+        }
+
         const needsTrans = assistantNeedsTranslation(msg);
         const isTranslated = msg.translated === true;
         const hasAnyEng = extractEnglishTokens(getMessagePlainText(msg)).length > 0;
@@ -616,6 +774,29 @@ function createMessageDOM(msg, index, isNew = false) {
         }
         transBtn.onclick = () => translateAssistantEnglishTokens(index);
         actions.appendChild(transBtn);
+
+        const isPolished = msg.polished === true;
+        const hasBackup = !!msg._prePolishContent;
+        const polishBtn = document.createElement('button');
+        polishBtn.className = 'action-icon status-icon status-polish';
+        if (isPolished) polishBtn.classList.add('polished');
+        polishBtn.title = isPolished ? '已润色（点击重新润色）' : '点击润色文本';
+        if (isPolished) {
+            polishBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+        } else {
+            polishBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M19 9l1.25-2.75L23 5l-2.75-1.25L19 1l-1.25 2.75L15 5l2.75 1.25L19 9zm-7.5.5L9 4 6.5 9.5 1 12l5.5 2.5L9 20l2.5-5.5L17 12l-5.5-2.5z"/></svg>';
+        }
+        polishBtn.onclick = () => polishAssistantMessage(index);
+        actions.appendChild(polishBtn);
+
+        if (isPolished && hasBackup) {
+            const undoBtn = document.createElement('button');
+            undoBtn.className = 'action-icon status-icon status-undo-polish';
+            undoBtn.title = '撤销润色';
+            undoBtn.innerHTML = '<svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>';
+            undoBtn.onclick = () => undoPolishMessage(index);
+            actions.appendChild(undoBtn);
+        }
 
         const refuseBtn = document.createElement('button');
         refuseBtn.className = 'action-icon status-icon status-refuse-check read-only';
@@ -902,6 +1083,15 @@ function toggleAutoRetryRefuse() {
     showToast(chat.autoRetryOnRefuse ? '已开启：本对话拒绝回答自动重试' : '已关闭：本对话拒绝回答自动重试');
 }
 
+function togglePolish() {
+    DOM.contextMenu.style.display = 'none';
+    const chat = state.chats.find(c => c.id === contextMenuChatId);
+    if (!chat) return;
+    chat.autoPolish = !chat.autoPolish;
+    saveState();
+    showToast(chat.autoPolish ? '已开启：本对话自动润色' : '已关闭：本对话自动润色');
+}
+
 function handleKeydown(e) {
     const isMobile = window.innerWidth <= 768;
     if (isMobile) {
@@ -1114,6 +1304,8 @@ async function init() {
     DOM.filterModeSelect.value = state.filterMode;
     DOM.exportRoleSelect.value = state.exportRole;
     if (DOM.maxAttachmentMBInput) DOM.maxAttachmentMBInput.value = state.maxAttachmentMB;
+    if (DOM.ttsEnabledSelect) DOM.ttsEnabledSelect.value = state.ttsEnabled ? 'on' : 'off';
+    if (DOM.ttsVoiceSelect) DOM.ttsVoiceSelect.value = state.ttsVoice;
 
     buildChatPresetOptions();
     initCustomSelects();
@@ -1127,8 +1319,7 @@ async function init() {
         DOM.modelSelect.innerHTML = `<option value="${state.selectedModel}">${state.selectedModel}</option>`;
         DOM.titleModelSelect.innerHTML = `<option value="">跟随对话模型</option><option value="${state.titleModel}" selected>${state.titleModel}</option>`;
         DOM.refuseModelSelect.innerHTML = `<option value="">跟随对话模型</option>${state.refuseModel ? `<option value="${state.refuseModel}" selected>${state.refuseModel}</option>` : ''}`;
-        DOM.refuseModelSelect.innerHTML = `<option value="">跟随对话模型</option><option value="${state.refuseModel}" selected>${state.refuseModel}</option>`;
-        DOM.refuseModelSelect.innerHTML = `<option value="">跟随对话模型</option><option value="${state.refuseModel}" selected>${state.refuseModel}</option>`;
+        DOM.polishModelSelect.innerHTML = `<option value="">跟随对话模型</option>${state.polishModel ? `<option value="${state.polishModel}" selected>${state.polishModel}</option>` : ''}`;
         refreshAllCustomSelects();
     }
 

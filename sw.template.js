@@ -16,6 +16,7 @@ const CORE_ASSETS = [
   './js/state.js',
   './js/components.js',
   './js/ui.js',
+  './js/tts.js',
   './js/api.js',
   './js/export.js',
   './js/queue.js',

@@ -9,11 +9,14 @@ let state = {
     apiKey: '', selectedModel: '',
     titleModel: '',
     refuseModel: '',
+    polishModel: '',
     htmlStyle: 'autumn',
     filterMode: 'think',
     exportRole: 'both',
     theme: 'system',
     maxAttachmentMB: 5,
+    ttsEnabled: true,
+    ttsVoice: 'zh-CN-XiaoxiaoNeural',
     chats: [], currentChatId: null,
     attachments: [], editingIndex: -1
 };
@@ -59,7 +62,13 @@ function initDOM() {
         ctxAutoRetryRefuseLabel: document.getElementById('ctxAutoRetryRefuseLabel'),
         ctxAutoRetryRefuseIconOn: document.getElementById('ctxAutoRetryRefuseIconOn'),
         ctxAutoRetryRefuseIconOff: document.getElementById('ctxAutoRetryRefuseIconOff'),
-        themeSelect: document.getElementById('themeSelect')
+        ctxPolishLabel: document.getElementById('ctxPolishLabel'),
+        ctxPolishIconOn: document.getElementById('ctxPolishIconOn'),
+        ctxPolishIconOff: document.getElementById('ctxPolishIconOff'),
+        polishModelSelect: document.getElementById('polishModelSelect'),
+        themeSelect: document.getElementById('themeSelect'),
+        ttsEnabledSelect: document.getElementById('ttsEnabledSelect'),
+        ttsVoiceSelect: document.getElementById('ttsVoiceSelect')
     });
 }
 
@@ -118,11 +127,14 @@ function applyLoadedSettings(settings) {
         selectedModel: settings.selectedModel || '',
         titleModel: settings.titleModel || '',
         refuseModel: settings.refuseModel || '',
+        polishModel: settings.polishModel || '',
         htmlStyle: settings.htmlStyle || 'autumn',
         filterMode: settings.filterMode || 'think',
         exportRole: settings.exportRole || 'both',
         theme: settings.theme || 'system',
         maxAttachmentMB: Number.isFinite(settings.maxAttachmentMB) && settings.maxAttachmentMB > 0 ? settings.maxAttachmentMB : 5,
+        ttsEnabled: settings.ttsEnabled !== false,
+        ttsVoice: settings.ttsVoice || 'zh-CN-XiaoxiaoNeural',
         currentChatId: settings.currentChatId || null
     });
 }
@@ -244,11 +256,14 @@ function getPersistedSettings() {
         selectedModel: state.selectedModel,
         titleModel: state.titleModel,
         refuseModel: state.refuseModel,
+        polishModel: state.polishModel,
         htmlStyle: state.htmlStyle,
         filterMode: state.filterMode,
         exportRole: state.exportRole,
         theme: state.theme,
         maxAttachmentMB: state.maxAttachmentMB,
+        ttsEnabled: state.ttsEnabled,
+        ttsVoice: state.ttsVoice,
         currentChatId: state.currentChatId
     };
 }
@@ -269,6 +284,7 @@ function saveSettings() {
     state.apiKey = DOM.apiKeyInput.value.trim(); state.selectedModel = DOM.modelSelect.value;
     state.titleModel = DOM.titleModelSelect.value;
     state.refuseModel = DOM.refuseModelSelect.value;
+    state.polishModel = DOM.polishModelSelect.value;
     state.htmlStyle = DOM.htmlStyleSelect.value;
     state.filterMode = DOM.filterModeSelect.value;
     state.exportRole = DOM.exportRoleSelect.value;
@@ -276,6 +292,8 @@ function saveSettings() {
         const v = parseFloat(DOM.maxAttachmentMBInput.value);
         state.maxAttachmentMB = Number.isFinite(v) && v > 0 ? v : 5;
     }
+    if (DOM.ttsEnabledSelect) state.ttsEnabled = DOM.ttsEnabledSelect.value === 'on';
+    if (DOM.ttsVoiceSelect) state.ttsVoice = DOM.ttsVoiceSelect.value;
 
     persistSettings();
 }

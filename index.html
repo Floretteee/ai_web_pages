@@ -64,6 +64,14 @@
             <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" id="ctxAutoFixIconOff" style="display:none;"/><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" id="ctxAutoFixIconOn"/></svg>
             <span id="ctxAutoFixLabel">开启自动修复英文</span>
         </div>
+        <div class="context-menu-item context-menu-item-sidebar-only" id="ctxTogglePolish" role="menuitem" tabindex="-1" onclick="togglePolish()">
+            <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" id="ctxPolishIconOff" style="display:none;"/><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" id="ctxPolishIconOn"/></svg>
+            <span id="ctxPolishLabel">开启自动润色</span>
+        </div>
+        <div class="context-menu-item context-menu-item-sidebar-only" role="menuitem" tabindex="-1" onclick="polishAllAssistantMessages()">
+            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+            <span>润色所有 Assistant 消息</span>
+        </div>
         <div class="context-menu-item context-menu-item-sidebar-only" id="ctxToggleAutoRetryRefuse" role="menuitem" tabindex="-1" onclick="toggleAutoRetryRefuse()">
             <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z" id="ctxAutoRetryRefuseIconOff" style="display:none;"/><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" id="ctxAutoRetryRefuseIconOn"/></svg>
             <span id="ctxAutoRetryRefuseLabel">开启拒绝重试</span>
@@ -130,6 +138,7 @@
                 </div>
                 <div class="settings-grid">
                     <div class="settings-group"><label>拒绝检测模型</label><select id="refuseModelSelect" onchange="saveSettings()"><option value="">跟随对话模型</option></select></div>
+                    <div class="settings-group"><label>文本润色模型</label><select id="polishModelSelect" onchange="saveSettings()"><option value="">跟随对话模型</option></select></div>
                 </div>
             </div>
 
@@ -168,6 +177,29 @@
                 <div class="settings-group">
                     <label>单文件大小上限 (MB)</label>
                     <input type="number" id="maxAttachmentMBInput" min="0.1" max="500" step="0.1" value="5" onchange="saveSettings()">
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-section-title">语音朗读</div>
+                <div class="settings-group">
+                    <label>启用朗读</label>
+                    <select id="ttsEnabledSelect" onchange="saveSettings()">
+                        <option value="on">开启（助手消息显示朗读按钮）</option>
+                        <option value="off">关闭</option>
+                    </select>
+                </div>
+                <div class="settings-group">
+                    <label>朗读语音</label>
+                    <select id="ttsVoiceSelect" onchange="saveSettings()">
+                        <option value="zh-CN-XiaoxiaoNeural">晓晓（中文女声）</option>
+                        <option value="zh-CN-YunxiNeural">云希（中文男声）</option>
+                        <option value="zh-CN-YunyangNeural">云扬（中文男声）</option>
+                        <option value="zh-CN-XiaoyiNeural">晓伊（中文女声）</option>
+                        <option value="zh-TW-HsiaoChenNeural">曉臻（台湾女声）</option>
+                        <option value="en-US-JennyNeural">Jenny（英文女声）</option>
+                        <option value="en-US-GuyNeural">Guy（英文男声）</option>
+                    </select>
                 </div>
             </div>
         </aside>
@@ -308,6 +340,7 @@
     <script src="js/state.js" defer></script>
     <script src="js/components.js" defer></script>
     <script src="js/ui.js" defer></script>
+    <script src="js/tts.js" defer></script>
     <script src="js/api.js" defer></script>
     <script src="js/export.js" defer></script>
     <script src="js/queue.js" defer></script>
