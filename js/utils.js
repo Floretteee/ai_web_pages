@@ -9,7 +9,7 @@ const STANDARD_HTML_TAGS = new Set('a abbr address area article aside audio b bd
 
 function escapeHtml(text) {
     const div = document.createElement('div');
-    div.textContent = text;
+    div.textContent = String(text ?? '');
     return div.innerHTML;
 }
 

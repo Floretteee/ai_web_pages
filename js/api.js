@@ -10,12 +10,13 @@ async function fetchModels() {
         const res = await fetch(`${API_BASE}/models`, { headers: { 'Authorization': `Bearer ${DOM.apiKeyInput.value.trim()}` } });
         const data = await res.json();
         if (data && data.data) {
-            DOM.modelSelect.innerHTML = ''; DOM.titleModelSelect.innerHTML = '<option value="">跟随对话模型</option>'; DOM.refuseModelSelect.innerHTML = '<option value="">跟随对话模型</option>';
-            data.data.forEach(m => { DOM.modelSelect.add(new Option(m.id, m.id)); DOM.titleModelSelect.add(new Option(m.id, m.id)); DOM.refuseModelSelect.add(new Option(m.id, m.id)); });
+            DOM.modelSelect.innerHTML = ''; DOM.titleModelSelect.innerHTML = '<option value="">跟随对话模型</option>'; DOM.refuseModelSelect.innerHTML = '<option value="">跟随对话模型</option>'; DOM.polishModelSelect.innerHTML = '<option value="">跟随对话模型</option>';
+            data.data.forEach(m => { DOM.modelSelect.add(new Option(m.id, m.id)); DOM.titleModelSelect.add(new Option(m.id, m.id)); DOM.refuseModelSelect.add(new Option(m.id, m.id)); DOM.polishModelSelect.add(new Option(m.id, m.id)); });
             if (state.selectedModel && data.data.find(m => m.id === state.selectedModel)) DOM.modelSelect.value = state.selectedModel;
             else { state.selectedModel = data.data[0].id; DOM.modelSelect.value = state.selectedModel; persistSettings(); }
             if (state.titleModel && data.data.find(m => m.id === state.titleModel)) DOM.titleModelSelect.value = state.titleModel;
             if (state.refuseModel && data.data.find(m => m.id === state.refuseModel)) DOM.refuseModelSelect.value = state.refuseModel;
+            if (state.polishModel && data.data.find(m => m.id === state.polishModel)) DOM.polishModelSelect.value = state.polishModel;
             refreshAllCustomSelects();
             showToast("模型列表获取成功！");
         }
@@ -29,7 +30,11 @@ async function fetchModels() {
 }
 
 async function executeChatRequest(currentChat, preparedMessages, options = {}) {
-    abortController = new AbortController();
+    const failedResult = (error) => ({ ok: false, aborted: false, failed: true, error: error || null });
+    const requestController = new AbortController();
+    if (abortController) return failedResult(new Error('已有请求正在执行'));
+    abortController = requestController;
+    try {
     updateSendButton(true);
     updateTrimIndicator();
     if (autoScroll) scrollToBottom();
@@ -77,9 +82,10 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     }
 
     const targetIndex = currentChat.messages.length;
-    let botDomObj;
+    const isTargetVisible = () => currentChat.id === state.currentChatId;
+    let botDomObj = null;
     const reuseWrapper = options && options.reuseWrapper;
-    if (reuseWrapper && reuseWrapper.isConnected) {
+    if (isTargetVisible() && reuseWrapper && reuseWrapper.isConnected) {
         botDomObj = {
             wrapper: reuseWrapper,
             contentNode: reuseWrapper.querySelector('.message.bot, .message')
@@ -88,7 +94,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         botDomObj.wrapper.classList.add('bubble-reenter');
         botDomObj.wrapper.querySelector('.message-actions').style.display = 'none';
         botDomObj.contentNode.innerHTML = '<div class="result-thinking"><span></span><span></span><span></span></div>';
-    } else {
+    } else if (isTargetVisible()) {
         botDomObj = createMessageDOM({ role: 'assistant', content: '' }, targetIndex, true);
         botDomObj.wrapper.querySelector('.message-actions').style.display = 'none';
         botDomObj.contentNode.innerHTML = '<div class="result-thinking"><span></span><span></span><span></span></div>';
@@ -105,13 +111,13 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         event.preventDefault();
         _animateBubbleHeight(previousHeight);
     }
-    botDomObj.contentNode.addEventListener('pointerdown', (event) => {
+    if (botDomObj) botDomObj.contentNode.addEventListener('pointerdown', (event) => {
         const summary = event.target.closest('.think-summary');
         if (!summary || !botDomObj.contentNode.contains(summary)) return;
         streamThinkPointerHandled = true;
         _toggleStreamThink(summary, event);
     });
-    botDomObj.contentNode.addEventListener('click', (event) => {
+    if (botDomObj) botDomObj.contentNode.addEventListener('click', (event) => {
         const summary = event.target.closest('.think-summary');
         if (!summary || !botDomObj.contentNode.contains(summary)) return;
         if (streamThinkPointerHandled) {
@@ -131,6 +137,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     function _ensureStreamingState() {
         if (_firstTokenArrived) return;
         _firstTokenArrived = true;
+        if (!botDomObj || !isTargetVisible()) return;
         const thinkingDots = botDomObj.contentNode.querySelector('.result-thinking');
         if (thinkingDots) thinkingDots.remove();
         const msgEl = botDomObj.wrapper.querySelector('.message.bot');
@@ -242,6 +249,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         };
     }
     function scheduleStreamRender(content) {
+        if (!botDomObj || !isTargetVisible()) return;
         if (content === _pendingStreamContent) return;
         _pendingStreamContent = content;
         if (_streamTimer) return;
@@ -258,10 +266,14 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         _streamTimer = setTimeout(() => {
             window.__streamFlush = null;
             _streamTimer = null;
+            if (!botDomObj || !isTargetVisible()) {
+                _pendingStreamContent = '';
+                return;
+            }
             const c = _pendingStreamContent;
             _pendingStreamContent = '';
             _ensureStreamingState();
-            const msgEl = botDomObj.wrapper.querySelector('.message.bot');
+            const msgEl = botDomObj && isTargetVisible() ? botDomObj.wrapper.querySelector('.message.bot') : null;
             if (_bubbleGrowthAnimation) {
                 _bubbleGrowthAnimation.cancel();
                 _bubbleGrowthAnimation = null;
@@ -282,6 +294,8 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
     let reasoningBuffer = '';
     let requestFailed = false;
     let requestAborted = false;
+    let requestError = null;
+    let assistantCommitted = false;
     const maxRetries = 3;
 
     for (let retry = 0; retry <= maxRetries; retry++) {
@@ -296,7 +310,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${state.apiKey}` },
                 body: JSON.stringify(requestBody),
-                signal: abortController.signal
+                signal: requestController.signal
             });
 
             if (!response.ok) {
@@ -348,13 +362,13 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
                 _streamTimer = null;
             }
             window.__streamFlush = null;
-            if (_pendingStreamContent) {
+            if (botDomObj && isTargetVisible() && _pendingStreamContent) {
                 const c = _pendingStreamContent;
                 _pendingStreamContent = '';
                 _updateStreamContent(c);
                 if (autoScroll) scrollToBottom();
             }
-            const msgEl = botDomObj.wrapper.querySelector('.message.bot');
+            const msgEl = botDomObj && isTargetVisible() ? botDomObj.wrapper.querySelector('.message.bot') : null;
             if (_bubbleGrowthAnimation) _bubbleGrowthAnimation.cancel();
             if (msgEl) {
                 msgEl.classList.remove('result-streaming');
@@ -371,54 +385,69 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
                 await new Promise(r => setTimeout(r, retry * 3000));
             } else {
                 requestFailed = true;
-                const retryNote = botReply ? `\n\n已有部分回复，错误: ${error.message}` : `请求失败，已重试 ${maxRetries} 次。错误: ${error.message}`;
-                botDomObj.contentNode.innerHTML = `<div class="error-message"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/></svg><span>${retryNote}</span></div>`;
+                requestError = error;
+                const retryNote = botReply ? `已有部分回复，错误: ${error.message}` : `请求失败，已重试 ${maxRetries} 次。错误: ${error.message}`;
+                if (botDomObj && isTargetVisible()) botDomObj.contentNode.innerHTML = `<div class="error-message"><svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/></svg><span>${escapeHtml(retryNote)}</span></div>`;
                 showToast("消息请求失败，请重试");
             }
         }
     }
 
-    if (botReply || reasoningBuffer) {
-        currentChat.messages.push({ role: 'assistant', content: reasoningBuffer ? `<think>${reasoningBuffer}</think>\n\n${botReply}` : botReply });
-        saveState();
+    if (!requestFailed && !requestAborted && (botReply || reasoningBuffer)) {
+        const liveChat = state.chats.find(chat => chat.id === currentChat.id);
+        if (liveChat !== currentChat) {
+            requestFailed = true;
+            requestError = new Error('目标对话已不存在，请求结果未保存');
+            if (botDomObj && isTargetVisible()) {
+                botDomObj.contentNode.innerHTML = `<div class="error-message"><span>${escapeHtml(requestError.message)}</span></div>`;
+            }
+        } else {
+            currentChat.messages.push({ role: 'assistant', content: reasoningBuffer ? `<think>${reasoningBuffer}</think>\n\n${botReply}` : botReply });
+            assistantCommitted = true;
+            saveState();
+        }
     }
-    const msgEl = botDomObj.wrapper.querySelector('.message.bot');
+    const msgEl = botDomObj && isTargetVisible() ? botDomObj.wrapper.querySelector('.message.bot') : null;
     if (_bubbleGrowthAnimation) _bubbleGrowthAnimation.cancel();
     if (msgEl) {
         msgEl.classList.remove('result-streaming');
         msgEl.style.height = '';
         msgEl.style.overflow = '';
     }
-    botDomObj.wrapper.classList.remove('bubble-reenter');
+    if (botDomObj && isTargetVisible()) botDomObj.wrapper.classList.remove('bubble-reenter');
 
     const isReuse = !!(options && options.reuseWrapper);
     // 复用气泡重试时，流式渲染已直接更新 DOM，跳过 renderMessages 全量重建以保留原气泡
-    if (!isReuse) {
-        renderMessages();
+    if (!isReuse && !requestFailed) {
+        if (currentChat.id === state.currentChatId) renderMessages();
     }
 
-    abortController = null;
-    // 请求失败时暂停队列：保留后续队列消息，等待重试成功或手动继续
-    if (requestFailed) {
-        queuePaused = true;
-    } else if (!requestAborted) {
-        queuePaused = false;
-    }
+    if (abortController === requestController) abortController = null;
     updateSendButton(false);
     updateTrimIndicator();
-    if (!isReuse) DOM.userInput.focus();
+    if (!isReuse && isTargetVisible()) DOM.userInput.focus();
 
     let refused = false;
-    if (currentChat.autoRetryOnRefuse && botReply) {
-        refused = await checkRefuseAndRetry(currentChat, botDomObj.wrapper, { suppressQueueAutoProcess: options.suppressQueueAutoProcess }).catch(() => false);
+    let nestedRetryResult = null;
+    if (assistantCommitted && !requestFailed && !requestAborted && currentChat.autoRetryOnRefuse && botReply) {
+        const refuseResult = await checkRefuseAndRetry(currentChat, botDomObj && botDomObj.wrapper, {
+            suppressQueueAutoProcess: options.suppressQueueAutoProcess,
+            refuseRetryDepth: options.refuseRetryDepth || 0
+        }).catch(error => ({ refused: false, ok: false, result: failedResult(error) }));
+        refused = !!refuseResult.refused;
+        nestedRetryResult = refuseResult.refused ? refuseResult.result : null;
     }
 
-    if (!refused && currentChat.autoFixEnglish && botReply) {
+    if (assistantCommitted && !requestFailed && !requestAborted && !refused && currentChat.autoFixEnglish && botReply) {
         await autoFixLastAssistantMessage(currentChat).catch(() => {});
     }
 
+    if (assistantCommitted && !requestFailed && !requestAborted && !refused && currentChat.autoPolish && botReply) {
+        await autoPolishLastAssistantMessage(currentChat).catch(() => {});
+    }
+
     // 重试复用气泡：若未触发再次重试，则最终同步渲染以恢复操作按钮与版本戳
-    if (isReuse && !refused) {
+    if (isReuse && !refused && isTargetVisible()) {
         renderMessages();
         DOM.userInput.focus();
     }
@@ -429,16 +458,35 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         setTimeout(() => processQueue(), 500);
     }
 
-    return !requestFailed && !requestAborted;
+    return nestedRetryResult || {
+        ok: !requestFailed && !requestAborted,
+        aborted: requestAborted,
+        failed: requestFailed,
+        error: requestError
+    };
+    } catch (error) {
+        console.error('Chat request setup failed:', error);
+        showToast(`消息请求失败：${error.message || error}`);
+        return failedResult(error);
+    } finally {
+        if (abortController === requestController) abortController = null;
+        updateSendButton(isProcessingQueue || isSendingMessage);
+        updateTrimIndicator();
+    }
 }
 
 function stopGeneration() {
     if (abortController) {
         abortController.abort();
-        queuePaused = true;
+        const hasPendingQueue = messageQueue.length > 0 || failedQueueItem;
+        if (hasPendingQueue) {
+            setQueuePause('user');
+            showToast("已停止生成，队列已手动暂停");
+        } else {
+            showToast("已停止生成");
+        }
         updateSendButton(false);
         renderQueue();
-        showToast("已停止生成，队列已暂停");
     }
 }
 
@@ -456,7 +504,14 @@ function _setSendBtnContent(iconHtml) {
 }
 
 function updateSendButton(isGenerating) {
-    if (isGenerating) {
+    if (queuePaused && !failedQueueItem && !messageQueue.length) {
+        queuePauseReason = null;
+        syncQueuePaused();
+        persistQueueState();
+    }
+    const hasActiveRequest = !!abortController;
+    const isLocked = !!(isProcessingQueue || isSendingMessage);
+    if (hasActiveRequest) {
         _setSendBtnContent(STOP_BTN_ICON);
         DOM.sendBtn.onclick = stopGeneration;
         DOM.sendBtn.classList.add('stop-btn');
@@ -467,18 +522,38 @@ function updateSendButton(isGenerating) {
         DOM.queueBtn.innerHTML = QUEUE_ADD_ICON;
         DOM.queueBtn.onclick = addToQueue;
         DOM.queueBtn.title = '加入队列';
-    } else if (queuePaused) {
-        // 暂停状态：发送按钮变为「重试上一条」，队列按钮变为「强制继续队列」
+    } else if (isLocked) {
+        _setSendBtnContent(SEND_BTN_ICON);
+        DOM.sendBtn.onclick = () => showToast('请求正在处理中，请稍候');
+        DOM.sendBtn.classList.remove('stop-btn', 'retry-btn');
+        DOM.sendBtn.title = '请求处理中';
+        DOM.queueBtn.classList.add('generating');
+        DOM.queueBtn.classList.remove('paused');
+        DOM.queueBtn.innerHTML = QUEUE_ADD_ICON;
+        DOM.queueBtn.onclick = addToQueue;
+        DOM.queueBtn.title = '加入队列';
+    } else if (queuePaused && failedQueueItem) {
+        // 暂停消息可重试或跳过
         _setSendBtnContent(RETRY_BTN_ICON);
         DOM.sendBtn.onclick = retryLastAndResume;
         DOM.sendBtn.classList.remove('stop-btn');
         DOM.sendBtn.classList.add('retry-btn');
-        DOM.sendBtn.title = '重试上一条消息';
+        DOM.sendBtn.title = queuePauseReason === 'user' ? '重试已停止的消息' : '重试上一条失败消息';
         DOM.queueBtn.classList.remove('generating');
         DOM.queueBtn.classList.add('paused');
         DOM.queueBtn.innerHTML = QUEUE_CONTINUE_ICON;
         DOM.queueBtn.onclick = forceContinueQueue;
-        DOM.queueBtn.title = '强制继续队列（跳过重试）';
+        DOM.queueBtn.title = queuePauseReason === 'user' ? '跳过已停止消息并继续队列' : '跳过失败消息并继续队列';
+    } else if (queuePaused && messageQueue.length) {
+        _setSendBtnContent(QUEUE_CONTINUE_ICON);
+        DOM.sendBtn.onclick = forceContinueQueue;
+        DOM.sendBtn.classList.remove('stop-btn', 'retry-btn');
+        DOM.sendBtn.title = '继续队列';
+        DOM.queueBtn.classList.remove('generating');
+        DOM.queueBtn.classList.add('paused');
+        DOM.queueBtn.innerHTML = QUEUE_CONTINUE_ICON;
+        DOM.queueBtn.onclick = forceContinueQueue;
+        DOM.queueBtn.title = '继续队列';
     } else {
         _setSendBtnContent(SEND_BTN_ICON);
         DOM.sendBtn.onclick = sendMessage;
@@ -530,51 +605,57 @@ async function detectRefuse(msg) {
 }
 
 async function checkRefuseAndRetry(chat, reuseWrapper, options = {}) {
-    if (chat.id !== state.currentChatId) return false;
+    const depth = options.refuseRetryDepth || 0;
     const lastIdx = chat.messages.length - 1;
-    if (lastIdx < 0) return false;
+    if (lastIdx < 0) return { refused: false, ok: true };
     const msg = chat.messages[lastIdx];
-    if (!msg || msg.role !== 'assistant') return false;
+    if (!msg || msg.role !== 'assistant') return { refused: false, ok: true };
 
     const refused = await detectRefuse(msg);
-    if (refused === null) return false;
-    if (refused === true) {
-        showToast('检测到拒绝回答，正在自动重试...');
-        await autoRetryRefuse(chat, lastIdx, reuseWrapper, options).catch(() => {});
-        return true;
+    if (refused !== true) {
+        if (refused === false) {
+            msg.refuseChecked = true;
+            msg._renderVersion = (msg._renderVersion || 0) + 1;
+            saveState();
+            if (chat.id === state.currentChatId) renderMessages();
+        }
+        return { refused: false, ok: true };
     }
-    msg.refuseChecked = true;
-    msg._renderVersion = (msg._renderVersion || 0) + 1;
+    if (depth >= 2) {
+        chat.messages.splice(lastIdx, 1);
+        saveState();
+        if (chat.id === state.currentChatId) renderMessages();
+        return { refused: true, ok: false, result: { ok: false, aborted: false, failed: true, error: new Error('自动拒答重试已达上限') } };
+    }
+    showToast('检测到拒绝回答，正在自动重试...');
+    chat.messages.splice(lastIdx, 1);
     saveState();
-    renderMessages();
-    return false;
+    const visibleWrapper = chat.id === state.currentChatId && reuseWrapper && reuseWrapper.isConnected ? reuseWrapper : undefined;
+    const result = await autoRetryRefuse(chat, visibleWrapper, { ...options, refuseRetryDepth: depth + 1 });
+    return { refused: true, ok: result.ok, result };
 }
 
-async function autoRetryRefuse(chat, index, wrapper, options = {}) {
-    if (!wrapper || !wrapper.isConnected) return;
-    // 移除被拒绝的 assistant 消息（保留之前的 user 消息），不移除气泡 DOM
-    chat.messages = chat.messages.slice(0, index);
-    saveState();
-
-    // 线性缩小原气泡到初始生成状态
-    wrapper.classList.remove('bubble-reenter');
-    wrapper.classList.add('bubble-resetting');
-
-    // 等待缩小动画结束
-    await new Promise(resolve => {
-        let done = false;
-        const onEnd = () => {
-            if (done) return;
-            done = true;
-            wrapper.removeEventListener('animationend', onEnd);
-            resolve();
-        };
-        wrapper.addEventListener('animationend', onEnd);
-        setTimeout(onEnd, 400);
+async function autoRetryRefuse(chat, wrapper, options = {}) {
+    if (wrapper && wrapper.isConnected) {
+        wrapper.classList.remove('bubble-reenter');
+        wrapper.classList.add('bubble-resetting');
+        await new Promise(resolve => {
+            let done = false;
+            const onEnd = () => {
+                if (done) return;
+                done = true;
+                wrapper.removeEventListener('animationend', onEnd);
+                resolve();
+            };
+            wrapper.addEventListener('animationend', onEnd);
+            setTimeout(onEnd, 400);
+        });
+    }
+    return await executeChatRequest(chat, null, {
+        reuseWrapper: wrapper,
+        suppressQueueAutoProcess: options.suppressQueueAutoProcess,
+        refuseRetryDepth: options.refuseRetryDepth || 0
     });
-
-    // 复用同一个气泡继续请求（重新流式生成）
-    await executeChatRequest(chat, null, { reuseWrapper: wrapper, suppressQueueAutoProcess: options.suppressQueueAutoProcess });
 }
 
 async function generateTitle(chatId, text) {

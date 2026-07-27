@@ -1,7 +1,68 @@
 let abortController = null;
 let messageQueue = [];
 let isProcessingQueue = false;
+let isSendingMessage = false;
+let queuePauseReason = null;
 let queuePaused = false;
+let failedQueueItem = null;
+const QUEUE_STORAGE_KEY = 'ai_message_queue_v2';
+
+function syncQueuePaused() {
+    queuePaused = queuePauseReason !== null;
+}
+
+let _queuePersistWarningShown = false;
+function persistQueueState() {
+    syncQueuePaused();
+    try {
+        localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify({
+            queue: messageQueue,
+            pauseReason: queuePauseReason,
+            failedItem: failedQueueItem
+        }));
+        return true;
+    } catch (e) {
+        console.warn('Queue persistence failed:', e);
+        if (!_queuePersistWarningShown) {
+            _queuePersistWarningShown = true;
+            if (typeof showToast === 'function') showToast('队列保存失败，附件可能过大；刷新页面可能丢失待发送消息');
+        }
+        return false;
+    }
+}
+
+function restoreQueueState() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(QUEUE_STORAGE_KEY) || 'null');
+        if (!saved || !Array.isArray(saved.queue)) return;
+        const validChatIds = new Set(state.chats.map(chat => chat.id));
+        messageQueue = saved.queue
+            .map(item => normalizeQueueItem(item, state.currentChatId))
+            .filter(item => item && validChatIds.has(item.chatId));
+        failedQueueItem = saved.failedItem ? normalizeQueueItem(saved.failedItem, state.currentChatId) : null;
+        if (failedQueueItem && !validChatIds.has(failedQueueItem.chatId)) failedQueueItem = null;
+        if (failedQueueItem) {
+            const chat = state.chats.find(c => c.id === failedQueueItem.chatId);
+            const hasMarker = chat && chat.messages.some(m => m._queueItemId === failedQueueItem.id);
+            if (!hasMarker) {
+                if (failedQueueItem.userAppended && typeof showToast === 'function') showToast('旧版暂停消息缺少重试标记，将按未写入消息处理');
+                failedQueueItem.userAppended = false;
+            }
+            messageQueue = messageQueue.filter(item => item.id !== failedQueueItem.id);
+        }
+        queuePauseReason = saved.pauseReason === 'failure' && failedQueueItem ? 'failure' :
+            (saved.pauseReason === 'user' || messageQueue.length || failedQueueItem ? 'user' : null);
+        syncQueuePaused();
+        persistQueueState();
+    } catch (e) {
+        console.warn('Queue restore failed:', e);
+        messageQueue = [];
+        queuePauseReason = null;
+        failedQueueItem = null;
+        syncQueuePaused();
+        if (typeof showToast === 'function') showToast('队列恢复失败，已忽略损坏的队列数据');
+    }
+}
 let autoScroll = true;
 let contextMenuChatId = null;
 

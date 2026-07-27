@@ -433,6 +433,14 @@ function showContextMenu(e, chatId) {
         if (DOM.ctxAutoRetryRefuseIconOff) DOM.ctxAutoRetryRefuseIconOff.style.display = enabled ? 'none' : '';
     }
 
+    if (fromSidebar && DOM.ctxPolishLabel) {
+        const chat = state.chats.find(c => c.id === contextMenuChatId);
+        const enabled = !!(chat && chat.autoPolish);
+        DOM.ctxPolishLabel.textContent = enabled ? '关闭自动润色' : '开启自动润色';
+        if (DOM.ctxPolishIconOn) DOM.ctxPolishIconOn.style.display = enabled ? '' : 'none';
+        if (DOM.ctxPolishIconOff) DOM.ctxPolishIconOff.style.display = enabled ? 'none' : '';
+    }
+
     menu.style.display = 'block';
     menu.style.left = e.pageX + 'px';
     menu.style.top = e.pageY + 'px';

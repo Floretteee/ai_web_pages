@@ -1,133 +1,215 @@
-function addToQueue() {
-    const text = DOM.userInput.value.trim();
-    if (!text) return showToast("请先输入消息");
-
-    messageQueue.push(text);
-    DOM.userInput.value = '';
-    DOM.userInput.style.height = '52px';
-    renderQueue();
-    showToast("已加入队列");
+function cloneQueueContent(content) {
+    if (typeof content === 'string') return content;
+    return JSON.parse(JSON.stringify(content));
 }
 
-function removeFromQueue(index) {
-    messageQueue.splice(index, 1);
+function createQueueId() {
+    return `q_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function normalizeQueueItem(item, fallbackChatId = state.currentChatId) {
+    if (item === null || item === undefined) return null;
+    if (typeof item === 'string' || Array.isArray(item)) {
+        return { id: createQueueId(), chatId: fallbackChatId, content: cloneQueueContent(item), trimmed: false };
+    }
+    if (typeof item !== 'object') return null;
+    const content = item.content !== undefined ? item.content : '';
+    return {
+        ...item,
+        id: item.id || createQueueId(),
+        chatId: item.chatId || fallbackChatId,
+        content: cloneQueueContent(content),
+        trimmed: !!item.trimmed
+    };
+}
+
+function queueItemPreview(item) {
+    const content = item && item.content;
+    if (typeof content === 'string') return content || '（空消息）';
+    if (Array.isArray(content)) {
+        const text = content.filter(p => p && p.type === 'text').map(p => p.text || '').join('\n').trim();
+        const images = content.filter(p => p && p.type === 'image_url').length;
+        return `${text}${images ? `${text ? '\n' : ''}[${images} 张图片]` : ''}` || '（附件消息）';
+    }
+    return String(content ?? '');
+}
+
+function enqueueContent(chatId, content, front = false) {
+    const item = normalizeQueueItem({ chatId, content });
+    if (front) messageQueue.unshift(item); else messageQueue.push(item);
+    persistQueueState();
+    return item;
+}
+
+function addToQueue() {
+    const text = DOM.userInput.value.trim();
+    if (!text && !state.attachments.length) return showToast('请先输入消息或添加附件');
+    const content = cloneMessageContent(buildMessageContent(text));
+    enqueueContent(state.currentChatId, content);
+    DOM.userInput.value = '';
+    DOM.userInput.style.height = '52px';
+    if (state.attachments.length) clearAttachments();
+    renderQueue();
+    showToast('已加入队列');
+}
+
+function removeFromQueue(id) {
+    const index = messageQueue.findIndex(item => normalizeQueueItem(item).id === id);
+    if (index >= 0) messageQueue.splice(index, 1);
+    persistQueueState();
     renderQueue();
 }
 
 function toggleQueue() {
-    const panel = document.getElementById('queuePanel');
-    panel.classList.toggle('collapsed');
+    document.getElementById('queuePanel').classList.toggle('collapsed');
+}
+
+function setQueuePause(reason) {
+    queuePauseReason = reason;
+    syncQueuePaused();
+    persistQueueState();
+    renderQueue();
 }
 
 function renderQueue() {
+    messageQueue = messageQueue.map(item => normalizeQueueItem(item)).filter(Boolean);
     const countEl = document.getElementById('queueCount');
     const listEl = document.getElementById('queueList');
     const panel = document.getElementById('queuePanel');
     const statusEl = document.getElementById('queueStatus');
-
+    if (!countEl || !listEl || !panel) return;
     countEl.textContent = messageQueue.length;
-
-    // 暂停状态指示
+    syncQueuePaused();
     if (statusEl) {
-        if (queuePaused) {
-            statusEl.textContent = '已暂停';
-            statusEl.style.display = 'inline-flex';
-        } else {
-            statusEl.style.display = 'none';
-        }
+        statusEl.textContent = queuePauseReason === 'failure' ? '失败暂停' : '用户暂停';
+        statusEl.style.display = queuePaused ? 'inline-flex' : 'none';
     }
     panel.classList.toggle('paused', queuePaused);
-
-    // 队列为空且未暂停时隐藏面板
-    if (messageQueue.length === 0 && !queuePaused) {
+    if (!messageQueue.length && !queuePaused && !failedQueueItem) {
         panel.style.display = 'none';
         return;
     }
-
     panel.style.display = 'block';
-
-    if (messageQueue.length === 0) {
-        listEl.innerHTML = '<div class="queue-empty-hint">上一条消息发送失败，队列已暂停。点击重试或强制继续。</div>';
+    if (!messageQueue.length) {
+        listEl.innerHTML = queuePauseReason === 'failure'
+            ? '<div class="queue-empty-hint">上一条消息发送失败。点击重试或强制继续。</div>'
+            : '<div class="queue-empty-hint">生成已由用户停止。</div>';
         return;
     }
-
-    listEl.innerHTML = messageQueue.map((msg, i) => `
+    listEl.innerHTML = messageQueue.map((item, i) => `
         <div class="queue-item">
             <span class="queue-item-num">${i + 1}</span>
-            <span class="queue-item-text">${escapeHtml(msg)}</span>
-            <button class="queue-item-remove" onclick="removeFromQueue(${i})" title="移除">
+            <span class="queue-item-text">${escapeHtml(queueItemPreview(item))}${item.trimmed ? ' [上下文已裁剪]' : ''}</span>
+            <button class="queue-item-remove" onclick="removeFromQueue('${escapeAttr(item.id)}')" title="移除">
                 <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
             </button>
-        </div>
-    `).join('');
-    // 强制队列项文字换行
-    const queueTextEl = listEl.querySelector('.queue-item-text');
-    if (queueTextEl) {
-        queueTextEl.style.wordBreak = 'break-all';
-        queueTextEl.style.overflowWrap = 'break-word';
-        queueTextEl.style.whiteSpace = 'pre-wrap';
-    }
+        </div>`).join('');
+    listEl.querySelectorAll('.queue-item-text').forEach(el => {
+        el.style.wordBreak = 'break-all'; el.style.overflowWrap = 'break-word'; el.style.whiteSpace = 'pre-wrap';
+    });
 }
 
 async function processQueue() {
-    if (isProcessingQueue || queuePaused || messageQueue.length === 0) return;
-
+    if (isProcessingQueue || isSendingMessage) return { ok: false, aborted: false, failed: false, skipped: true, reason: 'busy', error: null };
+    if (queuePaused) return { ok: false, aborted: false, failed: false, skipped: true, reason: 'paused', error: null };
+    if (!messageQueue.length) return { ok: true, aborted: false, failed: false, skipped: true, reason: 'empty', error: null };
     isProcessingQueue = true;
-    const currentChat = state.chats.find(c => c.id === state.currentChatId);
-
-    while (messageQueue.length > 0) {
-        if (queuePaused) break;
-
-        const text = messageQueue.shift();
-        renderQueue();
-
-        await ensureAutoChecksBeforeSend(currentChat);
-
-        const { messages: preparedMessages, trimmed, skippedRounds } = buildContextWithTrim(currentChat, text);
-        if (trimmed && !currentChat.contextLimitWarned) {
-            showToast(`上下文将超过 Token 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });
-            currentChat.contextLimitWarned = true;
-            saveState();
+    isSendingMessage = true;
+    updateSendButton(true);
+    let result = { ok: true, aborted: false, failed: false, error: null };
+    let activeItem = null;
+    let activeChat = null;
+    try {
+        while (messageQueue.length && !queuePaused) {
+            activeItem = normalizeQueueItem(messageQueue[0]);
+            messageQueue[0] = activeItem;
+            activeChat = state.chats.find(c => c.id === activeItem.chatId);
+            if (!activeChat) {
+                messageQueue.shift(); persistQueueState(); renderQueue();
+                showToast('队列目标对话不存在，已跳过该消息');
+                activeItem = null;
+                continue;
+            }
+            await ensureAutoChecksBeforeSend(activeChat);
+            const prepared = buildContextWithTrim(activeChat, activeItem.content);
+            activeItem.trimmed = prepared.trimmed;
+            if (prepared.trimmed) showToast(`此队列消息将丢弃前 ${prepared.skippedRounds} 轮对话`, { duration: 4000 });
+            const existingUser = activeChat.messages.some(m => m._queueItemId === activeItem.id);
+            if (!existingUser) activeChat.messages.push({ role: 'user', content: cloneQueueContent(activeItem.content), _queueItemId: activeItem.id });
+            activeItem.userAppended = true;
+            messageQueue.shift();
+            persistQueueState(); saveState(); renderQueue();
+            if (activeChat.id === state.currentChatId) renderMessages();
+            result = await executeChatRequest(activeChat, prepared.messages, { suppressQueueAutoProcess: true });
+            if (!result.ok) {
+                failedQueueItem = activeItem;
+                setQueuePause(result.aborted ? 'user' : 'failure');
+                break;
+            }
+            failedQueueItem = null;
+            activeItem = null;
+            activeChat = null;
+            persistQueueState();
         }
-
-        currentChat.messages.push({ role: 'user', content: text });
-        saveState();
-        renderMessages();
-
-        const ok = await executeChatRequest(currentChat, preparedMessages);
-        // 本条消息发送失败：暂停队列，保留后续消息，等待重试或手动继续
-        if (!ok) {
-            break;
+    } catch (error) {
+        console.error('Queue processing failed:', error);
+        if (activeItem) {
+            messageQueue = messageQueue.filter(item => normalizeQueueItem(item).id !== activeItem.id);
+            failedQueueItem = activeItem;
+        } else if (messageQueue.length) {
+            failedQueueItem = normalizeQueueItem(messageQueue.shift());
+            messageQueue = messageQueue.filter(item => normalizeQueueItem(item).id !== failedQueueItem.id);
         }
+        result = { ok: false, aborted: false, failed: true, error };
+        if (failedQueueItem) setQueuePause('failure');
+        showToast(`队列处理失败：${error.message || error}`);
+    } finally {
+        isProcessingQueue = false;
+        isSendingMessage = false;
+        persistQueueState(); renderQueue(); updateSendButton(false);
     }
-
-    isProcessingQueue = false;
-    renderQueue();
+    return result;
 }
 
-// 强制继续队列：跳过对失败消息的重试，直接发送队列中的后续消息
+function rollbackFailedQueueMessage(item) {
+    if (!item) return;
+    const chat = state.chats.find(c => c.id === item.chatId);
+    if (!chat) return;
+    const before = chat.messages.length;
+    chat.messages = chat.messages.filter(m => m._queueItemId !== item.id);
+    if (chat.messages.length !== before) item.userAppended = false;
+    saveState();
+    if (chat.id === state.currentChatId) renderMessages();
+}
+
 function forceContinueQueue() {
     if (!queuePaused) return;
-    queuePaused = false;
-    updateSendButton(false);
-    renderQueue();
-    if (messageQueue.length > 0) {
-        processQueue();
+    const item = failedQueueItem;
+    if (item) {
+        messageQueue = messageQueue.filter(entry => normalizeQueueItem(entry).id !== item.id);
+        rollbackFailedQueueMessage(item);
     }
+    failedQueueItem = null;
+    setQueuePause(null);
+    updateSendButton(false);
+    if (messageQueue.length) processQueue();
 }
 
-// 重试上一条失败的消息，成功后自动继续队列
 async function retryLastAndResume() {
-    if (abortController) return;
-    const chat = state.chats.find(c => c.id === state.currentChatId);
-    if (!chat || chat.messages.length === 0) {
-        queuePaused = false;
-        updateSendButton(false);
-        renderQueue();
-        return;
+    if (abortController || isSendingMessage || isProcessingQueue || !queuePaused || !failedQueueItem) return;
+    const item = failedQueueItem;
+    const chat = state.chats.find(c => c.id === item.chatId);
+    if (!chat) {
+        failedQueueItem = null;
+        setQueuePause(messageQueue.length ? 'user' : null);
+        return showToast('暂停消息的目标对话已不存在，已清理');
     }
-    queuePaused = false;
-    // retryMessage 会重新生成最后一条消息；成功后 executeChatRequest 尾部会自动继续队列
-    await retryMessage(chat.messages.length - 1);
-    renderQueue();
+    rollbackFailedQueueMessage(item);
+    messageQueue = messageQueue.filter(entry => normalizeQueueItem(entry).id !== item.id);
+    messageQueue.unshift(item);
+    failedQueueItem = null;
+    queuePauseReason = null;
+    syncQueuePaused(); persistQueueState();
+    const result = await processQueue();
+    if (!result.ok && result.failed && failedQueueItem) setQueuePause('failure');
 }

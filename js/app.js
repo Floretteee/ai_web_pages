@@ -10,10 +10,6 @@ function isTextLikeFile(file) {
     return textExts.includes(ext);
 }
 
-function escapeHtml(str) {
-    return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-}
-
 function addFiles(files) {
     const list = Array.from(files || []);
     if (!list.length) return;
@@ -130,7 +126,9 @@ function switchChat(id) {
 
 async function deleteChat(id, event) {
     event.stopPropagation();
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     if (!(await showConfirm("确定要永久删除这个对话吗？"))) return;
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     state.chats = state.chats.filter(c => c.id !== id);
     if(state.currentChatId === id) state.currentChatId = state.chats.length ? state.chats[0].id : null;
     if(state.chats.length === 0) createNewChat(false);
@@ -138,7 +136,9 @@ async function deleteChat(id, event) {
 }
 
 async function clearCurrentChat() {
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     if (!(await showConfirm("确定清空当前对话的所有消息吗？此操作无法撤销。"))) return;
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     const chat = state.chats.find(c => c.id === state.currentChatId);
     if(chat) { chat.messages = []; state.editingIndex = -1; saveState(); renderMessages(); updateTrimIndicator(); showToast("对话已清空"); }
 }
@@ -169,7 +169,9 @@ function copyMessage(index) {
 }
 
 async function deleteMessage(index) {
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     if (!(await showConfirm("确定删除此条消息吗？"))) return;
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     const chat = state.chats.find(c => c.id === state.currentChatId);
     chat.messages.splice(index, 1); saveState(); renderMessages(); updateTrimIndicator();
 }
@@ -177,6 +179,7 @@ async function deleteMessage(index) {
 function startEdit(index) { state.editingIndex = index; renderMessages(); }
 function cancelEdit() { state.editingIndex = -1; renderMessages(); }
 function saveEdit(index, newText) {
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     const chat = state.chats.find(c => c.id === state.currentChatId);
     if (Array.isArray(chat.messages[index].content)) {
         let textPart = chat.messages[index].content.find(c => c.type === 'text');
@@ -208,8 +211,8 @@ function cloneMessageContent(content) {
 // 推入 messageQueue，交由 processQueue 统一处理。失败时由队列暂停机制
 // （retryLastAndResume / forceContinueQueue）接管，不再走独立的串行重试循环。
 async function retryUserMessagesFrom(chat, index) {
-    if (abortController) return showToast("请等待当前请求完成");
-    if (isProcessingQueue) return showToast("队列正在处理，请稍候");
+    if (queuePaused) return showToast("请先处理当前暂停消息");
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
 
     const replayContents = chat.messages
         .slice(index)
@@ -220,17 +223,19 @@ async function retryUserMessagesFrom(chat, index) {
 
     if (index < chat.messages.length - 1) {
         const confirmMsg = `重试将从此用户消息开始，删除后续消息，并把 ${replayContents.length} 条用户消息按原顺序插入队列最前方，确定吗？`;
-        if (!(await showConfirm(confirmMsg))) return;
+    if (!(await showConfirm(confirmMsg))) return;
+    if (queuePaused) return showToast("请先处理当前暂停消息");
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     }
 
     state.editingIndex = -1;
     chat.messages = chat.messages.slice(0, index);
     // 插入队列最前方，避免覆盖已有队列消息
     for (let i = replayContents.length - 1; i >= 0; i--) {
-        messageQueue.unshift(replayContents[i]);
+        enqueueContent(chat.id, replayContents[i], true);
     }
     // 若处于失败暂停，重置为待发送，交由 processQueue 重新驱动
-    queuePaused = false;
+    setQueuePause(null);
     saveState();
     renderMessages();
     renderQueue();
@@ -246,6 +251,8 @@ async function retryUserMessagesFrom(chat, index) {
 //   - assistant 消息：保留该 assistant 消息 + 截断其后所有消息 + 把其后所有
 //     user 消息入队
 async function retryAssistantMessage(chat, index) {
+    if (queuePaused) return showToast("请先处理当前暂停消息");
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     const msg = chat.messages[index];
     if (!msg) return;
 
@@ -260,8 +267,15 @@ async function retryAssistantMessage(chat, index) {
         : '此条消息之后没有可重放的用户消息，是否仍重新生成该 assistant 回复？';
 
     if (!(await showConfirm(confirmMsg))) return;
+        if (queuePaused) return showToast("请先处理当前暂停消息");
+        if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
 
     if (replayContents.length === 0) {
+        const backup = chat.messages.map(m => ({ ...m, content: cloneMessageContent(m.content) }));
+        isSendingMessage = true;
+        updateSendButton(false);
+        try {
+            let result;
         // 退化路径：没有后续 user 消息，就只重生成这一条 assistant（就地复用气泡）
         let reuseWrapper = null;
         const w = getWrapperForIndex(index);
@@ -289,22 +303,35 @@ async function retryAssistantMessage(chat, index) {
                 reuseWrapper.addEventListener('animationend', onEnd);
                 setTimeout(onEnd, 400);
             });
-            await executeChatRequest(chat, null, { reuseWrapper });
+            result = await executeChatRequest(chat, null, { reuseWrapper });
         } else {
             renderMessages();
-            await executeChatRequest(chat);
+            result = await executeChatRequest(chat);
+        }
+            if (!result || !result.ok) {
+                chat.messages = backup;
+                saveState();
+                if (chat.id === state.currentChatId) renderMessages();
+            }
+            return result;
+        } catch (error) {
+            chat.messages = backup;
+            saveState();
+            if (chat.id === state.currentChatId) renderMessages();
+            return { ok: false, aborted: false, failed: true, error };
+        } finally {
+            isSendingMessage = false;
+            updateSendButton(false);
         }
         return;
     }
-
-    // 主路径：保留到该 assistant 消息为止，把其后的所有 user 消息插入队列最前方
     if (isProcessingQueue) return showToast("队列正在处理，请稍候");
     state.editingIndex = -1;
     chat.messages = chat.messages.slice(0, enrollFromIndex);
     for (let i = replayContents.length - 1; i >= 0; i--) {
-        messageQueue.unshift(replayContents[i]);
+        enqueueContent(chat.id, replayContents[i], true);
     }
-    queuePaused = false;
+    setQueuePause(null);
     saveState();
     renderMessages();
     renderQueue();
@@ -316,65 +343,56 @@ async function retryAssistantMessage(chat, index) {
 // 单条消息重试：无弹窗、不加入队列，直接截断该消息及后续消息后重新生成
 // 串行重试（header 按钮）走 retryUserMessagesFrom，保留原有的弹窗+入队逻辑
 async function retryMessage(index) {
-    if (abortController) return showToast("请等待当前请求完成");
-    if (isProcessingQueue) return showToast("队列正在处理，请稍候");
-
+    if (queuePaused) return showToast("请先处理当前暂停消息");
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     const chat = state.chats.find(c => c.id === state.currentChatId);
-    const msg = chat.messages[index];
+    const msg = chat && chat.messages[index];
     if (!msg) return;
-
-    state.editingIndex = -1;
-
-    if (msg.role === 'user') {
-        // 用户消息：截断该消息及后续所有消息，重新发送这一条
-        const content = cloneMessageContent(msg.content);
-        chat.messages = chat.messages.slice(0, index);
-        saveState();
-        renderMessages();
-
-        chat.messages.push({ role: 'user', content });
-        saveState();
-        renderMessages();
-        showToast("正在重试...");
-        await executeChatRequest(chat);
-    } else {
-        // assistant 消息：截断该消息及后续，复用气泡重新生成
+    const backup = chat.messages.map(m => ({ ...m, content: cloneMessageContent(m.content) }));
+    isSendingMessage = true;
+    updateSendButton(false);
+    try {
+        state.editingIndex = -1;
+        if (msg.role === 'user') {
+            const attemptItem = normalizeQueueItem({ chatId: chat.id, content: cloneMessageContent(msg.content) });
+            chat.messages = chat.messages.slice(0, index);
+            chat.messages.push({ role: 'user', content: cloneMessageContent(attemptItem.content), _queueItemId: attemptItem.id });
+            attemptItem.userAppended = true;
+            saveState(); renderMessages(); showToast("正在重试...");
+            const result = await executeChatRequest(chat);
+            if (!result.ok) {
+                failedQueueItem = attemptItem;
+                messageQueue = messageQueue.filter(item => normalizeQueueItem(item).id !== attemptItem.id);
+                setQueuePause(result.aborted ? 'user' : 'failure');
+            }
+            return result;
+        }
         const reuseWrapper = getWrapperForIndex(index);
         chat.messages = chat.messages.slice(0, index);
         saveState();
-
-        if (reuseWrapper && reuseWrapper.classList.contains('bot') && reuseWrapper.isConnected) {
-            let sibling = reuseWrapper.nextElementSibling;
-            while (sibling) {
-                const toRemove = sibling;
-                sibling = sibling.nextElementSibling;
-                if (toRemove.classList.contains('message-wrapper')) toRemove.remove();
-            }
-            reuseWrapper.classList.remove('bubble-reenter');
-            reuseWrapper.classList.add('bubble-resetting');
-            await new Promise(resolve => {
-                let done = false;
-                const onEnd = () => {
-                    if (done) return;
-                    done = true;
-                    reuseWrapper.removeEventListener('animationend', onEnd);
-                    resolve();
-                };
-                reuseWrapper.addEventListener('animationend', onEnd);
-                setTimeout(onEnd, 400);
-            });
-            showToast("正在重试...");
-            await executeChatRequest(chat, null, { reuseWrapper });
-        } else {
-            renderMessages();
-            showToast("正在重试...");
-            await executeChatRequest(chat);
+        if (!reuseWrapper || !reuseWrapper.isConnected) renderMessages();
+        showToast("正在重试...");
+        const result = await executeChatRequest(chat, null, { reuseWrapper: reuseWrapper && reuseWrapper.isConnected ? reuseWrapper : undefined });
+        if (!result.ok) {
+            chat.messages = backup;
+            saveState();
+            if (chat.id === state.currentChatId) renderMessages();
         }
+        return result;
+    } catch (error) {
+        chat.messages = backup;
+        saveState();
+        if (chat.id === state.currentChatId) renderMessages();
+        return { ok: false, aborted: false, failed: true, error };
+    } finally {
+        isSendingMessage = false;
+        updateSendButton(false);
     }
 }
 
 async function retryChatSerialFromStart(chat) {
-    if (abortController) return showToast("请等待当前请求完成");
+    if (queuePaused) return showToast("请先处理当前暂停消息");
+    if (abortController || isSendingMessage || isProcessingQueue) return showToast("请等待当前请求完成");
     if (!state.apiKey || !state.selectedModel) return showToast("请先配置 API Key 和模型");
     if (!chat) return showToast("未找到对话");
 
@@ -401,7 +419,7 @@ async function retryContextMenuChatSerialFromStart() {
 
 async function translateAssistantEnglishTokens(index, options = {}) {
     const silent = !!options.silent;
-    const chat = state.chats.find(c => c.id === state.currentChatId);
+    const chat = options.chat || state.chats.find(c => c.id === state.currentChatId);
     if (!chat) return false;
     const msg = chat.messages[index];
     if (!msg || msg.role !== 'assistant') return false;
@@ -441,6 +459,7 @@ async function translateAssistantEnglishTokens(index, options = {}) {
         let map;
         try { map = JSON.parse(text); } catch (e) { throw new Error('翻译结果解析失败'); }
         if (!map || typeof map !== 'object') throw new Error('翻译结果格式错误');
+        if (!state.chats.includes(chat) || chat.messages[index] !== msg) return false;
 
         let original = msg.content;
         if (Array.isArray(original)) {
@@ -452,7 +471,7 @@ async function translateAssistantEnglishTokens(index, options = {}) {
         msg.translated = true;
         msg._renderVersion = (msg._renderVersion || 0) + 1;
         saveState();
-        renderMessages();
+        if (chat.id === state.currentChatId) renderMessages();
         const replaced = Object.keys(map).filter(k => map[k]).length;
         if (!silent) showToast(`已替换 ${replaced} 处英文`);
         else if (replaced > 0) showToast(`自动修复：替换 ${replaced} 处英文`);
@@ -465,7 +484,7 @@ async function translateAssistantEnglishTokens(index, options = {}) {
 
 async function polishAssistantMessage(index, options = {}) {
     const silent = !!options.silent;
-    const chat = state.chats.find(c => c.id === state.currentChatId);
+    const chat = options.chat || state.chats.find(c => c.id === state.currentChatId);
     if (!chat) return false;
     const msg = chat.messages[index];
     if (!msg || msg.role !== 'assistant') return false;
@@ -505,12 +524,14 @@ async function polishAssistantMessage(index, options = {}) {
         const data = await response.json();
         let polished = data.choices?.[0]?.message?.content?.trim() || '';
         if (!polished) throw new Error('润色结果为空');
+        if (!state.chats.includes(chat) || chat.messages[index] !== msg) return false;
 
         // 如果差异太小（比如模型直接返回原文本），跳过替换
         if (polished === plainText) {
             msg.polished = true;
             msg._renderVersion = (msg._renderVersion || 0) + 1;
-            saveState(); renderMessages();
+            saveState();
+            if (chat.id === state.currentChatId) renderMessages();
             if (!silent) showToast(`「${chat.title || '新对话'}」润色完成（文本无需改动）`);
             return true;
         }
@@ -530,7 +551,7 @@ async function polishAssistantMessage(index, options = {}) {
         msg.polished = true;
         msg._renderVersion = (msg._renderVersion || 0) + 1;
         saveState();
-        renderMessages();
+        if (chat.id === state.currentChatId) renderMessages();
         if (!silent) showToast(`「${chat.title || '新对话'}」润色完成`);
         return true;
     } catch (error) {
@@ -563,8 +584,7 @@ async function autoPolishLastAssistantMessage(chat) {
     if (msg.polished) return;
     const plain = getMessagePlainText(msg);
     if (!plain || plain.trim().length < 10) return;
-    if (chat.id !== state.currentChatId) return;
-    await polishAssistantMessage(lastIdx, { silent: true });
+    await polishAssistantMessage(lastIdx, { silent: true, chat });
 }
 
 async function polishAllAssistantMessages() {
@@ -586,8 +606,8 @@ async function polishAllAssistantMessages() {
     showToast(`「${chat.title || '新对话'}」开始润色 ${assistantIndices.length} 条消息...`);
     let done = 0;
     for (const idx of assistantIndices) {
-        await polishAssistantMessage(idx, { silent: true });
-        done++;
+        const polished = await polishAssistantMessage(idx, { silent: true, chat });
+        if (polished) done++;
     }
     showToast(`「${chat.title || '新对话'}」润色完成：${done} 条消息`);
 }
@@ -602,8 +622,7 @@ async function autoFixLastAssistantMessage(chat) {
     if (!plain) return;
     if (calcChineseRatio(plain) < 0.85) return;
     if (extractEnglishTokens(plain).length === 0) return;
-    if (chat.id !== state.currentChatId) return;
-    await translateAssistantEnglishTokens(lastIdx, { silent: true });
+    await translateAssistantEnglishTokens(lastIdx, { silent: true, chat });
 }
 
 function assistantNeedsTranslation(msg) {
@@ -626,7 +645,7 @@ async function ensureAutoChecksBeforeSend(chat) {
     if (!msg) return;
 
     if (chat.autoFixEnglish && msg.translated !== true && assistantNeedsTranslation(msg)) {
-        try { await translateAssistantEnglishTokens(lastIdx, { silent: true }); } catch (e) {}
+        try { await translateAssistantEnglishTokens(lastIdx, { silent: true, chat }); } catch (e) {}
     }
 
     if (chat.autoRetryOnRefuse && msg.refuseChecked !== true) {
@@ -637,14 +656,14 @@ async function ensureAutoChecksBeforeSend(chat) {
                     msg.refuseChecked = true;
                     msg._renderVersion = (msg._renderVersion || 0) + 1;
                     saveState();
-                    renderMessages();
+                    if (chat.id === state.currentChatId) renderMessages();
                 }
             } catch (e) {}
         }
     }
 
     if (chat.autoPolish && msg.polished !== true) {
-        try { await polishAssistantMessage(lastIdx, { silent: true }); } catch (e) {}
+        try { await polishAssistantMessage(lastIdx, { silent: true, chat }); } catch (e) {}
     }
 }
 
@@ -1162,45 +1181,62 @@ async function sendMessage() {
     const text = DOM.userInput.value.trim();
     if ((!text && !state.attachments.length) || !state.apiKey || !state.selectedModel) {
         if (!state.apiKey) showToast("请先在左侧设置中填写 API Key");
-        return;
+        return false;
     }
 
-    // 如果AI正在回复或队列正在处理/暂停，将消息加入队列
-    if (abortController || isProcessingQueue || queuePaused || messageQueue.length > 0) {
-        messageQueue.push(text);
-        DOM.userInput.value = '';
-        DOM.userInput.style.height = '52px';
+    const chatId = state.currentChatId;
+    const content = cloneMessageContent(buildMessageContent(text));
+    const attemptItem = normalizeQueueItem({ chatId, content });
+    DOM.userInput.value = '';
+    DOM.userInput.style.height = '52px';
+    state.attachments = [];
+    renderAttachments();
+    updateTrimIndicator();
+    if (abortController || isSendingMessage || isProcessingQueue || queuePaused || messageQueue.length > 0) {
+        messageQueue = messageQueue.filter(item => normalizeQueueItem(item).id !== attemptItem.id);
+        messageQueue.push(attemptItem);
+        persistQueueState();
         renderQueue();
         showToast(queuePaused ? "队列已暂停，消息已加入队列" : "已加入队列，等待当前回复完成");
-        return;
+        return true;
     }
 
-    const currentChat = state.chats.find(c => c.id === state.currentChatId);
-    const isFirstMessage = currentChat.messages.length === 0;
-
-    await ensureAutoChecksBeforeSend(currentChat);
-
-    let userMessageContent = buildMessageContent(text);
-    if (state.attachments.length) {
-        clearAttachments();
-    }
-
-    const { messages: preparedMessages, trimmed, skippedRounds } = buildContextWithTrim(currentChat, userMessageContent);
-    if (trimmed) {
-        const wasWarned = currentChat.contextLimitWarned;
-        if (!wasWarned) {
-            showToast(`上下文已达 80% 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });
-            currentChat.contextLimitWarned = true;
-            saveState();
+    isSendingMessage = true;
+    updateSendButton(true);
+    try {
+        const currentChat = state.chats.find(c => c.id === chatId);
+        if (!currentChat) throw new Error('目标对话不存在');
+        const isFirstMessage = currentChat.messages.length === 0;
+        await ensureAutoChecksBeforeSend(currentChat);
+        const { messages: preparedMessages, trimmed, skippedRounds } = buildContextWithTrim(currentChat, content);
+        if (trimmed) showToast(`上下文已达 80% 上限，本次请求将丢弃前 ${skippedRounds} 轮对话`, { duration: 4000 });
+        currentChat.messages.push({ role: 'user', content, _queueItemId: attemptItem.id });
+        attemptItem.userAppended = true;
+        DOM.userInput.value = ''; DOM.userInput.style.height = '52px'; state.editingIndex = -1; saveState();
+        if (currentChat.id === state.currentChatId) renderMessages();
+        if (isFirstMessage) generateTitle(currentChat.id, text || "分析图片");
+        const result = await executeChatRequest(currentChat, preparedMessages);
+        if (!result.ok) {
+            failedQueueItem = attemptItem;
+            messageQueue = messageQueue.filter(item => normalizeQueueItem(item).id !== attemptItem.id);
+            setQueuePause(result.aborted ? 'user' : 'failure');
         }
+        return result;
+    } catch (error) {
+        const validChat = state.chats.some(chat => chat.id === attemptItem.chatId);
+        if (validChat) {
+            failedQueueItem = attemptItem;
+            messageQueue = messageQueue.filter(item => normalizeQueueItem(item).id !== attemptItem.id);
+            setQueuePause('failure');
+        } else {
+            showToast('目标对话不存在，消息无法重试');
+        }
+        showToast(`发送失败：${error.message || error}`);
+        return { ok: false, aborted: false, failed: true, error };
+    } finally {
+        isSendingMessage = false;
+        updateSendButton(false);
     }
-
-    currentChat.messages.push({ role: 'user', content: userMessageContent });
-    DOM.userInput.value = ''; DOM.userInput.style.height = '52px'; state.editingIndex = -1; saveState(); renderMessages();
-
-    if (isFirstMessage) generateTitle(currentChat.id, text || "分析图片");
-
-    await executeChatRequest(currentChat, preparedMessages);
 }
 
 function forkChat() {
@@ -1315,6 +1351,9 @@ async function init() {
         if (!state.currentChatId || !state.chats.find(c => c.id === state.currentChatId)) state.currentChatId = state.chats[0].id;
         renderChatList(); renderMessages(); updateTrimIndicator();
     }
+    restoreQueueState();
+    renderQueue();
+    updateSendButton(false);
     if (state.apiKey && state.selectedModel) {
         DOM.modelSelect.innerHTML = `<option value="${state.selectedModel}">${state.selectedModel}</option>`;
         DOM.titleModelSelect.innerHTML = `<option value="">跟随对话模型</option><option value="${state.titleModel}" selected>${state.titleModel}</option>`;
