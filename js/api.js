@@ -452,11 +452,8 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         DOM.userInput.focus();
     }
 
-    // 未重试时才检查队列（重试中由最内层非重试调用处理队列）
-    // 请求失败或被中止时不自动继续队列
-    if (!options.suppressQueueAutoProcess && !refused && !requestFailed && !requestAborted && messageQueue.length > 0 && !isProcessingQueue) {
-        setTimeout(() => processQueue(), 500);
-    }
+// 未重试时才检查队列（重试中由最内层非重试调用处理队列）
+    // 请求失败或被中止时不自动继续队列；队列续跑统一由 QueueStore.process 驱动
 
     return nestedRetryResult || {
         ok: !requestFailed && !requestAborted,
@@ -470,7 +467,7 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
         return failedResult(error);
     } finally {
         if (abortController === requestController) abortController = null;
-        updateSendButton(isProcessingQueue || isSendingMessage);
+        updateSendButton(false);
         updateTrimIndicator();
     }
 }
@@ -478,9 +475,9 @@ async function executeChatRequest(currentChat, preparedMessages, options = {}) {
 function stopGeneration() {
     if (abortController) {
         abortController.abort();
-        const hasPendingQueue = messageQueue.length > 0 || failedQueueItem;
-        if (hasPendingQueue) {
-            setQueuePause('user');
+        const chatId = state.currentChatId;
+        if (chatId && QueueStore.hasPending(chatId)) {
+            QueueStore.pause(chatId, 'user');
             showToast("已停止生成，队列已手动暂停");
         } else {
             showToast("已停止生成");
@@ -496,6 +493,7 @@ const STOP_BTN_ICON = '<svg class="stop-spinner" viewBox="0 0 24 24"><path d="M1
 const RETRY_BTN_ICON = '<svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>';
 const QUEUE_ADD_ICON = '<svg viewBox="0 0 24 24"><path d="M4 7h16v2H4V7zm0 4h16v2H4v-2zm0 4h16v2H4v-2z"/></svg>';
 const QUEUE_CONTINUE_ICON = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+const QUEUE_CLEAR_ICON = '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>';
 
 // 替换发送按钮内容时重新挂载并缓存 trim 角标，避免引用失效
 function _setSendBtnContent(iconHtml) {
@@ -504,13 +502,14 @@ function _setSendBtnContent(iconHtml) {
 }
 
 function updateSendButton(isGenerating) {
-    if (queuePaused && !failedQueueItem && !messageQueue.length) {
-        queuePauseReason = null;
-        syncQueuePaused();
-        persistQueueState();
-    }
+    const chatId = state.currentChatId;
     const hasActiveRequest = !!abortController;
-    const isLocked = !!(isProcessingQueue || isSendingMessage);
+    const snap = chatId ? QueueStore.getSnapshot(chatId) : null;
+    if (snap && snap.paused && !snap.failedItem && !snap.items.length) {
+        QueueStore.resume(chatId);
+    }
+    const q = snap ? snap : { items: [], paused: false, failedItem: null, pauseReason: null };
+    const isLocked = !!isGenerating || QueueStore.isAnyBusy();
     if (hasActiveRequest) {
         _setSendBtnContent(STOP_BTN_ICON);
         DOM.sendBtn.onclick = stopGeneration;
@@ -522,6 +521,29 @@ function updateSendButton(isGenerating) {
         DOM.queueBtn.innerHTML = QUEUE_ADD_ICON;
         DOM.queueBtn.onclick = addToQueue;
         DOM.queueBtn.title = '加入队列';
+    } else if (q.paused && q.failedItem) {
+        // 失败/停止暂停：必须重试队头（不可跳过）
+        _setSendBtnContent(RETRY_BTN_ICON);
+        DOM.sendBtn.onclick = retryLastAndResume;
+        DOM.sendBtn.classList.remove('stop-btn');
+        DOM.sendBtn.classList.add('retry-btn');
+        DOM.sendBtn.title = q.pauseReason === 'user' ? '重试已停止的消息' : '重试上一条失败消息';
+        DOM.queueBtn.classList.remove('generating');
+        DOM.queueBtn.classList.add('paused');
+        DOM.queueBtn.innerHTML = QUEUE_CLEAR_ICON;
+        DOM.queueBtn.onclick = clearQueueClick;
+        DOM.queueBtn.title = '清空队列';
+    } else if (q.paused && q.items.length) {
+        // 用户暂停，队列仍有剩余：继续
+        _setSendBtnContent(QUEUE_CONTINUE_ICON);
+        DOM.sendBtn.onclick = () => QueueStore.resumeAndProcess(chatId);
+        DOM.sendBtn.classList.remove('stop-btn', 'retry-btn');
+        DOM.sendBtn.title = '继续队列';
+        DOM.queueBtn.classList.remove('generating');
+        DOM.queueBtn.classList.add('paused');
+        DOM.queueBtn.innerHTML = QUEUE_CLEAR_ICON;
+        DOM.queueBtn.onclick = clearQueueClick;
+        DOM.queueBtn.title = '清空队列';
     } else if (isLocked) {
         _setSendBtnContent(SEND_BTN_ICON);
         DOM.sendBtn.onclick = () => showToast('请求正在处理中，请稍候');
@@ -532,28 +554,6 @@ function updateSendButton(isGenerating) {
         DOM.queueBtn.innerHTML = QUEUE_ADD_ICON;
         DOM.queueBtn.onclick = addToQueue;
         DOM.queueBtn.title = '加入队列';
-    } else if (queuePaused && failedQueueItem) {
-        // 暂停消息可重试或跳过
-        _setSendBtnContent(RETRY_BTN_ICON);
-        DOM.sendBtn.onclick = retryLastAndResume;
-        DOM.sendBtn.classList.remove('stop-btn');
-        DOM.sendBtn.classList.add('retry-btn');
-        DOM.sendBtn.title = queuePauseReason === 'user' ? '重试已停止的消息' : '重试上一条失败消息';
-        DOM.queueBtn.classList.remove('generating');
-        DOM.queueBtn.classList.add('paused');
-        DOM.queueBtn.innerHTML = QUEUE_CONTINUE_ICON;
-        DOM.queueBtn.onclick = forceContinueQueue;
-        DOM.queueBtn.title = queuePauseReason === 'user' ? '跳过已停止消息并继续队列' : '跳过失败消息并继续队列';
-    } else if (queuePaused && messageQueue.length) {
-        _setSendBtnContent(QUEUE_CONTINUE_ICON);
-        DOM.sendBtn.onclick = forceContinueQueue;
-        DOM.sendBtn.classList.remove('stop-btn', 'retry-btn');
-        DOM.sendBtn.title = '继续队列';
-        DOM.queueBtn.classList.remove('generating');
-        DOM.queueBtn.classList.add('paused');
-        DOM.queueBtn.innerHTML = QUEUE_CONTINUE_ICON;
-        DOM.queueBtn.onclick = forceContinueQueue;
-        DOM.queueBtn.title = '继续队列';
     } else {
         _setSendBtnContent(SEND_BTN_ICON);
         DOM.sendBtn.onclick = sendMessage;

@@ -1,7 +1,8 @@
 const DB_NAME = 'FimallChat';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const STORE_NAME = 'chats';
 const SETTINGS_STORE_NAME = 'settings';
+const QUEUE_STORE_NAME = 'queue';
 
 let _db = null;
 
@@ -16,6 +17,9 @@ function openDB() {
             }
             if (!db.objectStoreNames.contains(SETTINGS_STORE_NAME)) {
                 db.createObjectStore(SETTINGS_STORE_NAME, { keyPath: 'key' });
+            }
+            if (!db.objectStoreNames.contains(QUEUE_STORE_NAME)) {
+                db.createObjectStore(QUEUE_STORE_NAME, { keyPath: 'chatId' });
             }
         };
         request.onsuccess = () => {
@@ -112,6 +116,39 @@ async function deleteSettingsKeys(keys) {
         for (const key of keys) {
             store.delete(key);
         }
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+async function getQueueStates() {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(QUEUE_STORE_NAME, 'readonly');
+        const store = tx.objectStore(QUEUE_STORE_NAME);
+        const request = store.getAll();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+    });
+}
+
+async function saveQueueState(queueState) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(QUEUE_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(QUEUE_STORE_NAME);
+        store.put(queueState);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+    });
+}
+
+async function deleteQueueState(chatId) {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+        const tx = db.transaction(QUEUE_STORE_NAME, 'readwrite');
+        const store = tx.objectStore(QUEUE_STORE_NAME);
+        store.delete(chatId);
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
     });
